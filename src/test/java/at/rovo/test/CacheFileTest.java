@@ -5,17 +5,19 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import at.rovo.caching.drum.CacheFile;
-import at.rovo.caching.drum.DrumUtil;
-import at.rovo.caching.drum.InMemoryData;
-import at.rovo.caching.drum.KeyComparator;
-import at.rovo.caching.drum.StringSerializer;
+import at.rovo.caching.drum.DrumException;
+import at.rovo.caching.drum.NotAppendableException;
+import at.rovo.caching.drum.data.StringSerializer;
+import at.rovo.caching.drum.internal.InMemoryData;
+import at.rovo.caching.drum.internal.backend.cacheFile.CacheFile;
+import at.rovo.caching.drum.util.DrumUtil;
+import at.rovo.caching.drum.util.KeyComparator;
 
 public class CacheFileTest
 {
@@ -402,7 +404,7 @@ public class CacheFileTest
 			
 			Assert.assertEquals(105L, cacheFile.length());
 		}
-		catch (IOException | InstantiationException | IllegalAccessException e)
+		catch (IOException | InstantiationException | IllegalAccessException | DrumException | NotAppendableException e)
 		{
 			e.printStackTrace();
 		}

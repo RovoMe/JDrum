@@ -1,7 +1,7 @@
 import java.io.IOException;
 import org.junit.Test;
-import junit.framework.Assert;
-import at.rovo.caching.drum.DrumUtil;
+import org.junit.Assert;
+import at.rovo.caching.drum.util.DrumUtil;
 
 public class SerializationTest
 {    

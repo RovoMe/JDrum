@@ -1,5 +1,8 @@
 package at.rovo.caching.drum;
 
+import at.rovo.caching.drum.data.ByteSerializer;
+import at.rovo.caching.drum.internal.IDrumRuntimeListener;
+
 /**
  * <p><code>IMerger</code> iterates through all registered {@link IDiskWriter}
  * instances and uses their bucket disk files to extract data to merge. It 

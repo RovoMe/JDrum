@@ -1,7 +1,7 @@
 package at.rovo.test;
 
-import at.rovo.caching.drum.ByteSerializer;
 import at.rovo.caching.drum.NullDispatcher;
+import at.rovo.caching.drum.data.ByteSerializer;
 
 /**
  * <p>The ConsoleDispatcher simply prints out the unique- and duplicate key updates to the console</p>

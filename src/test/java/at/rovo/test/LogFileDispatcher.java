@@ -2,8 +2,8 @@ package at.rovo.test;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import at.rovo.caching.drum.ByteSerializer;
 import at.rovo.caching.drum.NullDispatcher;
+import at.rovo.caching.drum.data.ByteSerializer;
 
 public class LogFileDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends NullDispatcher<V,A>
 {

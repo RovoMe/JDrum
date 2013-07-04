@@ -1,13 +1,12 @@
 package at.rovo.test;
 
-import static org.junit.Assert.assertNotNull;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.After;
@@ -15,11 +14,11 @@ import org.junit.Before;
 import org.junit.Test;
 import at.rovo.caching.drum.Drum;
 import at.rovo.caching.drum.DrumException;
-import at.rovo.caching.drum.DrumUtil;
 import at.rovo.caching.drum.IDrum;
 import at.rovo.caching.drum.IDrumListener;
-import at.rovo.caching.drum.StringSerializer;
+import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.event.DrumEvent;
+import at.rovo.caching.drum.util.DrumUtil;
 
 public class DrumTest implements IDrumListener
 {	
@@ -202,7 +201,7 @@ public class DrumTest implements IDrumListener
 		{
 			List<Long> keys = new ArrayList<>();
 			this.printCacheContent("urlSeenTest", keys);
-			assertNotNull(keys);
+			Assert.assertNotNull(keys);
 			for (Long URLhash : URLhashes)
 			{
 				Assert.assertTrue(keys.contains(URLhash));
