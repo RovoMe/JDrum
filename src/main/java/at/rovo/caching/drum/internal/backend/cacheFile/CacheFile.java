@@ -30,8 +30,8 @@ import at.rovo.caching.drum.internal.InMemoryData;
  */
 public class CacheFile<V extends ByteSerializer<V>>
 {
-	// create a logger
-	private final static Logger logger = LogManager.getLogger(CacheFile.class.getName());
+	/** The logger of this class **/
+	private final static Logger logger = LogManager.getLogger(CacheFile.class);
 	/** The backing caching file to store data to and read it from **/
 	private RandomAccessFile file = null;
 	/** The name of the cache file **/

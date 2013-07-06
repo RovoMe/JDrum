@@ -5,9 +5,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.RandomAccessFile;
 import java.io.StreamCorruptedException;
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import at.rovo.caching.drum.DrumException;
+import at.rovo.caching.drum.data.ByteSerializer;
+import at.rovo.common.Pair;
 
 /**
  * <p>
@@ -25,6 +32,9 @@ import java.util.Arrays;
  */
 public class DrumUtil
 {
+	/** The logger of this class **/
+	private final static Logger logger = LogManager.getLogger(DrumUtil.class);
+	
 	/**
 	 * <p>
 	 * Calculates a 8-byte (64bit) hash from a {@link String}
@@ -316,4 +326,112 @@ public class DrumUtil
 		return new BigInteger(b).longValue();
 	}
 
+	/**
+	 * <p>
+	 * Prints the content of the backing data store to the log file.
+	 * </p>
+	 * 
+	 * @param name
+	 *            The name of the backing data store
+	 * @param keys
+	 *            The keys of the objects to print to the log file
+	 * @param valueClass
+	 *            The data type of the value object associated to the key
+	 * @throws IOException
+	 *             If any error during reading the data store occurs
+	 * @throws DrumException
+	 *             Thrown if the next entry from the data store could not be
+	 *             extracted
+	 */
+	public static <V extends ByteSerializer<V>> void printCacheContent(
+			String name, List<Long> keys, Class<V> valueClass)
+			throws IOException, DrumException
+	{
+		logger.info("Data contained in cache.db:");
+
+		String userDir = System.getProperty("user.dir");
+		String cacheName = userDir + "/cache/" + name + "/cache.db";
+		RandomAccessFile cacheFile = new RandomAccessFile(cacheName, "r");
+		cacheFile.seek(0);
+
+		Pair<Long, V> data = null;
+		do
+		{
+			data = DrumUtil.getNextEntry(cacheFile, valueClass);
+			if (data != null)
+			{
+				keys.add(data.getFirst());
+				V hostData = data.getLast();
+				if (hostData != null)
+					logger.info("Key: {}, Value: {}", data.getFirst(), hostData);
+				else 
+					logger.info("Key: {}, Value: {}", data.getFirst(), null);
+			}
+		}
+		while (data != null);
+
+		cacheFile.close();
+	}
+
+	/**
+	 * <p>
+	 * Returns the next key/value pair from the backing data store.
+	 * </p>
+	 * 
+	 * @param cacheFile
+	 *            The name of the backing data store
+	 * @param valueClass
+	 *            The data type of the value object associated to the key
+	 * @return A key/value tuple
+	 * @throws DrumException
+	 *             Thrown if either an IOException occurs during fetching the
+	 *             next Entry or the data can't be deserialized from bytes to
+	 *             an actual object
+	 */
+	public static <V extends ByteSerializer<V>> Pair<Long, V> getNextEntry(
+			RandomAccessFile cacheFile, Class<V> valueClass)
+			throws DrumException
+	{
+		// Retrieve the key from the file
+		try
+		{
+			if (cacheFile.getFilePointer() == cacheFile.length())
+				return null;
+
+			Long key = cacheFile.readLong();
+
+			// Retrieve the value from the file
+			int valueSize = cacheFile.readInt();
+			if (valueSize > 0)
+			{
+				byte[] byteValue = new byte[valueSize];
+				cacheFile.read(byteValue);
+				V value = null;
+				// as we have our own serialization mechanism, we have to ensure
+				// that these objects are serialized appropriately
+				if (ByteSerializer.class.isAssignableFrom(valueClass))
+				{
+					try
+					{
+						value = valueClass.newInstance();
+					}
+					catch (IllegalAccessException | InstantiationException e)
+					{
+						e.printStackTrace();
+					}
+					value = ((ByteSerializer<V>) value).readBytes(byteValue);
+				}
+				// should not happen - but in case we refactor again leaf it in
+				else
+					value = DrumUtil.deserialize(byteValue, valueClass);
+				return new Pair<Long, V>(key, value);
+			}
+			return new Pair<Long, V>(key, null);
+		}
+		catch (IOException | ClassNotFoundException e)
+		{
+			throw new DrumException("Error fetching next entry from cache", e);
+		}
+	}
+	
 }

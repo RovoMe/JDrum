@@ -48,7 +48,7 @@ public class CacheFileTest
 	{
 		String path = DrumTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
 		System.setProperty("log4j.configurationFile", path);
-		logger = LogManager.getLogger(DrumTest.class);
+		logger = LogManager.getLogger(CacheFileTest.class);
 	}
 	
 	@AfterClass

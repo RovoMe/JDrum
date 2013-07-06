@@ -40,6 +40,12 @@
 			<artifactId>je</artifactId>
 			<version>5.0.58</version>
 		</dependency>
+		<!-- Common -->
+		<dependency>
+			<groupId>at.rovo.common</groupId>
+			<artifactId>Common</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<repositories>
