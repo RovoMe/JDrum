@@ -162,10 +162,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error(this.drumName + " - Error creating bucket file!",
-						e);
-			e.printStackTrace();
+			logger.catching(e);
 			throw new DrumException("Error creating bucket file!", e);
 		}
 	}
@@ -185,20 +182,16 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			{
 				if (this.lastState == null)
 				{
-					if (logger.isDebugEnabled())
-						logger.debug("[" + this.drumName + "] - ["
-								+ this.bucketId + "] - waiting for data");
+					logger.debug("[{}] - [{}] - waiting for data", this.drumName, this.bucketId);
 
 					this.lastState = DiskWriterState.WAITING_ON_DATA;
 					this.eventDispatcher.update(new DiskWriterStateUpdate(
-							this.drumName, this.bucketId,
-							DiskWriterState.WAITING_ON_DATA));
+							this.drumName, this.bucketId, DiskWriterState.WAITING_ON_DATA));
 				}
 
 				// use a blocking call to retrieve the elements to persist
 				// takeAll() waits on the broker instance to retrieve data
-				List<InMemoryData<V, A>> elementsToPersist = this.broker
-						.takeAll();
+				List<InMemoryData<V, A>> elementsToPersist = this.broker.takeAll();
 
 				// in case a flush was invoked but there aren't any data
 				// available
@@ -207,13 +200,10 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
 				this.lastState = null;
 				this.eventDispatcher.update(new DiskWriterStateUpdate(
-						this.drumName, this.bucketId,
-						DiskWriterState.DATA_RECEIVED));
+						this.drumName, this.bucketId, DiskWriterState.DATA_RECEIVED));
 
-				if (logger.isDebugEnabled())
-					logger.debug("[" + this.drumName + "] - [" + this.bucketId
-							+ "] - received " + elementsToPersist.size()
-							+ " data elements");
+				logger.debug("[{}] - [{}] - received {} data elements", 
+						this.drumName, this.bucketId, elementsToPersist.size());
 				this.feedBucket(elementsToPersist, false);
 
 				assert (this.lock.availablePermits() == 1);
@@ -234,9 +224,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			}
 			catch (Exception e)
 			{
-				if (logger.isErrorEnabled())
-					logger.error("[" + this.drumName + "] - [" + this.bucketId
-							+ "] - got interrupted!");
+				logger.error("[{}] - [{}] - got interrupted!", 
+						this.drumName, this.bucketId);
 				e.printStackTrace();
 				this.eventDispatcher.update(new DiskWriterStateUpdate(
 						this.drumName, this.bucketId,
@@ -280,17 +269,13 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drumName + "] - [" + this.bucketId
-						+ "] - Exception closing disk bucket!", e);
-			e.printStackTrace();
+			logger.catching(e);
 			throw new DrumException("Exception closing disk bucket!");
 		}
 		finally
 		{
-			if (logger.isDebugEnabled())
-				logger.debug("[" + this.drumName + "] - [" + this.bucketId
-						+ "] - Closing file " + bucketFile);
+			logger.debug("[{}] - [{}] - Closing file {}", 
+					this.drumName, this.bucketId, bucketFile);
 		}
 	}
 
@@ -320,10 +305,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
 			for (InMemoryData<V, A> data : inMemoryData)
 			{
-				if (logger.isInfoEnabled())
-					logger.info("[" + this.drumName + "] - [" + this.bucketId
-							+ "] - feeding bucket with: " + data.getKey()
-							+ "; value: " + data.getValue());
+				logger.info("[{}] - [{}] - feeding bucket with: {}; value: {}",  
+						this.drumName, this.bucketId, data.getKey(), data.getValue());
 				long kvStartPos = this.kvFile.getFilePointer();
 				long auxStartPos = this.auxFile.getFilePointer();
 
@@ -365,32 +348,22 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				long kvEndPos = this.kvFile.getFilePointer();
 				if (byteValue != null)
 				{
-					if (logger.isInfoEnabled())
-						logger.info("[" + this.drumName + "] - ["
-								+ this.bucketId
-								+ "] - wrote to kvBucket file - operation: '"
-								+ c + "' key: '" + data.getKey()
-								+ "', value.length: '" + byteValue.length
-								+ "' byteValue: '" + Arrays.toString(byteValue)
-								+ "' and value: '" + data.getValue()
-								+ "' - bytes written in total: "
-								+ (kvEndPos - kvStartPos));
+					logger.info("[{}] - [{}] - wrote to kvBucket file - "
+							+ "operation: '{}' key: '{}', value.length: '{}' "
+							+ "byteValue: '{}' and value: '{}' - bytes written "
+							+ "in total: {}", this.drumName, this.bucketId, c, 
+							data.getKey(), byteValue.length, 
+							Arrays.toString(byteValue), data.getValue(), 
+							(kvEndPos - kvStartPos));
 				}
 				else
 				{
-					if (logger.isInfoEnabled())
-						logger.info("["
-								+ this.drumName
-								+ "] - ["
-								+ this.bucketId
-								+ "] - wrote to kvBucket file - operation: '"
-								+ c
-								+ "' key: '"
-								+ data.getKey()
-								+ "', value.length: '0' byteValue: 'null' and value: '"
-								+ data.getValue()
-								+ "' - bytes written in total: "
-								+ (kvEndPos - kvStartPos));
+					logger.info("[{}] - [{}] - wrote to kvBucket file - "
+							+ "operation: '{}' key: '{}', value.length: '0' "
+							+ "byteValue: 'null' and value: '{}' - bytes written "
+							+ "in total: {}", this.drumName, this.bucketId, c, 
+							data.getKey(), data.getValue(), 
+							(kvEndPos - kvStartPos));
 				}
 
 				// Write the following sequentially for the auxiliary data
@@ -410,27 +383,20 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				long auxEndPos = this.auxFile.getFilePointer();
 				if (byteAux != null)
 				{
-					if (logger.isInfoEnabled())
-						logger.info("[" + this.drumName + "] - ["
-								+ this.bucketId
-								+ "] - wrote to auxBucket file - aux.length: '"
-								+ byteAux.length + "' byteAux: '"
-								+ Arrays.toString(byteAux) + "' and aux: '"
-								+ data.getAuxiliary()
-								+ "' - bytes written in total: "
-								+ (auxEndPos - auxStartPos));
+					logger.info("[{}] - [{}] - wrote to auxBucket file - "
+							+ "aux.length: '{}' byteAux: '{}' and aux: '{}' - "
+							+ "bytes written in total: {}", this.drumName, 
+							this.bucketId, byteAux.length, 
+							Arrays.toString(byteAux), data.getAuxiliary(), 
+							(auxEndPos - auxStartPos));
 				}
 				else
 				{
-					if (logger.isInfoEnabled())
-						logger.info("["
-								+ this.drumName
-								+ "] - ["
-								+ this.bucketId
-								+ "] - wrote to auxBucket file - aux.length: '0' byteAux: 'null' and aux: '"
-								+ data.getAuxiliary()
-								+ "' - bytes written in total: "
-								+ (auxEndPos - auxStartPos));
+					logger.info("[{}] - [{}] - wrote to auxBucket file - "
+							+ "aux.length: '0' byteAux: 'null' and aux: '{}' - "
+							+ "bytes written in total: {}", this.drumName, 
+							this.bucketId, data.getAuxiliary(), 
+							(auxEndPos - auxStartPos));
 				}
 			}
 
@@ -449,20 +415,15 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				if (this.kvBytesWritten > this.bucketByteSize
 						|| this.auxBytesWritten > this.bucketByteSize)
 				{
-					if (logger.isInfoEnabled())
-						logger.info("[" + this.drumName + "] - ["
-								+ this.bucketId + "] - requesting merge");
+					logger.info("[{}] - [{}] - requesting merge", 
+							this.drumName, this.bucketId);
 					this.mergeRequired = true;
 				}
 			}
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drumName + "] - [" + this.bucketId
-						+ "] - Error feeding bucket! Reason: "
-						+ e.getLocalizedMessage(), e);
-			e.printStackTrace();
+			logger.catching(e);
 			throw new DrumException("Error feeding bucket!", e);
 		}
 		finally
@@ -559,9 +520,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (DrumException e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error(e.getMessage(), e);
-			e.printStackTrace();
+			logger.catching(e);
 		}
 	}
 }

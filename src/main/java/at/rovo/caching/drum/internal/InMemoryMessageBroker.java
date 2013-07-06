@@ -149,12 +149,9 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 	@Override
 	public synchronized void put(T data)
 	{
-		if (logger.isInfoEnabled())
-			logger.info("[" + this.drumName + "] - [" + this.bucketId
-					+ "] - Received data-object: " + data.getKey()
-					+ "; value: " + data.getValue() + "; aux: "
-					+ data.getAuxiliary() + " for operation: "
-					+ data.getOperation());
+		logger.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", 
+				this.drumName, this.bucketId, data.getKey(), data.getValue(), 
+				data.getAuxiliary(), data.getOperation());
 
 		this.activeQueue.add(data);
 
@@ -224,9 +221,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 
 		this.flip();
 
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName + "] - [" + this.bucketId
-					+ "] - transmitting data objects");
+		logger.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
 		// make a copy of the list
 		List<T> ret = new ArrayList<T>(this.backBuffer);
 		// clear the old "written" content
@@ -244,9 +239,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 	 */
 	private void flip()
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName + "] - [" + this.bucketId
-					+ "] - flipping buffers");
+		logger.debug("[{}] - [{}] - flipping buffers", this.drumName, this.bucketId);
 		if (this.buffer1.equals(this.activeQueue))
 		{
 			this.activeQueue = this.buffer2;
@@ -274,9 +267,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 		synchronized (this)
 		{
 			this.synchInProgress = true;
-			if (logger.isDebugEnabled())
-				logger.debug("[" + this.drumName + "] - [" + this.bucketId
-						+ "] - flushing buffers");
+			logger.debug("[{}] - [{}] - flushing buffers", this.drumName, this.bucketId);
 
 			// put, flip and flush are all executed within the same thread so no
 			// need to synchronize them

@@ -74,7 +74,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 */
 	private Database createDatabase(int cacheSize) throws DrumException
 	{
-		logger.debug(this.drumName + " - creating berkeley db");
+		logger.debug("{} - creating berkeley db", this.drumName);
 		try
 		{
 			EnvironmentConfig config = new EnvironmentConfig();
@@ -114,7 +114,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (DatabaseException e)
 		{
-			// logger.error(this.drumName+" - Creating Berkeley DB failed!",e);
+			logger.catching(e);
 			throw new DrumException(this.drumName
 					+ " - Creating Berkeley DB failed!", e);
 		}
@@ -128,11 +128,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 	@Override
 	public void exceptionThrown(ExceptionEvent exEvent)
 	{
-		if (logger.isErrorEnabled())
-			logger.error(this.drumName + " - Berkeley DB Exception!", exEvent
-					.getException());
-		// throw new DrumException(this.drumName+" - Berkeley DB Exception!",
-		// exEvent.getException());
+		logger.catching(exEvent.getException());
 	}
 
 	@Override
@@ -172,8 +168,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 					// to check for existence only
 					// so checking the key also retrieves the data
 					DatabaseEntry dbValue = new DatabaseEntry();
-					OperationStatus status = this.berkeleyDB.get(null, dbKey,
-							dbValue, null);
+					OperationStatus status = this.berkeleyDB.get(null, dbKey, dbValue, null);
 					if (OperationStatus.NOTFOUND.equals(status))
 						element.setResult(DrumResult.UNIQUE_KEY);
 					else
@@ -183,8 +178,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 						if (DrumOperation.CHECK.equals(element.getOperation())
 								&& dbValue.getData().length > 0)
 						{
-							V value = DrumUtil.deserialize(dbValue.getData(),
-									this.valueClass);
+							V value = DrumUtil.deserialize(dbValue.getData(), this.valueClass);
 							element.setValue(value);
 						}
 					}
@@ -203,15 +197,13 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 							dbValue); // forces overwrite if the key is already
 										// present
 					if (!OperationStatus.SUCCESS.equals(status))
-						throw new DrumException(
-								"Error merging with repository!");
+						throw new DrumException("Error merging with repository!");
 				}
 				else if (DrumOperation.APPEND_UPDATE.equals(op))
 				{
 					// read the old value and append it to the current value
 					DatabaseEntry dbValue = new DatabaseEntry();
-					OperationStatus status = this.berkeleyDB.get(null, dbKey,
-							dbValue, null);
+					OperationStatus status = this.berkeleyDB.get(null, dbKey, dbValue, null);
 					if (OperationStatus.KEYEXIST.equals(status))
 					{
 						V value = element.getValue();
@@ -226,16 +218,11 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 					status = this.berkeleyDB.put(null, dbKey, dbValue); 
 					
 					if (!OperationStatus.SUCCESS.equals(status))
-						throw new DrumException(
-								"Error merging with repository!");
+						throw new DrumException("Error merging with repository!");
 				}
 
-				if (logger.isInfoEnabled())
-					logger.info("[" + this.drumName
-							+ "] - synchronizing key: '" + key
-							+ "' operation: '" + op
-							+ "' with repository - result: '"
-							+ element.getResult() + "'");
+				logger.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'", 
+						this.drumName, key, op, element.getResult());
 
 				// Persist modifications
 				this.berkeleyDB.sync();
@@ -245,11 +232,8 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drumName
-						+ "] - Error synchronizing buckets with repository!", e);
-			throw new DrumException(
-					"Error synchronizing buckets with repository!", e);
+			logger.catching(e);
+			throw new DrumException("Error synchronizing buckets with repository!", e);
 		}
 	}
 

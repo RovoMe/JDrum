@@ -367,8 +367,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	public void synchronize() throws DrumException
 	{
 		this.eventDispatcher.update(new DrumSynchronizeEvent(this.drumName));
-		if (logger.isInfoEnabled())
-			logger.info("[" + this.drumName + "] - SYNCHRONISING");
+		logger.info("[{}] - SYNCHRONISING", this.drumName);
 
 		// send all currently buffered data to the disk writers to write these
 		// into the bucket files

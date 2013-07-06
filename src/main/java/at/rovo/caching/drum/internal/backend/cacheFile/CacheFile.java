@@ -31,8 +31,7 @@ import at.rovo.caching.drum.internal.InMemoryData;
 public class CacheFile<V extends ByteSerializer<V>>
 {
 	// create a logger
-	private final static Logger logger = LogManager.getLogger(CacheFile.class
-			.getName());
+	private final static Logger logger = LogManager.getLogger(CacheFile.class.getName());
 	/** The backing caching file to store data to and read it from **/
 	private RandomAccessFile file = null;
 	/** The name of the cache file **/
@@ -75,12 +74,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drum
-						+ "] - Could not initialize backing cache file!", e);
-			e.printStackTrace();
-			throw new DrumException(
-					"Error initializing cache file! Caught reason: "
+			logger.catching(e);
+			throw new DrumException("Error initializing cache file! Caught reason: "
 							+ e.getLocalizedMessage(), e);
 		}
 	}
@@ -103,13 +98,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				if (logger.isErrorEnabled())
-					logger.error("[" + this.drum
-							+ "] - Error extracting file length of cache file!",
-							e);
-				e.printStackTrace();
-				throw new DrumException(
-						"Error extracting file length of cache file! Caught reason: "
+				logger.catching(e);
+				throw new DrumException("Error extracting file length of cache file! Caught reason: "
 								+ e.getLocalizedMessage(), e);
 			}
 		}
@@ -145,10 +135,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				if (logger.isErrorEnabled())
-					logger.error("[" + this.drum
-							+ "] - Error closing cache file!", e);
-				e.printStackTrace();
+				logger.catching(e);
 			}
 		}
 	}
@@ -200,19 +187,19 @@ public class CacheFile<V extends ByteSerializer<V>>
 				return null;
 
 			Long key = file.readLong();
-			if (logger.isDebugEnabled() && this.drum.equals("pldIndegree"))
-				logger.debug("Reading key: " + key);
+			if (this.drum.equals("pldIndegree"))
+				logger.debug("Reading key: {}", key);
 
 			// Retrieve the value from the file
 			int valueSize = this.file.readInt();
-			if (logger.isDebugEnabled() && this.drum.equals("pldIndegree"))
-				logger.debug("value size: " + valueSize);
+			if (this.drum.equals("pldIndegree"))
+				logger.debug("value size: {}", valueSize);
 			if (valueSize > 0)
 			{
 				byte[] byteValue = new byte[valueSize];
 				this.file.read(byteValue);
-				if (logger.isDebugEnabled() && this.drum.equals("pldIndegree"))
-					logger.debug("byte value: " + Arrays.toString(byteValue));
+				if (this.drum.equals("pldIndegree"))
+					logger.debug("byte value: {}", Arrays.toString(byteValue));
 				V value = this.valueClass.newInstance().readBytes(byteValue);
 				return new InMemoryData<V, A>(key, value, null, null);
 			}
@@ -220,9 +207,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (InstantiationException | IllegalAccessException | IOException ex)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drum
-						+ "] - Error fetching next entry from cache!", ex);
+			logger.catching(ex);
 			throw ex;
 		}
 	}
@@ -281,9 +266,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 			throws IOException, InstantiationException, IllegalAccessException,
 			NotAppendableException, DrumException
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drum + "] - writing entry: "
-					+ data.getKey() + "; value: " + data.getValue());
+		logger.debug("[{}] - writing entry: {}; value: {}", 
+				this.drum, data.getKey(), data.getValue());
 
 		/*
 		 * Source:
@@ -400,9 +384,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (IOException | InstantiationException | IllegalAccessException e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drum
-						+ "] - Error writing entry to cache!", e);
+			logger.catching(e);
 			throw e;
 		}
 		finally
@@ -415,8 +397,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 	public InMemoryData<V, ?> getEntry(Long key) throws IOException,
 			InstantiationException, IllegalAccessException
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drum + "] - Retrieving entry: " + key);
+		logger.debug("[{}] - Retrieving entry: {}", this.drum, key);
 		try
 		{
 			long pos = this.file.getFilePointer();
@@ -447,9 +428,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 				// check if the key equals
 				if (data.getKey().equals(key))
 				{
-					if (logger.isDebugEnabled())
-						logger.debug("[" + this.drum + "] - Found entry: "
-								+ data.getKey() + "; value: " + data.getValue());
+					logger.debug("[{}] - Found entry: {}; value: {}",  
+							this.drum, data.getKey(), data.getValue());
 					return data;
 				}
 				return null;
@@ -465,10 +445,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (IOException | InstantiationException | IllegalAccessException e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drum
-						+ "] - Exception while looking up key " + key
-						+ "! Reason: " + e.getLocalizedMessage(), e);
+			logger.catching(e);
 			throw e;
 		}
 		return null;
@@ -725,9 +702,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 	public void printCacheContent(List<Long> keys, List<V> values)
 			throws DrumException
 	{
-		if (logger.isInfoEnabled())
-			logger.info("[" + this.drum
-					+ "] - Data contained in backing cache:");
+		logger.info("[{}] - Data contained in backing cache:", this.drum);
 
 		// save current position
 		try
@@ -748,17 +723,15 @@ public class CacheFile<V extends ByteSerializer<V>>
 					{
 						if (values != null)
 							values.add(value);
-						if (logger.isInfoEnabled())
-							logger.info("[" + this.drum + "] - Key: "
-									+ data.getKey() + ", Value: " + value);
+						logger.info("[{}] - Key: {}, Value: {}", 
+								this.drum, data.getKey(), value);
 					}
 					else
 					{
 						if (values != null)
 							values.add(null);
-						if (logger.isInfoEnabled())
-							logger.info("[" + this.drum + "] - Key: "
-									+ data.getKey() + ", Value: " + null);
+						logger.info("[{}] - Key: {}, Value: {}", 
+								this.drum, data.getKey(), null);
 					}
 				}
 			}
@@ -769,11 +742,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drum
-						+ "] - Error while printing content of " + this.name
-						+ "!", e);
-			e.printStackTrace();
+			logger.catching(e);
 			throw new DrumException("Error while printing content of "
 					+ this.name + "! Reason: " + e.getLocalizedMessage());
 		}

@@ -156,9 +156,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					this.eventDispatcher.update(new MergerStateUpdate(
 							this.drumName, MergerState.MERGE_REQUESTED));
 
-					if (logger.isDebugEnabled())
-						logger.debug("[" + this.drumName
-								+ "] - Notify received! Merging data");
+					logger.debug("[{}] - Notify received! Merging data", this.drumName);
 
 					// we have been notified by a writer that its disk file
 					// reached a certain limit - so merge all the data in a
@@ -173,14 +171,13 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					}
 					catch (InterruptedException e)
 					{
-						e.printStackTrace();
+						logger.catching(e);
 					}
 				}
 			}
 			catch (Exception e)
 			{
-				if (logger.isDebugEnabled())
-					logger.debug("[" + this.drumName + "] - got interrupted");
+				logger.debug("[{}] - got interrupted", this.drumName);
 				this.eventDispatcher.update(new MergerStateUpdate(
 						this.drumName, MergerState.FINISHED_WITH_ERRORS));
 				break;
@@ -199,12 +196,9 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (DrumException e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error(e.getMessage(), e);
-			e.printStackTrace();
+			logger.catching(e);
 		}
-		this.eventDispatcher.update(new MergerStateUpdate(this.drumName,
-				MergerState.FINISHED));
+		this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.FINISHED));
 	}
 
 	@Override
@@ -224,8 +218,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	public void doMerge()
 	{
 		String threadName = Thread.currentThread().getName();
-		String sBucketId = threadName.substring(threadName.indexOf("-Writer-")
-				+ "-Writer-".length());
+		String sBucketId = threadName.substring(threadName.indexOf("-Writer-") + "-Writer-".length());
 		int bucketId = Integer.parseInt(sBucketId);
 		this.mergeList.set(bucketId, Boolean.TRUE);
 	}
@@ -251,9 +244,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 */
 	public synchronized void merge(boolean forced)
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName
-					+ "] - merging disk files (forced = " + forced + ")");
+		logger.debug("[{}] - merging disk files (forced = {})", this.drumName, forced);
 		for (IDiskWriter<V, A> writer : this.diskWriters)
 		{
 			// try to lock the disk file so that the current disk
@@ -263,23 +254,17 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			// first finish his task
 			try
 			{
-				this.eventDispatcher.update(new MergerStateUpdate(
-						this.drumName, MergerState.WAITING_ON_LOCK, writer
-								.getBucketId()));
-				if (logger.isDebugEnabled())
-					logger.debug("[" + this.drumName + "] - ["
-							+ writer.getBucketId()
-							+ "] - available permits for diskWriter: "
-							+ writer.accessDiskFile().availablePermits());
+				this.eventDispatcher.update(new MergerStateUpdate(this.drumName, 
+						MergerState.WAITING_ON_LOCK, writer.getBucketId()));
+				logger.debug("[{}] - [{}] - available permits for diskWriter: {}", 
+						this.drumName, writer.getBucketId(), 
+						writer.accessDiskFile().availablePermits());
 				writer.accessDiskFile().acquire();
 
 				this.eventDispatcher.update(new MergerStateUpdate(
-						this.drumName, MergerState.MERGING, writer
-								.getBucketId()));
-				if (logger.isDebugEnabled())
-					logger.debug("[" + this.drumName + "] - ["
-							+ writer.getBucketId()
-							+ "] - got lock of disk writer");
+						this.drumName, MergerState.MERGING, writer.getBucketId()));
+				logger.debug("[{}] - [{}] - got lock of disk writer", 
+						this.drumName, writer.getBucketId());
 				// writer has finished his work and we have the lock
 				// to the disk file
 
@@ -311,30 +296,19 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					this.readAuxBucketForDispatching(writer);
 					this.dispatch();
 
-					if (logger.isDebugEnabled())
-						logger.debug("[" + this.drumName + "] - ["
-								+ writer.getBucketId()
-								+ "] - resetting disk file "
-								+ writer.getBucketId());
+					logger.debug("[{}] - [{}] - resetting disk file {}", 
+							this.drumName, writer.getBucketId(), writer.getBucketId());
 					// reset the cursors of the files back to the start
 					writer.reset();
 
-					this.eventDispatcher.update(new StorageEvent(this.drumName,
-							this.numUniqueEntries));
+					this.eventDispatcher.update(new StorageEvent(this.drumName,	this.numUniqueEntries));
 				}
-				else if (logger.isDebugEnabled())
-					logger.debug("[" + this.drumName + "] - ["
-							+ writer.getBucketId() + "] - nothing to merge");
+				else
+					logger.debug("[{}] - [{}] - nothing to merge", this.drumName, writer.getBucketId());
 			}
 			catch (Exception e)
 			{
-				if (logger.isErrorEnabled())
-					logger.error(
-							"["
-									+ this.drumName
-									+ "] Error merging disk bucket files with data storage! Reason: "
-									+ e.getLocalizedMessage(), e);
-				e.printStackTrace();
+				logger.catching(e);
 			}
 			finally
 			{
@@ -370,9 +344,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			return false;
 
 		boolean success = false;
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName
-					+ "] - Reading data from disk file");
+		logger.debug("[{}] - Reading data from disk file", this.drumName);
 		try
 		{
 			RandomAccessFile kvFile = writer.getKVFile();
@@ -381,10 +353,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			kvFile.seek(0);
 
 			long writtenBytes = writer.getKVFileBytesWritten();
-			if (logger.isDebugEnabled())
-				logger.debug("[" + this.drumName + "] - ["
-						+ writer.getBucketId() + "] - reading " + writtenBytes
-						+ " bytes from bucket file");
+			logger.debug("[{}] - [{}] - reading {} bytes from bucket file", 
+					this.drumName,writer.getBucketId(), writtenBytes);
 
 			while (kvFile.getFilePointer() < writtenBytes)
 			{
@@ -428,26 +398,18 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 							.readBytes(byteValue);
 					data.setValue(value);
 				}
-				if (logger.isDebugEnabled())
-					logger.debug("[" + this.drumName + "] - ["
-							+ writer.getBucketId()
-							+ "] - read from bucket file - operation: '" + op
-							+ "', key: '" + key + "', value.length: '"
-							+ valueSize + "' valueBytes: '"
-							+ Arrays.toString(byteValue) + "'");
+				logger.debug("[{}] - [{}] - read from bucket file - "
+						+ "operation: '{}', key: '{}', value.length: '{}' "
+						+ "valueBytes: '{}'", this.drumName, writer.getBucketId(), 
+						op, key, valueSize, Arrays.toString(byteValue) );
 			}
-			this.unsortingHelper = new ArrayList<Integer>(
-					this.sortedMergeBuffer.size());
+			this.unsortingHelper = new ArrayList<Integer>(this.sortedMergeBuffer.size());
 
 			success = true;
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drumName
-						+ "] - Error during reading key/values from bucket file! Reason: "
-						+ e.getLocalizedMessage(), e);
-			e.printStackTrace();
+			logger.catching(e);
 			throw new DrumException(
 					"Error during reading key/values from bucket file! Reason: "
 							+ e.getLocalizedMessage(), e);
@@ -463,8 +425,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 */
 	private void sortMergeBuffer()
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName + "] - sorting merge buffer");
+		logger.debug("[{}] - sorting merge buffer", this.drumName);
 		Collections.sort(this.sortedMergeBuffer,
 				new KeyComparator<InMemoryData<V, A>>());
 	}
@@ -506,8 +467,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 */
 	private void unsortMergeBuffer()
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName + "] - unsorting merge buffer");
+		logger.debug("[{}] - unsorting merge buffer", this.drumName);
 		// When elements were read into the merge buffer their original
 		// positions
 		// were stored. Now I use those positions as keys to "sort" them back in
@@ -545,10 +505,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		// open the bucket file for auxiliary data with a certain ID
 		try
 		{
-			if (logger.isDebugEnabled())
-				logger.debug("[" + this.drumName + "] - [" + writer.getBucketId()
-						+ "] - reading auxiliary bucket '"
-						+ writer.getAuxFileName() + "' for dispatching");
+			logger.debug("[{}] - [{}] - reading auxiliary bucket '{}' for dispatching", 
+					this.drumName,writer.getBucketId(), writer.getAuxFileName());
 			int i = 0;
 			RandomAccessFile auxFile = writer.getAuxFile();
 			if (auxFile == null)
@@ -581,16 +539,13 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					A aux = this.auxClass.newInstance().readBytes(byteAux);
 					// ... and add it to the auxiliary object created before
 					data.setAuxiliary(aux);
-					if (logger.isDebugEnabled())
-						logger.debug("[" + this.drumName + "] - ["
-								+ writer.getBucketId() + "] - read aux data: "
-								+ aux);
+					logger.debug("[{}] - [{}] - read aux data: {}", 
+							this.drumName, writer.getBucketId(), aux);
 				}
 				else
 				{
-					if (logger.isDebugEnabled())
-						logger.debug("[" + this.drumName  + "] - [" + writer.getBucketId()
-								+ "] - no data to read from auxiliary data bucket file");
+					logger.debug("[{}] - [{}] - no data to read from auxiliary data bucket file", 
+							this.drumName, writer.getBucketId());
 					data.setAuxiliary(null);
 				}
 
@@ -600,12 +555,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error("[" + this.drumName + "] - ["
-						+ writer.getBucketId()
-						+ "] - Could not read auxiliary bucket file! Reason: "
-						+ e.getLocalizedMessage(), e);
-			e.printStackTrace();
+			logger.catching(e);
 			throw new DrumException(
 					"Could not read auxiliary bucket file! Reason: "
 							+ e.getLocalizedMessage(), e);
@@ -621,8 +571,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 */
 	private void dispatch() throws DrumException
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("[" + this.drumName + "] - dispatching results");
+		logger.debug("[{}] - dispatching results", this.drumName);
 		// get the number of data to dispatch
 		int total = this.sortedMergeBuffer.size();
 		for (int i = 0; i < total; ++i)
@@ -644,11 +593,9 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			DrumResult result = data.getResult();
 			A aux = data.getAuxiliary();
 
-			if (logger.isDebugEnabled())
-				logger.debug("[" + this.drumName + "] - dispatching: op: "
-						+ data.getOperation() + "; " + data.getKey()
-						+ "; value: " + data.getValue() + "; aux: "
-						+ data.getAuxiliary() + "; result: " + data.getResult());
+			logger.debug("[{}] - dispatching: op: {}; key: {}; value: {}; aux: {}; result: {}", 
+					this.drumName, data.getOperation(), data.getKey(), 
+					data.getValue(), data.getAuxiliary(), data.getResult());
 
 			// inform the dispatcher of the outcome
 			if (DrumOperation.CHECK.equals(op)
@@ -658,22 +605,16 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			{
 				V value = data.getValue();
 
-				if (DrumOperation.CHECK.equals(op)
-						&& DrumResult.DUPLICATE_KEY.equals(result))
+				if (DrumOperation.CHECK.equals(op) && DrumResult.DUPLICATE_KEY.equals(result))
 					this.dispatcher.duplicateKeyCheck(key, value, aux);
-				else if (DrumOperation.CHECK_UPDATE.equals(op)
-						&& DrumResult.UNIQUE_KEY.equals(result))
+				else if (DrumOperation.CHECK_UPDATE.equals(op) && DrumResult.UNIQUE_KEY.equals(result))
 					this.dispatcher.uniqueKeyUpdate(key, value, aux);
-				else if (DrumOperation.CHECK_UPDATE.equals(op)
-						&& DrumResult.DUPLICATE_KEY.equals(result))
+				else if (DrumOperation.CHECK_UPDATE.equals(op) && DrumResult.DUPLICATE_KEY.equals(result))
 					this.dispatcher.duplicateKeyUpdate(key, value, aux);
-				else if (DrumOperation.UPDATE.equals(op)
-						|| DrumOperation.APPEND_UPDATE.equals(op))
+				else if (DrumOperation.UPDATE.equals(op) || DrumOperation.APPEND_UPDATE.equals(op))
 					this.dispatcher.update(key, value, aux);
 				else
-					throw new DrumException(
-							"Invalid action method selected on data element: "
-									+ data);
+					throw new DrumException("Invalid action method selected on data element: "+ data);
 			}
 		}
 	}

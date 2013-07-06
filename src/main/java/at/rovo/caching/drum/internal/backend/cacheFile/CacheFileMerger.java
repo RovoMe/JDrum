@@ -149,11 +149,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
-					if (logger.isErrorEnabled())
-						logger.error("[" + this.drumName
-								+ "] - Error retrieving data object for key: "
-								+ key + " (" + element + ")! Reason: "
-								+ e.getLocalizedMessage(), e);
+					logger.catching(e);
 					throw new DrumException(
 							"Error retrieving data object with key: " + key
 									+ "!", e);
@@ -174,11 +170,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
-					if (logger.isErrorEnabled())
-						logger.error("[" + this.drumName
-								+ "] - Error writing data object for key: "
-								+ key + " (" + element + ")! Reason: "
-								+ e.getLocalizedMessage(), e);
+					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",
 							e);
@@ -190,29 +182,21 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 			{
 				try
 				{
-					element.setValue(this.cacheFile.writeEntry(element, true)
-							.getValue());
+					element.setValue(this.cacheFile.writeEntry(element, true).getValue());
 					this.numUniqueEntries = this.cacheFile.getNumberOfEntries();
 				}
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
-					if (logger.isErrorEnabled())
-						logger.error("[" + this.drumName
-								+ "] - Error writing data object for key: "
-								+ key + " (" + element + ")! Reason: "
-								+ e.getLocalizedMessage(), e);
+					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",
 							e);
 				}
 			}
 
-			if (logger.isInfoEnabled())
-				logger.info("[" + this.drumName + "] - synchronizing key: '"
-						+ key + "' operation: '" + op
-						+ "' with repository - result: '" + element.getResult()
-						+ "'");
+			logger.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'", 
+					this.drumName, key, op, element.getResult());
 		}
 	}
 
