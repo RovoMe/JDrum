@@ -11,12 +11,12 @@ public class LogFileDispatcher<V extends ByteSerializer<V>, A extends ByteSerial
 	@Override
 	public void uniqueKeyUpdate(Long key, V value, A aux) 
 	{
-		logger.info("UniqueKeyUpdate: "+key+" Data: "+value+" Aux: "+aux);
+		logger.info("UniqueKeyUpdate: {} Data: {} Aux: {}", key, value, aux);
 	}
 	
 	@Override
 	public void duplicateKeyUpdate(Long key, V value, A aux)
 	{
-		logger.info("DuplicateKeyUpdate: "+key+" Data: "+value+" Aux: "+aux);
+		logger.info("DuplicateKeyUpdate: {} Data: {} Aux: {}", key, value, aux);
 	}
 }

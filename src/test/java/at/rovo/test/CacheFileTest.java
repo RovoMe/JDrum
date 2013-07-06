@@ -1,6 +1,7 @@
 package at.rovo.test;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,7 +10,9 @@ import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.NotAppendableException;
@@ -19,10 +22,40 @@ import at.rovo.caching.drum.internal.backend.cacheFile.CacheFile;
 import at.rovo.caching.drum.util.DrumUtil;
 import at.rovo.caching.drum.util.KeyComparator;
 
+/**
+ * <p>
+ * Tests the cache file which acts as a data store.
+ * </p>
+ * <p>
+ * The test creates a couple of entries and sends them to the cache file, which
+ * is then checked if it stored the data appropriately. In case of already known
+ * data, the data should get replaced on using
+ * {@link CacheFile#writeEntry(InMemoryData, boolean)} with the boolean flag set
+ * to false as this indicates an update of the already known data. Setting the
+ * flag to true should append the data to the end.
+ * </p>
+ * 
+ * @author Roman Vottner
+ */
 public class CacheFileTest
 {
-	private final static Logger logger = LogManager.getLogger(CacheFileTest.class);
+	/** The logger for this class **/
+	private static Logger logger;
 	private File testDir = null;
+	
+	@BeforeClass
+	public static void initLogger() throws URISyntaxException
+	{
+		String path = DrumTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
+		System.setProperty("log4j.configurationFile", path);
+		logger = LogManager.getLogger(DrumTest.class);
+	}
+	
+	@AfterClass
+	public static void cleanLogger()
+	{
+		System.clearProperty("log4j.configurationFile");
+	}
 	
 	@Before
 	public void init()
@@ -99,8 +132,7 @@ public class CacheFileTest
 			cacheFile.reset();
 			
 			// modify a data object and write its content again
-			if (logger.isDebugEnabled())
-				logger.debug("Adding new data and modify existing ones: ");
+			logger.debug("Adding new data and modify existing ones: ");
 			dataList.clear();
 			
 			InMemoryData<StringSerializer, StringSerializer> data6 = createNewData("http://www.krone.at");
@@ -159,8 +191,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			if (logger.isDebugEnabled())
-				logger.debug("Changing data item with key: "+data7.getKey()+" from '"+data7.getValue()+"' to 'test3'");
+			logger.debug("Changing data item with key: {} from '{}' to 'test3'", data7.getKey(), data7.getValue());
 			data7.setValue(new StringSerializer("test3"));
 			cacheFile.writeEntry(data7, false);
 			
@@ -200,8 +231,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			if (logger.isDebugEnabled())
-				logger.debug("Changing data item with key: "+data7.getKey()+" from '"+data7.getValue()+"' to 'null'");
+			logger.debug("Changing data item with key: {} from '{}' to 'null'", data7.getKey(), data7.getValue());
 			data7.setValue(null);
 			cacheFile.writeEntry(data7, false);
 			
@@ -241,8 +271,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			if (logger.isDebugEnabled())
-				logger.debug("Changing data item with key: "+data7.getKey()+" from '"+data7.getValue()+"' to 'Noch ein Test'");
+			logger.debug("Changing data item with key: {} from '{}' to 'Noch ein Test'", data7.getKey(), data7.getValue());
 			data7.setValue(new StringSerializer("Noch ein Test"));
 			cacheFile.writeEntry(data7);
 			
@@ -282,8 +311,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			if (logger.isDebugEnabled())
-				logger.debug("Changing data item with key: "+data8.getKey()+" from '"+data8.getValue()+"' to 'test'");
+			logger.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
 			data8.setValue(new StringSerializer("test"));
 			cacheFile.writeEntry(data8);
 			
@@ -323,8 +351,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			if (logger.isDebugEnabled())
-				logger.debug("Changing data item with key: "+data8.getKey()+" from '"+data8.getValue()+"' to 'null'");
+			logger.debug("Changing data item with key: {} from '{}' to 'null'", data8.getKey(), data8.getKey());
 			data8.setValue(null);
 			cacheFile.writeEntry(data8);
 			
@@ -364,8 +391,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			if (logger.isDebugEnabled())
-				logger.debug("Changing data item with key: "+data8.getKey()+" from '"+data8.getValue()+"' to 'test'");
+			logger.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
 			data8.setValue(new StringSerializer("test"));
 			cacheFile.writeEntry(data8);
 			
@@ -419,20 +445,17 @@ public class CacheFileTest
 		InMemoryData<StringSerializer, StringSerializer> data = new InMemoryData<>();
 		data.setAuxiliary(new StringSerializer(auxiliaryData));
 		data.setKey(DrumUtil.hash(data.getAuxiliary().getData()));
-		if (logger.isDebugEnabled())
-			logger.debug("Writing data: "+data.getKey()+"; auxiliary data: "+data.getAuxiliary());
+		logger.debug("Writing data: {}; auxiliary data: {}", data.getKey(), data.getAuxiliary());
 		return data;
 	}
 	
 	private static void printCacheContent(List<Long> keys, List<StringSerializer> values)
 	{
-		if (logger.isDebugEnabled())
-			logger.debug("Data contained in cache file:");
+		logger.debug("Data contained in cache file:");
 		int size = keys.size();
 		for (int i=0; i<size; i++)
 		{
-			if (logger.isDebugEnabled())
-				logger.debug("Key: "+keys.get(i)+", Value: "+values.get(i));
+			logger.debug("Key: {}, Value: {}", keys.get(i), values.get(i));
 		}
 	}
 	

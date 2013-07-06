@@ -3,6 +3,7 @@ package at.rovo.test;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,9 @@ import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import at.rovo.caching.drum.Drum;
 import at.rovo.caching.drum.DrumException;
@@ -20,16 +23,52 @@ import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.event.DrumEvent;
 import at.rovo.caching.drum.util.DrumUtil;
 
+/**
+ * <p>
+ * Tests the functionality of DRUM through adding a couple of URLs which get
+ * first stored in memory. If a certain threshold is reached the bufferd data
+ * are persisted to a disk file which is attached to a buffer. If one of the
+ * disk files exceeds a further threshold, a merge with the backing data store,
+ * which is a simple cache file, is invoked which collects the data from all
+ * bucket files sequentially and merges them with the backing data store.
+ * </p>
+ * <p>
+ * If a data item with the same key is already in the data store a DUPLICATE
+ * response will be responded, else a UNIQUE one.
+ * </p>
+ * <p>
+ * If an update request is sent to DRUM, the data store is assigned to overwrite
+ * the existing value, in case it already exist - else it is created. With
+ * <em>appendUpdate</em> the provided data will be appended to the already
+ * existing key instead of replacing it
+ * </p>
+ * 
+ * @author Roman Vottner
+ */
 public class DrumTest implements IDrumListener
 {	
-	// create a logger
-	private final static Logger logger = LogManager.getLogger(DrumTest.class.getName());	
+	/** The logger for this class **/
+	private static Logger logger;
 	
 	private File cache = null;
+
+	@BeforeClass
+	public static void initLogger() throws URISyntaxException
+	{
+		String path = DrumTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
+		System.setProperty("log4j.configurationFile", path);
+		logger = LogManager.getLogger(DrumTest.class);
+	}
 	
+	@AfterClass
+	public static void cleanLogger()
+	{
+		System.clearProperty("log4j.configurationFile");
+	}
+		
 	@Before
 	public void init()
-	{
+	{		
 		String appDirPath = System.getProperty("user.dir");
 		File appDir = new File(appDirPath);
 		if (appDir.isDirectory())
@@ -87,27 +126,18 @@ public class DrumTest implements IDrumListener
 	
 	@Test
 	public void URLseenDrumTest()
-	{
-		// if this line results in null than add the following entry into
-		// your VM argument settings:
-		// -Dlog4j.configurationFile="${project_loc:Drum}/src/test/resources/log/log4j2-test.xml"
-//		System.out.println(System.getProperty("log4j.configurationFile"));
-		
+	{		
 		IDrum<StringSerializer, StringSerializer> drum = null;
 		List<Long> URLhashes = new ArrayList<>();
 		try
 		{
-			if (logger.isInfoEnabled())
-			{
-				logger.info("Example of Drum usage:");
-				logger.info("----------------------");
+			logger.info("Example of Drum usage:");
+			logger.info("----------------------");
 				
-				logger.info("Initializing Drum ... ");
-			}
+			logger.info("Initializing Drum ... ");
 //			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 2, 64, new ConsoleDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
 			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 2, 64, new LogFileDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
-			if (logger.isInfoEnabled())
-				logger.info("done!");		
+			logger.info("done!");		
 			
 			String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
 			String url2 = "http://www.oracle.com/technology/products/berkeley-db/index.html"; // produces 12 bytes in kvBucket and 64 bytes in auxBucket
@@ -124,8 +154,7 @@ public class DrumTest implements IDrumListener
 			URLhashes.add(DrumUtil.hash(url5));
 			URLhashes.add(DrumUtil.hash(url6));
 			
-			if (logger.isInfoEnabled())
-				logger.info("checkUpdating urls ... ");
+			logger.info("checkUpdating urls ... ");
 			drum.checkUpdate(DrumUtil.hash(url1), null, new StringSerializer(url1));
 			drum.checkUpdate(DrumUtil.hash(url2), null, new StringSerializer(url2));
 			drum.checkUpdate(DrumUtil.hash(url3), null, new StringSerializer(url3));
@@ -147,8 +176,7 @@ public class DrumTest implements IDrumListener
 			}
 
 			drum.checkUpdate(DrumUtil.hash(url6), null, new StringSerializer(url6));
-			if (logger.isInfoEnabled())
-				logger.info("done!");
+			logger.info("done!");
 			
 			// buffer size is selected to be small enough to trigger automatic
 			// flipping, feeding and merging data - to test the synchronization
@@ -166,15 +194,13 @@ public class DrumTest implements IDrumListener
 			URLhashes.add(DrumUtil.hash(url8));
 			URLhashes.add(DrumUtil.hash(url9));
 			
-			if (logger.isInfoEnabled())
-				logger.info("Adding new urls ... ");
+			logger.info("Adding new urls ... ");
 			drum.checkUpdate(DrumUtil.hash(url7), null, new StringSerializer(url7));
 			drum.checkUpdate(DrumUtil.hash(url8), null, new StringSerializer(url8));
 			drum.checkUpdate(DrumUtil.hash(url9), null, new StringSerializer(url9));
 			// check+update on an already stored URL
 			drum.checkUpdate(DrumUtil.hash(url1), new StringSerializer("http://codeproject.com"), new StringSerializer(url1));
-			if (logger.isInfoEnabled())
-				logger.info("done!");
+			logger.info("done!");
 		}
 		catch(DrumException e)
 		{
@@ -211,9 +237,8 @@ public class DrumTest implements IDrumListener
 		}
 		catch (IOException e)
 		{
-			if (logger.isErrorEnabled())
-				logger.error(e.getLocalizedMessage());
-			e.printStackTrace();
+			logger.catching(e);
+			Assert.fail();
 		}
 	}
 	
@@ -224,8 +249,7 @@ public class DrumTest implements IDrumListener
 		
 		cacheFile.seek(0);
 		long fileSize = cacheFile.length();
-		if (logger.isInfoEnabled())
-			logger.info("Content of disk storage:");
+		logger.info("Content of disk storage:");
 		for (long pos = 0; pos < fileSize; pos = cacheFile.getFilePointer())
 		{
 			Long key = cacheFile.readLong();
@@ -238,8 +262,7 @@ public class DrumTest implements IDrumListener
 				value = new String(valueBytes);
 			}
 			
-			if (logger.isInfoEnabled())
-				logger.info("Key: "+key+"; value: "+value);
+			logger.info("Key: {}; value: {}", key, value);
 			data.add(key);
 		}
 		
@@ -266,7 +289,6 @@ public class DrumTest implements IDrumListener
 	@Override
 	public void update(DrumEvent<? extends DrumEvent<?>> event)
 	{
-		if (logger.isDebugEnabled())
-			logger.debug(event);		
+		logger.debug(event);		
 	}
 }
