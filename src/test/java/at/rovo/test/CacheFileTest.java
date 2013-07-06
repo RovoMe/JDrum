@@ -46,7 +46,7 @@ public class CacheFileTest
 	@BeforeClass
 	public static void initLogger() throws URISyntaxException
 	{
-		String path = DrumTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
+		String path = CacheFileTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
 		System.setProperty("log4j.configurationFile", path);
 		logger = LogManager.getLogger(CacheFileTest.class);
 	}
