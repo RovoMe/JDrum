@@ -201,7 +201,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 	@Override
 	public List<T> takeAll() throws InterruptedException
 	{
-		if (this.stopRequested)
+		if (!this.isDataAvailable && this.stopRequested)
 		{
 			logger.trace("[{}] - [{}] - stopped sending data!", this.drumName, this.bucketId);
 			return null;
