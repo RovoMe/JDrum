@@ -41,16 +41,6 @@ public interface IMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A
 	public void doMerge();
 	
 	/**
-	 * <p>Forces a merge which is done in the {@link Thread} context of the 
-	 * caller.</p>
-	 * <p>This method differs from {@link #doMerge()} in that <code>doMerge()
-	 * </code> invokes execution of the merge in the context of the thread 
-	 * created for the {@link IMerger} instance while this method runs in the 
-	 * context of the main-thread.</p>
-	 */
-	public void forceMerge();
-	
-	/**
 	 * <p>Returns the number of unique entries stored into the data store.</p>
 	 */
 	public long getNumberUniqueEntriesStored();

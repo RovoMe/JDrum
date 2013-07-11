@@ -2,8 +2,13 @@ package at.rovo.caching.drum.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import at.rovo.caching.drum.IBroker;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
@@ -42,8 +47,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 		implements IBroker<T, V, A>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager
-			.getLogger(InMemoryMessageBroker.class);
+	private final static Logger logger = LogManager.getLogger(InMemoryMessageBroker.class);
 
 	/** The name of the DRUM instance **/
 	private String drumName = null;
@@ -82,23 +86,21 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 	 * work
 	 **/
 	private volatile boolean stopRequested = false;
-	/** Flag to indicate if data is available to send to the disk writer **/
-	private boolean dataAvailable = false;
-	/** Flag to indicate that a user forced synchronization is in progress **/
-	private boolean synchInProgress = false;
 	/**
 	 * The old state of the crawler. Used to minimize state updates if the state
 	 * remained the same as the old state
 	 **/
 	private InMemoryBufferState oldState = null;
-	/**
-	 * Invokes {@link #invokeDispatch()} every few milliseconds to tests if
-	 * enough data are available and a disk writer is waiting for data
-	 **/
-	private DiskWriterDispatchInvoker<T, V, A> dispatchInvoker = null;
-	/** The actual thread executing the dispatch invoker **/
-	private Thread dispatchInvokerThread = null;
 
+	/** The lock object used to synchronize the threads **/
+	private Lock lock = new ReentrantLock();
+	/** Informs a waiting thread, which invoked await() previously, that data is 
+	 * available for writing to disk bucket through invoking signal(). **/
+	private Condition dataAvailable = lock.newCondition();
+	
+	/** Flag to indicate that the data is available **/
+	private volatile boolean isDataAvailable = false;
+		
 	/**
 	 * <p>
 	 * Creates a new instance and initializes necessary fields.
@@ -134,20 +136,10 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 		this.oldState = InMemoryBufferState.EMPTY;
 		this.eventDispatcher.update(new InMemoryBufferStateUpdate(
 				this.drumName, this.bucketId, InMemoryBufferState.EMPTY));
-
-		// A backing thread which will notify the waiting disk writer in case
-		// enough data are available
-		this.dispatchInvoker = new DiskWriterDispatchInvoker<T, V, A>(this);
-		this.dispatchInvokerThread = new Thread(this.dispatchInvoker);
-		this.dispatchInvokerThread.setName(this.drumName
-				+ "-Writer-DisptachInvoker-" + this.bucketId);
-		this.dispatchInvokerThread.setPriority(Math.min(10,
-				this.dispatchInvokerThread.getPriority() + 1));
-		this.dispatchInvokerThread.start();
 	}
 
 	@Override
-	public synchronized void put(T data)
+	public void put(T data)
 	{
 		logger.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", 
 				this.drumName, this.bucketId, data.getKey(), data.getValue(), 
@@ -163,22 +155,17 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 		if (data.getAuxiliary() != null)
 			auxLength = data.getAuxiliaryAsBytes().length;
 
-		int bytesKV = this.byteLengthKV.get(this.activeQueue)
-				+ (keyLength + valLength);
+		int bytesKV = this.byteLengthKV.get(this.activeQueue) + (keyLength + valLength);
 		this.byteLengthKV.set(this.activeQueue, bytesKV);
 		int bytesAux = this.byteLengthAux.get(this.activeQueue) + auxLength;
 		this.byteLengthAux.set(this.activeQueue, bytesAux);
 
 		this.eventDispatcher.update(new InMemoryBufferEvent(this.drumName,
 				this.bucketId, bytesKV, bytesAux));
-
-		if ((this.byteLengthKV.get(this.activeQueue) > this.byteSizePerBuffer || this.byteLengthAux
-				.get(this.activeQueue) > this.byteSizePerBuffer))
+		
+		if ((this.byteLengthKV.get(this.activeQueue) > this.byteSizePerBuffer 
+				|| this.byteLengthAux.get(this.activeQueue) > this.byteSizePerBuffer))
 		{
-			this.dataAvailable = true;
-			if (!this.dispatchInvoker.isPolling())
-				this.dispatchInvoker.startPolling();
-
 			if (!InMemoryBufferState.EXCEEDED_LIMIT.equals(this.oldState))
 			{
 				this.oldState = InMemoryBufferState.EXCEEDED_LIMIT;
@@ -189,9 +176,6 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 		}
 		else
 		{
-			this.dataAvailable = false;
-			this.dispatchInvoker.startPolling();
-
 			if (!InMemoryBufferState.WITHIN_LIMIT.equals(this.oldState))
 			{
 				this.oldState = InMemoryBufferState.WITHIN_LIMIT;
@@ -200,37 +184,56 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 						InMemoryBufferState.WITHIN_LIMIT));
 			}
 		}
+		
+		try
+		{
+			this.lock.lock();
+			this.isDataAvailable = true;
+			this.dataAvailable.signal();
+		}
+		finally
+		{
+			this.lock.unlock();
+		}
+		
 	}
 
 	@Override
-	public synchronized List<T> takeAll() throws InterruptedException
+	public List<T> takeAll() throws InterruptedException
 	{
 		if (this.stopRequested)
-			return null;
-
-		if (!this.dataAvailable)
 		{
-			this.dispatchInvoker.startPolling();
+			logger.trace("[{}] - [{}] - stopped sending data!", this.drumName, this.bucketId);
+			return null;
 		}
+			
+		try
+		{
+			this.lock.lock();
+			
+			// check if data is already available or we have to wait
+			if (!this.isDataAvailable)
+				this.dataAvailable.await(); // wait for available data
 
-		// takeAll is invoked by an other thread, to block until data
-		// is available we need to wait - we get notified
-		this.wait();
-
-		this.dispatchInvoker.stopPolling();
-
-		this.flip();
-
-		logger.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
-		// make a copy of the list
-		List<T> ret = new ArrayList<T>(this.backBuffer);
-		// clear the old "written" content
-		this.backBuffer.clear();
-
-		// return the copy
-		return ret;
-	}
-
+			this.flip();
+			
+			// make a copy of the list
+			List<T> ret = new ArrayList<T>(this.backBuffer);
+			this.isDataAvailable = false;
+			logger.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
+			
+			// clear the old "written" content
+			this.backBuffer.clear();
+	
+			// return the copy
+			return ret;
+		}
+		finally
+		{
+			this.lock.unlock();
+		}
+	}	
+  
 	/**
 	 * <p>
 	 * Flips the currently active buffer with the back-buffer and notifies other
@@ -239,7 +242,8 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 	 */
 	private void flip()
 	{
-		logger.debug("[{}] - [{}] - flipping buffers", this.drumName, this.bucketId);
+		if (logger.isDebugEnabled())
+			logger.debug("[{}] - [{}] - flipping buffers", this.drumName, this.bucketId);
 		if (this.buffer1.equals(this.activeQueue))
 		{
 			this.activeQueue = this.buffer2;
@@ -256,110 +260,21 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 
 		this.eventDispatcher.update(new InMemoryBufferStateUpdate(
 				this.drumName, this.bucketId, InMemoryBufferState.EMPTY));
-
-		this.dataAvailable = true;
-	}
-
-	@Override
-	public List<T> flush()
-	{
-		List<T> copy = null;
-		synchronized (this)
-		{
-			this.synchInProgress = true;
-			logger.debug("[{}] - [{}] - flushing buffers", this.drumName, this.bucketId);
-
-			// put, flip and flush are all executed within the same thread so no
-			// need to synchronize them
-			if (this.buffer1.equals(this.activeQueue))
-			{
-				this.activeQueue = this.buffer2;
-				this.backBuffer = this.buffer1;
-			}
-			else
-			{
-				this.activeQueue = this.buffer1;
-				this.backBuffer = this.buffer2;
-			}
-
-			this.byteLengthKV.set(this.activeQueue, 0);
-			this.byteLengthAux.set(this.activeQueue, 0);
-
-			// if there are elements in the active queue copy them to the back
-			// buffer
-			for (T data : this.activeQueue)
-			{
-				if (!this.backBuffer.contains(data))
-					this.backBuffer.add(data);
-			}
-			this.activeQueue.clear();
-
-			this.oldState = InMemoryBufferState.EMPTY;
-			this.eventDispatcher.update(new InMemoryBufferStateUpdate(
-					this.drumName, this.bucketId, InMemoryBufferState.EMPTY));
-
-			// create a copy of the data and clear the original list to prevent
-			// the same entry to appear in multiple writes
-			copy = new ArrayList<>(this.backBuffer);
-			this.backBuffer.clear();
-		}
-
-		this.synchInProgress = false;
-
-		return copy;
 	}
 
 	@Override
 	public void stop()
 	{
-		// no more data to expect - send the rest to the consumer
-		this.flip();
+		logger.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
 		this.stopRequested = true;
-
-		// request the dispatch invoker to terminate
-		if (this.dispatchInvoker != null)
-			this.dispatchInvoker.stop();
-
-		// if it is still alive, kill it via interrupt()
-		if (this.dispatchInvokerThread != null
-				&& this.dispatchInvokerThread.isAlive())
+		try
 		{
-			try
-			{
-				if (this.dispatchInvokerThread.getState().equals(
-						Thread.State.WAITING))
-					this.dispatchInvokerThread.interrupt();
-				this.dispatchInvokerThread.join();
-			}
-			catch (InterruptedException e)
-			{
-				e.printStackTrace();
-			}
+			this.lock.lock();
+			this.dataAvailable.signal();
 		}
-
-		// send the last data we have through notifying the waiting takeAll
-		// method
-		synchronized (this)
+		finally 
 		{
-			this.notify();
-		}
-	}
-
-	/**
-	 * <p>
-	 * Access-method for DiskWriterDispatchInvoker poll-method which triggers
-	 * this method every 10 milliseconds if its poll field is set to true.
-	 * </p>
-	 */
-	synchronized void invokeDispatch()
-	{
-		if (!this.synchInProgress)
-		{
-			if (this.dataAvailable)
-			{
-				// notify waiting elements that data is available
-				this.notify();
-			}
+			this.lock.unlock();
 		}
 	}
 }

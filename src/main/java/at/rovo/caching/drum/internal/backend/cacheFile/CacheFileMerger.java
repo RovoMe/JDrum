@@ -37,8 +37,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 		extends DiskFileMerger<V, A>
 {
 	// create a logger
-	private final static Logger logger = LogManager
-			.getLogger(CacheFileMerger.class);
+	private final static Logger logger = LogManager.getLogger(CacheFileMerger.class);
 
 	/** A reference to the actual cache file **/
 	private CacheFile<V> cacheFile = null;
@@ -149,6 +148,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
+					logger.error("[{}] - Error retrieving data object for key: {} ({})! Reason: {}", 
+							this.drumName, key, element, e.getLocalizedMessage(), e);
 					logger.catching(e);
 					throw new DrumException(
 							"Error retrieving data object with key: " + key
@@ -170,6 +171,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
+					logger.error("[{}] - Error writing data object for key: {} ({})! Reason: {}", 
+							this.drumName, key, element, e.getLocalizedMessage(), e);
 					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",
@@ -188,6 +191,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
+					logger.error("[{}] - Error writing data object for key: {} ({})! Reason: {}", 
+							this.drumName, key, element, e.getLocalizedMessage(), e);
 					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",

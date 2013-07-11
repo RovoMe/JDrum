@@ -45,8 +45,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		implements IMerger<V, A>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager
-			.getLogger(DiskFileMerger.class);
+	private final static Logger logger = LogManager.getLogger(DiskFileMerger.class);
 	/**
 	 * The object responsible for updating listeners on state or statistic
 	 * changes
@@ -161,7 +160,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					// we have been notified by a writer that its disk file
 					// reached a certain limit - so merge all the data in a
 					// single one-pass-through strategy
-					this.merge(false);
+					this.merge();
 				}
 				else
 				{
@@ -187,7 +186,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		// merge and the stop-request
 		if (this.mergeList.contains(Boolean.TRUE))
 		{
-			this.merge(false);
+			this.merge();
 		}
 
 		try
@@ -199,12 +198,14 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			logger.catching(e);
 		}
 		this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.FINISHED));
+		logger.trace("[{}] - stopped processing!", this.drumName);
 	}
 
 	@Override
 	public void stop()
 	{
 		this.stopRequested = true;
+		logger.trace("stop requested!");
 	}
 
 	/**
@@ -223,14 +224,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		this.mergeList.set(bucketId, Boolean.TRUE);
 	}
 
-	@Override
-	public void forceMerge()
-	{
-		// merge is synchronized which should prevent multiple threads to invoke
-		// the same method if a thread is already executing it
-		this.merge(true);
-	}
-
 	/**
 	 * <p>
 	 * Extracts the data from the disk files which need to be merged into the
@@ -242,9 +235,9 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 * strategy.
 	 * </p>
 	 */
-	public synchronized void merge(boolean forced)
+	public void merge()
 	{
-		logger.debug("[{}] - merging disk files (forced = {})", this.drumName, forced);
+		logger.debug("[{}] - merging disk files", this.drumName);
 		for (IDiskWriter<V, A> writer : this.diskWriters)
 		{
 			// try to lock the disk file so that the current disk
@@ -308,6 +301,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			}
 			catch (Exception e)
 			{
+				logger.error("[{}] Error merging disk bucket files with data storage! Reason: {}", 
+						this.drumName, e.getLocalizedMessage(), e);
 				logger.catching(e);
 			}
 			finally
@@ -409,6 +404,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
+			logger.error("[{}] - Error during reading key/values from bucket file! Reason: {}", 
+					this.drumName, e.getLocalizedMessage(), e); 
 			logger.catching(e);
 			throw new DrumException(
 					"Error during reading key/values from bucket file! Reason: "
@@ -555,6 +552,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
+			logger.error("[{}] - [{}] - Could not read auxiliary bucket file! Reason: {}", 
+					this.drumName, writer.getBucketId(), e.getLocalizedMessage(), e); 
 			logger.catching(e);
 			throw new DrumException(
 					"Could not read auxiliary bucket file! Reason: "
@@ -598,8 +597,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					data.getValue(), data.getAuxiliary(), data.getResult());
 
 			// inform the dispatcher of the outcome
-			if (DrumOperation.CHECK.equals(op)
-					&& DrumResult.UNIQUE_KEY.equals(result))
+			if (DrumOperation.CHECK.equals(op) && DrumResult.UNIQUE_KEY.equals(result))
 				this.dispatcher.uniqueKeyCheck(key, aux);
 			else
 			{

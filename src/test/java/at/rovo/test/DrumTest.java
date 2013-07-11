@@ -131,12 +131,20 @@ public class DrumTest implements IDrumListener
 		List<Long> URLhashes = new ArrayList<>();
 		try
 		{
+			try
+			{
+				Thread.sleep(5000L);
+			}
+			catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
 			logger.info("Example of Drum usage:");
 			logger.info("----------------------");
 				
 			logger.info("Initializing Drum ... ");
 //			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 2, 64, new ConsoleDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
-			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 2, 64, new LogFileDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
+			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 4, 64, new LogFileDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
 			logger.info("done!");		
 			
 			String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
@@ -237,6 +245,7 @@ public class DrumTest implements IDrumListener
 		}
 		catch (IOException e)
 		{
+			logger.error("Noticed error: {}\n{}", e.getMessage(), e);
 			logger.catching(e);
 			Assert.fail();
 		}

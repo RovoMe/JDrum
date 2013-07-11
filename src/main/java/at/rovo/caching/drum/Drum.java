@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
-import at.rovo.caching.drum.event.DrumSynchronizeEvent;
 import at.rovo.caching.drum.internal.DiskBucketWriter;
 import at.rovo.caching.drum.internal.InMemoryData;
 import at.rovo.caching.drum.internal.InMemoryMessageBroker;
@@ -364,37 +363,9 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	}
 
 	@Override
-	public void synchronize() throws DrumException
-	{
-		this.eventDispatcher.update(new DrumSynchronizeEvent(this.drumName));
-		logger.info("[{}] - SYNCHRONISING", this.drumName);
-
-		// send all currently buffered data to the disk writers to write these
-		// into the bucket files
-		List<List<InMemoryData<V, A>>> memoryData = new ArrayList<List<InMemoryData<V, A>>>();
-		for (IBroker<InMemoryData<V, A>, V, A> broker : this.inMemoryBuffer)
-			memoryData.add(broker.flush());
-
-		int i = 0;
-		for (IDiskWriter<V, A> writer : this.diskWriters)
-		{
-			writer.forceWrite(memoryData.get(i++));
-		}
-
-		// as we have used an in-thread invocation of the writer (the method is
-		// executed in the main-threads context), writer has finished his task.
-
-		// So we have actually to call the merger instance to tell him to merge
-		// the data written to the respective bucket file as the bucket file
-		// writer might not have had enough data to invoke the merger itself
-		this.merger.forceMerge();
-	}
-
-	@Override
 	public void dispose() throws DrumException
 	{
-		this.synchronize();
-
+		logger.trace("[{}] - Disposal initialted", this.drumName);
 		// flip the buffers which sends the writers the latest data
 		for (IBroker<?, ?, ?> broker : this.inMemoryBuffer)
 			broker.stop();
@@ -432,6 +403,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		this.eventDispatcher.stop();
 		this.eventDispatcherThread.interrupt();
+		logger.trace("[{}] - disposed", this.drumName);
 	}
 
 	@Override

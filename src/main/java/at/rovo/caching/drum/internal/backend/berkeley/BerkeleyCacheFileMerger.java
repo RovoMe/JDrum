@@ -45,8 +45,7 @@ import com.sleepycat.je.OperationStatus;
 public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		extends DiskFileMerger<V, A> implements ExceptionListener
 {
-	private final static Logger logger = LogManager
-			.getLogger(BerkeleyCacheFileMerger.class);
+	private final static Logger logger = LogManager.getLogger(BerkeleyCacheFileMerger.class);
 
 	private Environment environment = null;
 	private Database berkeleyDB;
@@ -114,6 +113,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (DatabaseException e)
 		{
+			logger.error("{} - Creating Berkeley DB failed!", this.drumName, e); 
 			logger.catching(e);
 			throw new DrumException(this.drumName
 					+ " - Creating Berkeley DB failed!", e);
@@ -128,6 +128,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 	@Override
 	public void exceptionThrown(ExceptionEvent exEvent)
 	{
+		logger.error("{} - Berkeley DB Exception!", this.drumName, exEvent.getException()); 
 		logger.catching(exEvent.getException());
 	}
 
@@ -232,6 +233,8 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
+			logger.error("[{}] - Error synchronizing buckets with repository!", 
+					this.drumName, e); 
 			logger.catching(e);
 			throw new DrumException("Error synchronizing buckets with repository!", e);
 		}
