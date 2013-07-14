@@ -194,19 +194,16 @@ public class CacheFile<V extends ByteSerializer<V>>
 				return null;
 
 			Long key = file.readLong();
-			if (this.drum.equals("pldIndegree"))
-				logger.debug("Reading key: {}", key);
+			logger.trace("Reading key: {}", key);
 
 			// Retrieve the value from the file
 			int valueSize = this.file.readInt();
-			if (this.drum.equals("pldIndegree"))
-				logger.debug("value size: {}", valueSize);
+			logger.trace("value size: {}", valueSize);
 			if (valueSize > 0)
 			{
 				byte[] byteValue = new byte[valueSize];
 				this.file.read(byteValue);
-				if (this.drum.equals("pldIndegree"))
-					logger.debug("byte value: {}", Arrays.toString(byteValue));
+				logger.trace("byte value: {}", Arrays.toString(byteValue));
 				V value = this.valueClass.newInstance().readBytes(byteValue);
 				return new InMemoryData<V, A>(key, value, null, null);
 			}
@@ -315,9 +312,13 @@ public class CacheFile<V extends ByteSerializer<V>>
 			if (entryStartPosition == this.file.length())
 			{
 				if ((this.lastKey != null && this.lastKey.equals(data.getKey())))
+				{
+					logger.trace("[{}] - updating last entry with '{}'!", this.drum, data);
 					this.updateLastEntry(data, append);
+				}
 				else
 				{
+					logger.trace("[{}] - adding to the end of the file: '{}'", this.drum, data);
 					this.addNewEntryAtTheEnd(data);
 					this.numEntries++;
 				}
@@ -327,6 +328,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 			// insert in the middle of the file
 			else
 			{
+				logger.trace("[{}] - writing entry in the middle of the file!", this.drum);
 				// get the old length of the entry and calculate the area to
 				// shift
 				InMemoryData<V, ?> entry = null;
@@ -342,6 +344,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				// entry was not found so it is a new entry
 				if (entry == null)
 				{
+					logger.trace("[{}] - adding new entry for '{}'!", this.drum, data);
 					this.numEntries++;
 					this.writeDataEntry(data, true);
 					return this.lastElement;
@@ -351,8 +354,11 @@ public class CacheFile<V extends ByteSerializer<V>>
 				// data entry
 				// this results in an append instead of an replacement of the
 				// data entry
-				if (append)
+				if (append && data.getKey().equals(entry.getKey()))
+				{
+					logger.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
 					data.appendValue(entry.getValue());
+				}
 
 				// calculate the bytes to extend the file
 				long byte2write = data.getByteLengthKV();
@@ -373,6 +379,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 						- entry.getByteLengthKV(), 0L);
 				this.file.seek(pos);
 				// write the new data
+				logger.trace("[{}] - writing data '{}'", this.drum, data);
 				this.writeDataEntry(data, true);
 
 				// check if the entry is an update or an insert
@@ -380,6 +387,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				{
 					this.numEntries++;
 					// insert - add the old data after the new data
+					logger.trace("[{}] - re-adding entry '{}'", this.drum, entry);
 					this.writeDataEntry(entry, false);
 				}
 

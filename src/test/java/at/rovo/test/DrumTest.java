@@ -131,14 +131,6 @@ public class DrumTest implements IDrumListener
 		List<Long> URLhashes = new ArrayList<>();
 		try
 		{
-			try
-			{
-				Thread.sleep(5000L);
-			}
-			catch (InterruptedException e)
-			{
-				e.printStackTrace();
-			}
 			logger.info("Example of Drum usage:");
 			logger.info("----------------------");
 				
@@ -185,15 +177,7 @@ public class DrumTest implements IDrumListener
 
 			drum.checkUpdate(DrumUtil.hash(url6), null, new StringSerializer(url6));
 			logger.info("done!");
-			
-			// buffer size is selected to be small enough to trigger automatic
-			// flipping, feeding and merging data - to test the synchronization
-			// comment out the code below
-//			logger.info("Synchronizing DB ... ");
-//			// Synchronize
-//			drum.synchronize();
-//			logger.info("done!");
-						
+									
 			String url7 = "http://www.tuwien.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
 			String url8 = "http://www.univie.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
 			String url9 = "http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a"; // produces 12 bytes in kvBucket and 92 bytes in auxBucket
@@ -212,8 +196,8 @@ public class DrumTest implements IDrumListener
 		}
 		catch(DrumException e)
 		{
-			System.err.println(e.getLocalizedMessage());
-			e.printStackTrace();
+			logger.error("Error while testing DRUM", e);
+			logger.catching(e);
 		}
 		finally
 		{
@@ -227,7 +211,7 @@ public class DrumTest implements IDrumListener
 			}
 			catch(Exception e)
 			{
-				e.printStackTrace();
+				logger.catching(e);
 			}
 		}
 		
@@ -245,7 +229,7 @@ public class DrumTest implements IDrumListener
 		}
 		catch (IOException e)
 		{
-			logger.error("Noticed error: {}\n{}", e.getMessage(), e);
+			logger.error("Noticed error: {}", e.getMessage(), e);
 			logger.catching(e);
 			Assert.fail();
 		}

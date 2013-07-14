@@ -365,7 +365,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	@Override
 	public void dispose() throws DrumException
 	{
-		logger.trace("[{}] - Disposal initialted", this.drumName);
+		logger.debug("[{}] - Disposal initialted", this.drumName);
 		// flip the buffers which sends the writers the latest data
 		for (IBroker<?, ?, ?> broker : this.inMemoryBuffer)
 			broker.stop();
