@@ -55,13 +55,19 @@ public class ByteLength<T>
 	{
 		if (!this.list.contains(list))
 		{
-			this.list.add(list);
-			this.bytes.add(val);
+			synchronized (this.list)
+			{
+				this.list.add(list);
+				this.bytes.add(val);
+			}
 		}
 		else
 		{
-			int index = this.list.indexOf(list);
-			this.bytes.set(index, val);
+			synchronized (this.list)
+			{
+				int index = this.list.indexOf(list);
+				this.bytes.set(index, val);
+			}
 		}
 	}
 
@@ -78,9 +84,12 @@ public class ByteLength<T>
 	 */
 	public synchronized Integer get(List<T> list)
 	{
-		int index = this.list.indexOf(list);
-		if (index != -1)
-			return this.bytes.get(index);
+		synchronized (this.list)
+		{
+			int index = this.list.indexOf(list);
+			if (index != -1)
+				return this.bytes.get(index);
+		}
 		return 0;
 	}
 }

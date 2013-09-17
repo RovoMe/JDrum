@@ -20,12 +20,12 @@
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-api</artifactId>
-			<version>2.0-beta6</version>
+			<version>2.0-beta7</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-core</artifactId>
-			<version>2.0-beta6</version>
+			<version>2.0-beta7</version>
 		</dependency>
 		<!-- JUnit -->
 		<dependency>
@@ -74,6 +74,20 @@
 					<showDeprecation>true</showDeprecation>
 					<showWarnings>true</showWarnings>
 					<optimize>true</optimize>
+				</configuration>
+			</plugin>
+			<!-- Surefire is a test framework project. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.15</version>
+				<configuration>
+					<systemProperties>
+						<property>
+							<name>log4j.configurationFile</name>
+							<value>${basedir}/target/test-classes/log/log4j2-test.xml</value>
+						</property>
+					</systemProperties>
 				</configuration>
 			</plugin>
 		</plugins>

@@ -60,7 +60,7 @@ public class DiskWriterDispatchInvoker<T extends InMemoryData<V, A>, V extends
 			// check if we should poll the broker for data to dispatch
 			if (this.poll)
 			{
-				this.broker.invokeDispatch();
+//				this.broker.invokeDispatch();
 				try
 				{
 					Thread.sleep(10);

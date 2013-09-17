@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +16,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import at.rovo.caching.drum.Drum;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.IDrum;
@@ -127,6 +129,14 @@ public class DrumTest implements IDrumListener
 	@Test
 	public void URLseenDrumTest()
 	{		
+		try
+		{
+			Thread.sleep(5000);
+		}
+		catch (InterruptedException e1)
+		{
+			e1.printStackTrace();
+		}
 		IDrum<StringSerializer, StringSerializer> drum = null;
 		List<Long> URLhashes = new ArrayList<>();
 		try

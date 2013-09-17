@@ -162,6 +162,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
+			logger.error("{} - Error creating bucket file!", this.drumName);
 			logger.catching(e);
 			throw new DrumException("Error creating bucket file!", e);
 		}
@@ -232,15 +233,6 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 						DiskWriterState.FINISHED_WITH_ERROR));
 				Thread.currentThread().interrupt();
 			}
-
-			try
-			{
-				Thread.sleep(10);
-			}
-			catch (InterruptedException e)
-			{
-
-			}
 		}
 		// push the latest data which has not yet been written to the data store
 		// to be written
@@ -250,6 +242,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName,
 				this.bucketId, DiskWriterState.FINISHED));
+		logger.trace("[{}] - [{}] - stopped processing!", this.drumName, this.bucketId);
 	}
 
 	/**
@@ -269,6 +262,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
+			logger.error("[{}] - [{}] - Exception closing disk bucket!",
+					this.drumName, this.bucketId); 
 			logger.catching(e);
 			throw new DrumException("Exception closing disk bucket!");
 		}
@@ -423,6 +418,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
+			logger.error("[{}] - [{}] - Error feeding bucket! Reason: {}",
+					this.drumName, this.bucketId, e.getLocalizedMessage()); 
 			logger.catching(e);
 			throw new DrumException("Error feeding bucket!", e);
 		}
@@ -500,6 +497,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 	public void stop()
 	{
 		this.stopRequested = true;
+		logger.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
 	}
 
 	@Override

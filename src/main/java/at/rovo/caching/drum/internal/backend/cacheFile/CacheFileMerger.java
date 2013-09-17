@@ -149,6 +149,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
+					logger.error("[{}] - Error retrieving data object for key: {} ({})! Reason: {}",
+							this.drumName, key, element, e.getLocalizedMessage());
 					logger.catching(e);
 					throw new DrumException(
 							"Error retrieving data object with key: " + key
@@ -170,6 +172,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
+					logger.error("[{}] - Error writing data object for key: {} ({})! Reason: {}",
+							this.drumName, key, element, e.getLocalizedMessage());
 					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",
@@ -188,6 +192,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
+					logger.error("[{}] - Error writing data object for key: {} ({})! Reason: {}",
+							this.drumName, key, element, e.getLocalizedMessage());
 					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",

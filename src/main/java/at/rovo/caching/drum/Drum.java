@@ -371,15 +371,15 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		// send all currently buffered data to the disk writers to write these
 		// into the bucket files
-		List<List<InMemoryData<V, A>>> memoryData = new ArrayList<List<InMemoryData<V, A>>>();
-		for (IBroker<InMemoryData<V, A>, V, A> broker : this.inMemoryBuffer)
-			memoryData.add(broker.flush());
+//		List<List<InMemoryData<V, A>>> memoryData = new ArrayList<List<InMemoryData<V, A>>>();
+//		for (IBroker<InMemoryData<V, A>, V, A> broker : this.inMemoryBuffer)
+//			memoryData.add(broker.flush());
 
-		int i = 0;
-		for (IDiskWriter<V, A> writer : this.diskWriters)
-		{
-			writer.forceWrite(memoryData.get(i++));
-		}
+//		int i = 0;
+//		for (IDiskWriter<V, A> writer : this.diskWriters)
+//		{
+//			writer.forceWrite(memoryData.get(i++));
+//		}
 
 		// as we have used an in-thread invocation of the writer (the method is
 		// executed in the main-threads context), writer has finished his task.
@@ -393,6 +393,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	@Override
 	public void dispose() throws DrumException
 	{
+		logger.debug("[{}] - Disposal initialted", this.drumName);
 		this.synchronize();
 
 		// flip the buffers which sends the writers the latest data
@@ -432,6 +433,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		this.eventDispatcher.stop();
 		this.eventDispatcherThread.interrupt();
+		logger.trace("[{}] - disposed", this.drumName);
 	}
 
 	@Override

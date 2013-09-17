@@ -199,12 +199,14 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			logger.catching(e);
 		}
 		this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.FINISHED));
+		logger.trace("[{}] - stopped processing!", this.drumName);
 	}
 
 	@Override
 	public void stop()
 	{
 		this.stopRequested = true;
+		logger.trace("stop requested!");
 	}
 
 	/**
@@ -308,6 +310,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			}
 			catch (Exception e)
 			{
+				logger.error("[{}] Error merging disk bucket files with data storage! Reason: {}",
+						this.drumName, e.getLocalizedMessage());
 				logger.catching(e);
 			}
 			finally
@@ -555,6 +559,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
+			logger.error("[{}] - [{}] - Could not read auxiliary bucket file! Reason: {}",
+					this.drumName, writer.getBucketId(), e.getLocalizedMessage()); 
 			logger.catching(e);
 			throw new DrumException(
 					"Could not read auxiliary bucket file! Reason: "
