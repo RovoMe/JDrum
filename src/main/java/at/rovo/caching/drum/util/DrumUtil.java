@@ -181,7 +181,7 @@ public class DrumUtil
 	public synchronized static byte[] serialize(Object obj) throws IOException
 	{
 		if (obj instanceof String)
-			return new String(obj.toString()).getBytes();
+			return obj.toString().getBytes();
 
 		// useful for Java objects - simple Integer objects create
 		// up to 81 bytes instead of only 4!

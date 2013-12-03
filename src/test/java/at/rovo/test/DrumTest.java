@@ -7,7 +7,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,9 +15,8 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
 import at.rovo.caching.drum.Drum;
-import at.rovo.caching.drum.DrumException;
+import at.rovo.caching.drum.IDispatcher;
 import at.rovo.caching.drum.IDrum;
 import at.rovo.caching.drum.IDrumListener;
 import at.rovo.caching.drum.data.StringSerializer;
@@ -145,8 +143,27 @@ public class DrumTest implements IDrumListener
 			logger.info("----------------------");
 				
 			logger.info("Initializing Drum ... ");
-//			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 2, 64, new ConsoleDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
-			drum = new Drum<StringSerializer, StringSerializer>("urlSeenTest", 2, 64, new LogFileDispatcher<StringSerializer, StringSerializer>(), StringSerializer.class, StringSerializer.class, this);
+			IDispatcher<StringSerializer, StringSerializer>  dispatcher =
+					new ConsoleDispatcher<>();
+//					new LogFileDispatcher<>();
+			try
+			{
+				drum = new Drum.Builder<>("urlSeenTest", 
+						StringSerializer.class, StringSerializer.class)
+					.numBucket(2)
+					.bufferSize(64)
+					.dispatcher(dispatcher)
+					.listener(this)
+					.build();
+			}
+			catch (Exception e)
+			{
+				Assert.fail("Could not create DRUM instance. Caught error: "
+						+ e.getLocalizedMessage());
+				logger.error("Could not create DRUM instance. Caught error: "
+						+ e.getLocalizedMessage(), e);
+				return;
+			}
 			logger.info("done!");		
 			
 			String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
@@ -211,11 +228,6 @@ public class DrumTest implements IDrumListener
 			// check+update on an already stored URL
 			drum.checkUpdate(DrumUtil.hash(url1), new StringSerializer("http://codeproject.com"), new StringSerializer(url1));
 			logger.info("done!");
-		}
-		catch(DrumException e)
-		{
-			System.err.println(e.getLocalizedMessage());
-			e.printStackTrace();
 		}
 		finally
 		{

@@ -87,147 +87,203 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	protected DrumEventDispatcher eventDispatcher = new DrumEventDispatcher();
 	/** The event dispatcher thread **/
 	protected Thread eventDispatcherThread = null;
-
+	
 	/**
 	 * <p>
-	 * Creates a new instance and assigns initial values to attributes. The DRUM
-	 * instance will create a single CacheFile for storing the data
+	 * Implementation of the build pattern presented by Joshua Block in his book
+	 * 'Effective Java - Second Edition' in 'Item 2: Consider a builder when
+	 * faced with many constructor parameters'. 
+	 * </p>
+	 * <p>
+	 * On invoking {@link #build()} the builder will create a new instance of 
+	 * DRUM with the provided parameters.
+	 * </p>
+	 * <p>
+	 * By default, the builder will create a DRUM instance for 512 buckets with
+	 * 64k buffer size and a {@link NullDispatcher}.
 	 * </p>
 	 * 
-	 * @param drumName
-	 *            The name of the DRUM instance
-	 * @param numBuckets
-	 *            The number of buckets to be used
-	 * @param bufferSize
-	 *            The size of a single buffer in bytes
-	 * @param dispatcher
-	 *            The {@link IDispatcher} implementation which will receive
-	 *            information on items added via <code>check</code>,
-	 *            <code>update</code> or <code>checkUpdate</code>.
-	 * @param valueClass
-	 *            The class-type of the value for a certain key
-	 * @param auxClass
-	 *            The auxiliary data-type attached to a certain key
-	 * @throws DrumException
+	 * @param <V>
+	 *            The type of the value DRUM will manage
+	 * @param <A>
+	 *            The type of the auxiliary data attached to a key
+	 * 
+	 * @author Roman Vottner
 	 */
-	public Drum(String drumName, int numBuckets, int bufferSize,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass, Class<A> auxClass)
-			throws DrumException
+	public static class Builder<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
+		implements IBuilder<Drum<V, A>>
 	{
-		this.init(drumName, numBuckets, bufferSize, dispatcher, valueClass,
-				auxClass, DrumStorageFactory.getDefaultStorageFactory(drumName,
-						numBuckets, dispatcher, valueClass, auxClass,
-						this.eventDispatcher));
+		// required parameters
+		/** The name of the drum instance **/
+		private final String drumName;
+		/** The type of the value managed by DRUM **/
+		private final Class<V> valueClass;
+		/** The type of the auxiliary data managed by DRUM **/
+		private final Class<A> auxClass;
+		
+		/** The number of buckets managed by this DRUM instance **/
+		private int numBuckets = 512;
+		/** The size of the buffer before a flush is forced **/
+		private int bufferSize = 64;
+		/** The class responsible for dispatching the results **/
+		private IDispatcher<V,A> dispatcher = new NullDispatcher<V,A>();
+		/** A listener class which needs to be informed of state changes **/
+		private IDrumListener listener = null;
+		/** The factory which creates the backing storage service **/
+		private DrumStorageFactory<V,A> factory = null;
+		
+		/**
+		 * <p>
+		 * Creates a new builder object with the minimum number of required data
+		 * to instantiate a new {@link Drum} instance on invoking 
+		 * {@link #build()}.
+		 * </p>
+		 * 
+		 * @param drumName The name of the DRUM instance
+		 * @param valueClass The type of the value this instance will manage
+		 * @param auxClass The type of the auxiliary data this instance will 
+		 *                 manage
+		 */
+		public Builder(String drumName, Class<V> valueClass, Class<A> auxClass)
+		{
+			this.drumName = drumName;
+			this.valueClass = valueClass;
+			this.auxClass = auxClass;
+		}
+		
+		/**
+		 * <p>
+		 * Assigns the builder to create a Drum instance which uses the provided 
+		 * dispatcher instead of the default {@link NullDispatcher} to dispatch 
+		 * results.
+		 * </p>
+		 * 
+		 * @param dispatcher The dispatcher to use for instantiating DRUM
+		 * @return The builder responsible for creating a new instance of DRUM
+		 */
+		public Builder<V,A> dispatcher(IDispatcher<V,A> dispatcher)
+		{
+			if (dispatcher == null)
+				throw new IllegalArgumentException("Invalid dispatcher received");
+			
+			this.dispatcher = dispatcher;
+			return this;
+		}
+		
+		/**
+		 * <p>
+		 * Assigns the builder to create a Drum instance which uses the provided
+		 * number of buckets instead of the default 512 buckets.
+		 * </p>
+		 * 
+		 * @param numBuckets The number of buckets DRUM should manage
+		 * @return The builder responsible for creating a new instance of DRUM
+		 */
+		public Builder<V,A> numBucket(int numBuckets)
+		{
+			if (numBuckets <= 0 || ((numBuckets & -numBuckets) != numBuckets))
+				throw new IllegalArgumentException(
+						"The number of buckets must be greater than 0 and must "
+						+ "be a superset of 2");
+			
+			this.numBuckets = numBuckets;
+			return this;
+		}
+		
+		/**
+		 * <p>
+		 * Assigns the builder to create a Drum instance which uses the provided
+		 * buffer size instead of 64kb.
+		 * </p>
+		 * 
+		 * @param bufferSize The buffer size DRUM should use before flushing the 
+		 *                   content
+		 * @return The builder responsible for creating a new instance of DRUM
+		 */
+		public Builder<V,A> bufferSize(int bufferSize)
+		{
+			if (bufferSize <= 0 || ((bufferSize & -bufferSize) != bufferSize))
+				throw new IllegalArgumentException(
+						"BufferSize must be greater than 0 and have a base of 2 "
+						+ "(ex: 2^1, 2^2, 2^3, ...)");
+			
+			this.bufferSize = bufferSize;
+			return this;
+		}
+		
+		/**
+		 * <p>
+		 * Assigns the builder to create a Drum instance with the defined 
+		 * listener in place.
+		 * </p>
+		 * 
+		 * @param listener The listener to notify on state changes
+		 * @return The builder responsible for creating a new instance of DRUM
+		 */
+		public Builder<V,A> listener(IDrumListener listener)
+		{
+			this.listener = listener;
+			return this;
+		}
+		
+		/**
+		 * <p>
+		 * Assigns the builder to create a Drum instance with the given factory 
+		 * to create a backend storage instead of the backend storage created by 
+		 * the default factory.
+		 * </p>
+		 * 
+		 * @param factory The factory responsible for creating the backend 
+		 *                storage
+		 * @return The builder responsible for creating a new instance of DRUM
+		 */
+		public Builder<V,A> factory(DrumStorageFactory<V,A> factory)
+		{
+			this.factory = factory;
+			return this;
+		}
+		
+		/**
+		 * <p>
+		 * Assigns the builder to create and initialize a new instance of a DRUM
+		 * object.
+		 * </p>
+		 * 
+		 * @return A new initialized instance of DRUM
+		 * @throws DrumException If during the initialization of DRUM an error 
+		 *                       occurred
+		 */
+		public Drum<V,A> build() throws Exception
+		{
+			return new Drum<V,A>(this);
+		}
 	}
-
+	
 	/**
 	 * <p>
-	 * Creates a new instance and assigns initial values to attributes. The DRUM
-	 * instance will create a single CacheFile for storing the data.
+	 * Creates a new instance and assigns initial values contained within the 
+	 * builder object to the corresponding attributes.
 	 * </p>
 	 * 
-	 * @param drumName
-	 *            The name of the DRUM instance
-	 * @param numBuckets
-	 *            The number of buckets to be used
-	 * @param bufferSize
-	 *            The size of a single buffer in bytes
-	 * @param dispatcher
-	 *            The {@link IDispatcher} implementation which will receive
-	 *            information on items added via <code>check</code>,
-	 *            <code>update</code> or <code>checkUpdate</code>.
-	 * @param valueClass
-	 *            The class-type of the value for a certain key
-	 * @param auxClass
-	 *            The auxiliary data-type attached to a certain key
-	 * @param listener
-	 *            The object which needs to be notified on certain internal
-	 *            state or statistic changes
+	 * @param builder
 	 * @throws DrumException
 	 */
-	public Drum(String drumName, int numBuckets, int bufferSize,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, IDrumListener listener) throws DrumException
+	private Drum(Builder<V,A> builder) throws DrumException
 	{
-		this.addDrumListener(listener);
-		this.init(drumName, numBuckets, bufferSize, dispatcher, valueClass,
-				auxClass, DrumStorageFactory.getDefaultStorageFactory(drumName,
-						numBuckets, dispatcher, valueClass, auxClass,
-						this.eventDispatcher));
-	}
-
-	/**
-	 * <p>
-	 * Creates a new instance and assigns initial values to attributes. The DRUM
-	 * instance will create a data store depending on the provided storage
-	 * factory
-	 * </p>
-	 * 
-	 * @param drumName
-	 *            The name of the DRUM instance
-	 * @param numBuckets
-	 *            The number of buckets to be used
-	 * @param bufferSize
-	 *            The size of a single buffer in bytes
-	 * @param dispatcher
-	 *            The {@link IDispatcher} implementation which will receive
-	 *            information on items added via <code>check</code>,
-	 *            <code>update</code> or <code>checkUpdate</code>.
-	 * @param valueClass
-	 *            The class-type of the value for a certain key
-	 * @param auxClass
-	 *            The auxiliary data-type attached to a certain key
-	 * @param factory
-	 *            The factory object which defines where data should be stored
-	 *            in. Note that factory must return an implementation of IMerger
-	 * @throws DrumException
-	 */
-	public Drum(String drumName, int numBuckets, int bufferSize,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumStorageFactory<V, A> factory)
-			throws DrumException
-	{
-		this.init(drumName, numBuckets, bufferSize, dispatcher, valueClass,
-				auxClass, factory);
-	}
-
-	/**
-	 * <p>
-	 * Creates a new instance and assigns initial values to attributes. The DRUM
-	 * instance will create a data store depending on the provided storage
-	 * factory
-	 * </p>
-	 * 
-	 * @param drumName
-	 *            The name of the DRUM instance
-	 * @param numBuckets
-	 *            The number of buckets to be used
-	 * @param bufferSize
-	 *            The size of a single buffer in bytes
-	 * @param dispatcher
-	 *            The {@link IDispatcher} implementation which will receive
-	 *            information on items added via <code>check</code>,
-	 *            <code>update</code> or <code>checkUpdate</code>.
-	 * @param valueClass
-	 *            The class-type of the value for a certain key
-	 * @param auxClass
-	 *            The auxiliary data-type attached to a certain key
-	 * @param factory
-	 *            The factory object which defines where data should be stored
-	 *            in. Note that factory must return an implementation of IMerger
-	 * @param listener
-	 *            The object which needs to be notified on certain internal
-	 *            state or statistic changes
-	 * @throws DrumException
-	 */
-	public Drum(String drumName, int numBuckets, int bufferSize,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumStorageFactory<V, A> factory,
-			IDrumListener listener) throws DrumException
-	{
-		this.addDrumListener(listener);
-		this.init(drumName, numBuckets, bufferSize, dispatcher, valueClass,
-				auxClass, factory);
+		if (builder.listener != null)
+			this.addDrumListener(builder.listener);
+		
+		DrumStorageFactory<V,A> factory;
+		if (builder.factory != null)
+			factory = builder.factory;
+		else
+			factory = DrumStorageFactory.getDefaultStorageFactory(
+					builder.drumName, builder.numBuckets, builder.dispatcher, 
+					builder.valueClass, builder.auxClass, this.eventDispatcher);
+		
+		this.init(builder.drumName, builder.numBuckets, builder.bufferSize, 
+				builder.dispatcher, builder.valueClass,	builder.auxClass, 
+				factory);
 	}
 
 	/**
