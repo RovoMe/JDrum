@@ -26,7 +26,7 @@ import at.rovo.caching.drum.util.DrumUtil;
 /**
  * <p>
  * Tests the functionality of DRUM through adding a couple of URLs which get
- * first stored in memory. If a certain threshold is reached the bufferd data
+ * first stored in memory. If a certain threshold is reached the buffered data
  * are persisted to a disk file which is attached to a buffer. If one of the
  * disk files exceeds a further threshold, a merge with the backing data store,
  * which is a simple cache file, is invoked which collects the data from all
