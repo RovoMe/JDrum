@@ -1,12 +1,11 @@
 package at.rovo.caching.drum.util;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
  * <p>
- * <em>ByteLength</em> is a simple helper class which keeps track on the
+ * <em>ByteLength</em> is a simple helper class which keeps track of the
  * byte-length of the lists added to this instance.
  * </p>
  * <p>
@@ -34,8 +33,8 @@ public class ByteLength<T>
 	 */
 	public ByteLength()
 	{
-		this.list = Collections.synchronizedList(new ArrayList<List<T>>());
-		this.bytes = Collections.synchronizedList(new ArrayList<Integer>());
+		this.list = new ArrayList<List<T>>();
+		this.bytes =new ArrayList<Integer>();
 	}
 
 	/**
@@ -51,7 +50,7 @@ public class ByteLength<T>
 	 * @param val
 	 *            The value which should be associated with the {@link List}
 	 */
-	public synchronized void set(List<T> list, int val)
+	public void set(List<T> list, int val)
 	{
 		if (!this.list.contains(list))
 		{
@@ -76,7 +75,7 @@ public class ByteLength<T>
 	 * @return The associated value for the provided {@link List}, 0 if no
 	 *         association could be found
 	 */
-	public synchronized Integer get(List<T> list)
+	public Integer get(List<T> list)
 	{
 		int index = this.list.indexOf(list);
 		if (index != -1)

@@ -217,6 +217,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			}
 			catch (InterruptedException iE)
 			{
+				if (!DiskWriterState.FINISHED.equals(this.lastState))
+				{
+					logger.error("[{}] - [{}] - got interrupted!", 
+							this.drumName, this.bucketId);
+					this.lastState = DiskWriterState.FINISHED;
+				}
 				this.eventDispatcher
 						.update(new DiskWriterStateUpdate(this.drumName,
 								this.bucketId, DiskWriterState.FINISHED));
@@ -224,11 +230,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - [{}] - got interrupted!", 
-						this.drumName, this.bucketId);
+				logger.error("[{}] - [{}] - caught exception: {}", 
+						this.drumName, this.bucketId, e.getLocalizedMessage());
 				this.eventDispatcher.update(new DiskWriterStateUpdate(
 						this.drumName, this.bucketId,
 						DiskWriterState.FINISHED_WITH_ERROR));
+				e.printStackTrace();
 				Thread.currentThread().interrupt();
 			}
 		}

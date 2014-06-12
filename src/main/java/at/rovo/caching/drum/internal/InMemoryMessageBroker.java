@@ -1,14 +1,13 @@
 package at.rovo.caching.drum.internal;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import at.rovo.caching.drum.IBroker;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
@@ -118,8 +117,8 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>,
 		this.bucketId = id;
 		this.byteSizePerBuffer = byteSizePerBuffer;
 
-		this.buffer1 = new ArrayList<T>();
-		this.buffer2 = new ArrayList<T>();
+		this.buffer1 = Collections.synchronizedList(new ArrayList<T>());
+		this.buffer2 = Collections.synchronizedList(new ArrayList<T>());
 
 		this.byteLengthKV = new ByteLength<T>();
 		this.byteLengthKV.set(this.buffer1, 0);
