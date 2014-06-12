@@ -328,25 +328,22 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		this.bufferSize = bufferSize;
 
 		// create the broker and the consumer listening to the broker
-		this.inMemoryBuffer = new ArrayList<IBroker<InMemoryData<V, A>, V, A>>(
-				numBuckets);
-		this.diskWriters = new ArrayList<IDiskWriter<V, A>>(numBuckets);
+		this.inMemoryBuffer = new ArrayList<>(numBuckets);
+		this.diskWriters = new ArrayList<>(numBuckets);
 		this.merger = factory.getStorage();
 
 		DrumExceptionHandler exceptionHandler = new DrumExceptionHandler();
 		NamedThreadFactory writerFactory = new NamedThreadFactory();
 		writerFactory.setName(this.drumName + "-Writer");
 		writerFactory.setUncaughtExceptionHanlder(exceptionHandler);
-		// writerFactory.increasePriority(true);
-		// this.executor = Executors.newCachedThreadPool(writerFactory);
 		this.executor = Executors.newFixedThreadPool(this.numBuckets,
 				writerFactory);
 
 		for (int i = 0; i < numBuckets; i++)
 		{
-			IBroker<InMemoryData<V, A>, V, A> broker = new InMemoryMessageBroker<InMemoryData<V, A>, V, A>(
+			IBroker<InMemoryData<V, A>, V, A> broker = new InMemoryMessageBroker<>(
 					drumName, i, bufferSize, this.eventDispatcher);
-			IDiskWriter<V, A> consumer = new DiskBucketWriter<V, A>(drumName,
+			IDiskWriter<V, A> consumer = new DiskBucketWriter<>(drumName,
 					i, bufferSize, broker, this.merger, this.eventDispatcher);
 
 			this.inMemoryBuffer.add(broker);
@@ -362,13 +359,8 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 			this.merger.addDiskFileWriter(consumer);
 		}
 		this.mergerThread = new Thread(this.merger, this.drumName + "-Merger");
-		// this.mergerThread.setPriority(Math.min(10,
-		// this.mergerThread.getPriority()+1));
 		this.mergerThread.setUncaughtExceptionHandler(exceptionHandler);
 		this.mergerThread.start();
-
-		// Thread.currentThread().setPriority(Math.max(0,
-		// Thread.currentThread().getPriority()-1));
 	}
 
 	@Override
@@ -427,7 +419,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		// send all currently buffered data to the disk writers to write these
 		// into the bucket files
-//		List<List<InMemoryData<V, A>>> memoryData = new ArrayList<List<InMemoryData<V, A>>>();
+//		List<List<InMemoryData<V, A>>> memoryData = new ArrayList<>();
 //		for (IBroker<InMemoryData<V, A>, V, A> broker : this.inMemoryBuffer)
 //			memoryData.add(broker.flush());
 
