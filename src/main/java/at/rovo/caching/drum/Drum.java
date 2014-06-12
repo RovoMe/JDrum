@@ -89,7 +89,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 	/**
 	 * <p>
-	 * Implementation of the build pattern presented by Joshua Block in his book
+	 * Implementation of the build pattern presented by Joshua Bloch in his book
 	 * 'Effective Java - Second Edition' in 'Item 2: Consider a builder when
 	 * faced with many constructor parameters'. 
 	 * </p>
