@@ -35,8 +35,6 @@ import at.rovo.caching.drum.util.KeyComparator;
  * <p>
  * The execution of the merge happens, by default, in the {@link Thread} this
  * instance was started with. The execution was requested by {@link #doMerge()}.
- * On calling {@link #forceMerge()} the execution of the merge is done in the
- * callers thread context.
  * </p>
  * 
  * @author Roman Vottner
@@ -100,8 +98,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	{
 		this.drumName = drumName;
 		this.eventDispatcher = eventDispatcher;
-		this.diskWriters = new ArrayList<IDiskWriter<V, A>>();
-		this.sortedMergeBuffer = new ArrayList<InMemoryData<V, A>>();
+		this.diskWriters = new ArrayList<>();
+		this.sortedMergeBuffer = new ArrayList<>();
 
 		this.mergeList = new ArrayList<>(numBuckets);
 		for (int i = 0; i < numBuckets; i++)
@@ -338,7 +336,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		if (writer.getKVFileBytesWritten() == 0)
 			return false;
 
-		boolean success = false;
 		logger.debug("[{}] - Reading data from disk file", this.drumName);
 		try
 		{
@@ -398,9 +395,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 						+ "valueBytes: '{}'", this.drumName, writer.getBucketId(), 
 						op, key, valueSize, Arrays.toString(byteValue) );
 			}
-			this.unsortingHelper = new ArrayList<Integer>(this.sortedMergeBuffer.size());
-
-			success = true;
+			this.unsortingHelper = new ArrayList<>(this.sortedMergeBuffer.size());
 		}
 		catch (Exception e)
 		{
@@ -412,7 +407,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 							+ e.getLocalizedMessage(), e);
 		}
 
-		return success;
+		return true;
 	}
 
 	/**
@@ -441,8 +436,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 * 
 	 * @param data
 	 *            The list of data to check against the data in the data store
-	 * @return A list of {@link InMemoryData} objects that needs to be updated
-	 *         in the data store
 	 */
 	protected abstract void compareDataWithDataStore(
 			List<? extends InMemoryData<V, A>> data) throws DrumException,
@@ -472,7 +465,9 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		// sortedMergeBuffer considering the original order.
 		int total = this.sortedMergeBuffer.size();
 		for (int i = 0; i < total; ++i)
-			this.unsortingHelper.add(0);
+		{
+			this.unsortingHelper.add(i);
+		}
 		for (int i = 0; i < total; ++i)
 		{
 			InMemoryData<V, A> data = this.sortedMergeBuffer.get(i);
@@ -484,8 +479,10 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	/**
 	 * <p>
 	 * Reads a certain bucket containing auxiliary data from disk into memory.
-	 * The data read is afterwards stored inside the {@link #unsortedAuxBuffer}
-	 * as an {@link Auxiliary} object
+	 * This method uses the previously initialized <em>unsortingHelper</em>
+	 * list to get the proper auxiliary data after the key/value pairs got
+	 * sorted previously. The auxiliary data is then added to the respective
+	 * key/value data object contained in the sorted merge buffer.
 	 * </p>
 	 * 
 	 * @param writer

@@ -140,14 +140,24 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		// check if the cache sub-directory exists - if not create one
 		File cacheDir = new File(System.getProperty("user.dir") + "/cache");
 		if (!cacheDir.exists())
-			cacheDir.mkdir();
+		{
+			if (!cacheDir.mkdir())
+			{
+				throw new DrumException("No cache directory found and could not initialize one!");
+			}
+		}
 		// check if a sub-directory inside the cache sub-directory exists that
 		// has the
 		// name of this instance - if not create it
 		File file = new File(System.getProperty("user.dir") + "/cache/"
 				+ this.drumName);
 		if (!file.exists())
-			file.mkdir();
+		{
+			if (!file.mkdir())
+			{
+				throw new DrumException("No cache data dir found and could not initialize one!");
+			}
+		}
 
 		try
 		{

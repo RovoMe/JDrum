@@ -24,11 +24,9 @@ import at.rovo.caching.drum.util.NamedThreadFactory;
  * its
  * </p>
  * <ul>
- * <li>{@link #check(Number)} or {@link #check(Number, ByteSerializable)}</li>
- * <li>{@link #update(Number, ByteSerializable)} or
- * {@link #update(Number, ByteSerializable, ByteSerializable)}</li>
- * <li>{@link #checkUpdate(Number, ByteSerializable) or
- * {@link #checkUpdate(Number, ByteSerializable, ByteSerializable)}</li>
+ * <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
+ * <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
+ * <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
  * </ul>
  * <p>
  * methods.
@@ -48,11 +46,12 @@ import at.rovo.caching.drum.util.NamedThreadFactory;
  * 
  * @author Roman Vottner
  */
+@SuppressWarnings("unused")
 public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		implements IDrum<V, A>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager.getLogger(Drum.class);
+	private final static Logger LOG = LogManager.getLogger(Drum.class);
 
 	/** The name of the DRUM instance **/
 	protected String drumName = null;
@@ -125,7 +124,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		/** The size of the buffer before a flush is forced **/
 		private int bufferSize = 64;
 		/** The class responsible for dispatching the results **/
-		private IDispatcher<V,A> dispatcher = new NullDispatcher<V,A>();
+		private IDispatcher<V,A> dispatcher = new NullDispatcher<>();
 		/** A listener class which needs to be informed of state changes **/
 		private IDrumListener listener = null;
 		/** The factory which creates the backing storage service **/
@@ -254,7 +253,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		 */
 		public Drum<V,A> build() throws Exception
 		{
-			return new Drum<V,A>(this);
+			return new Drum<>(this);
 		}
 	}
 	
@@ -264,8 +263,10 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	 * builder object to the corresponding attributes.
 	 * </p>
 	 * 
-	 * @param builder
-	 * @throws DrumException
+	 * @param builder The builder object which contains the initialization
+	 *                parameters specified by the invoker
+	 * @throws DrumException If during the initialization of the backing data
+	 *                       store an error occurred
 	 */
 	private Drum(Builder<V,A> builder) throws DrumException
 	{
@@ -309,9 +310,6 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	 * @param factory
 	 *            The factory object which defines where data should be stored
 	 *            in. Note that factory must return an implementation of IMerger
-	 * @param listener
-	 *            The object which needs to be notified on certain internal
-	 *            state or statistic changes
 	 * @throws DrumException
 	 */
 	private void init(String drumName, int numBuckets, int bufferSize,
@@ -328,9 +326,8 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		this.bufferSize = bufferSize;
 
 		// create the broker and the consumer listening to the broker
-		this.inMemoryBuffer = new ArrayList<IBroker<InMemoryData<V, A>, V, A>>(
-				numBuckets);
-		this.diskWriters = new ArrayList<IDiskWriter<V, A>>(numBuckets);
+		this.inMemoryBuffer = new ArrayList<>(numBuckets);
+		this.diskWriters = new ArrayList<>(numBuckets);
 		this.merger = factory.getStorage();
 
 		DrumExceptionHandler exceptionHandler = new DrumExceptionHandler();
@@ -344,9 +341,9 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		for (int i = 0; i < numBuckets; i++)
 		{
-			IBroker<InMemoryData<V, A>, V, A> broker = new InMemoryMessageBroker<InMemoryData<V, A>, V, A>(
+			IBroker<InMemoryData<V, A>, V, A> broker = new InMemoryMessageBroker<>(
 					drumName, i, bufferSize, this.eventDispatcher);
-			IDiskWriter<V, A> consumer = new DiskBucketWriter<V, A>(drumName,
+			IDiskWriter<V, A> consumer = new DiskBucketWriter<>(drumName,
 					i, bufferSize, broker, this.merger, this.eventDispatcher);
 
 			this.inMemoryBuffer.add(broker);
@@ -422,7 +419,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	@Override
 	public void dispose() throws DrumException
 	{
-		logger.debug("[{}] - Disposal initialted", this.drumName);
+		LOG.debug("[{}] - Disposal initiated", this.drumName);
 		// flip the buffers which sends the writers the latest data
 		for (IBroker<?, ?, ?> broker : this.inMemoryBuffer)
 			broker.stop();
@@ -441,7 +438,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		}
 		catch (InterruptedException e)
 		{
-
+			LOG.error("Error while terminating threads", e);
 		}
 
 		this.merger.stop();
@@ -460,7 +457,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		this.eventDispatcher.stop();
 		this.eventDispatcherThread.interrupt();
-		logger.trace("[{}] - disposed", this.drumName);
+		LOG.trace("[{}] - disposed", this.drumName);
 	}
 
 	@Override
@@ -498,7 +495,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		// add a new InMemoryData object to the broker
 		this.inMemoryBuffer.get(bucketId).put(
-				new InMemoryData<V, A>(key, value, aux, operation));
+				new InMemoryData<>(key, value, aux, operation));
 	}
 
 	/**

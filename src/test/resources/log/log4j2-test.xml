@@ -83,7 +83,10 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
 	  <appender-ref ref="DrumFile"/>
 	</logger>
 	
-	<!-- Test cases -->
+	<!-- Test classes -->
+	<logger name="at.rovo.test.BaseCacheTest" level="debug" additivity="false">
+	  <appender-ref ref="TestFile"/>
+	</logger>
 	<logger name="at.rovo.test.DrumTest" level="debug" additivity="false">
 	  <appender-ref ref="TestFile"/>
 	</logger>
