@@ -1,7 +1,6 @@
 package at.rovo.caching.drum;
 
 import java.io.RandomAccessFile;
-import java.util.List;
 import java.util.concurrent.Semaphore;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.internal.IDrumRuntimeListener;
@@ -115,18 +114,6 @@ public interface IDiskWriter<V extends ByteSerializer<V>, A extends ByteSerializ
 	 * </p>
 	 */
 	public void reset();
-
-	/**
-	 * <p>
-	 * Forces to write all provided data into the disk bucket file controlled by
-	 * this instance.
-	 * </p>
-	 * <p>
-	 * Note that a force writing does not invoke a merge if the data exceeds a
-	 * certain defined threshold.
-	 * </p>
-	 */
-	public void forceWrite(List<InMemoryData<V, A>> data) throws DrumException;
 
 	/**
 	 * <p>

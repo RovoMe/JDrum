@@ -47,8 +47,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		implements IDiskWriter<V, A>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager
-			.getLogger(DiskBucketWriter.class);
+	private final static Logger logger = LogManager.getLogger(DiskBucketWriter.class);
 
 	/** The name of the DRUM instance **/
 	private String drumName = null;
@@ -141,14 +140,24 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		// check if the cache sub-directory exists - if not create one
 		File cacheDir = new File(System.getProperty("user.dir") + "/cache");
 		if (!cacheDir.exists())
-			cacheDir.mkdir();
+		{
+			if (!cacheDir.mkdir())
+			{
+				throw new DrumException("No cache directory found and could not initialize one!");
+			}
+		}
 		// check if a sub-directory inside the cache sub-directory exists that
 		// has the
 		// name of this instance - if not create it
 		File file = new File(System.getProperty("user.dir") + "/cache/"
 				+ this.drumName);
 		if (!file.exists())
-			file.mkdir();
+		{
+			if (!file.mkdir())
+			{
+				throw new DrumException("No cache data dir found and could not initialize one!");
+			}
+		}
 
 		try
 		{
@@ -162,7 +171,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
-			logger.error("{} - Error creating bucket file!", this.drumName);
+			logger.error("{} - Error creating bucket file!", this.drumName, e);
 			logger.catching(e);
 			throw new DrumException("Error creating bucket file!", e);
 		}
@@ -205,7 +214,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
 				logger.debug("[{}] - [{}] - received {} data elements", 
 						this.drumName, this.bucketId, elementsToPersist.size());
-				this.feedBucket(elementsToPersist, false);
+				this.feedBucket(elementsToPersist);
 
 				assert (this.lock.availablePermits() == 1);
 
@@ -218,6 +227,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			}
 			catch (InterruptedException iE)
 			{
+				if (!DiskWriterState.FINISHED.equals(this.lastState))
+				{
+					logger.error("[{}] - [{}] - got interrupted!", 
+							this.drumName, this.bucketId);
+					this.lastState = DiskWriterState.FINISHED;
+				}
 				this.eventDispatcher
 						.update(new DiskWriterStateUpdate(this.drumName,
 								this.bucketId, DiskWriterState.FINISHED));
@@ -225,12 +240,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - [{}] - got interrupted!", 
-						this.drumName, this.bucketId);
-				e.printStackTrace();
+				logger.error("[{}] - [{}] - caught exception: {}", 
+						this.drumName, this.bucketId, e.getLocalizedMessage());
 				this.eventDispatcher.update(new DiskWriterStateUpdate(
 						this.drumName, this.bucketId,
 						DiskWriterState.FINISHED_WITH_ERROR));
+				e.printStackTrace();
 				Thread.currentThread().interrupt();
 			}
 		}
@@ -262,8 +277,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - [{}] - Exception closing disk bucket!",
-					this.drumName, this.bucketId); 
+			logger.error("[{}] - [{}] - Exception closing disk bucket!", 
+					this.drumName, this.bucketId);
 			logger.catching(e);
 			throw new DrumException("Exception closing disk bucket!");
 		}
@@ -283,8 +298,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 	 * @param inMemoryData
 	 *            The buffer which contains the data to persist to disk
 	 */
-	private synchronized void feedBucket(List<InMemoryData<V, A>> inMemoryData,
-			boolean forced) throws DrumException
+	private void feedBucket(List<InMemoryData<V, A>> inMemoryData) 
+			throws DrumException
 	{
 		try
 		{
@@ -405,21 +420,18 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			// by the main-thread so do not set the merge flag therefore else
 			// two threads would try to merge the data which might result in
 			// a deadlock
-			if (!forced)
+			if (this.kvBytesWritten > this.bucketByteSize 
+					|| this.auxBytesWritten > this.bucketByteSize)
 			{
-				if (this.kvBytesWritten > this.bucketByteSize
-						|| this.auxBytesWritten > this.bucketByteSize)
-				{
-					logger.info("[{}] - [{}] - requesting merge", 
-							this.drumName, this.bucketId);
-					this.mergeRequired = true;
-				}
+				logger.info("[{}] - [{}] - requesting merge", 
+						this.drumName, this.bucketId);
+				this.mergeRequired = true;
 			}
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - [{}] - Error feeding bucket! Reason: {}",
-					this.drumName, this.bucketId, e.getLocalizedMessage()); 
+			logger.error("[{}] - [{}] - Error feeding bucket! Reason: {}", 
+					this.drumName, this.bucketId, e.getLocalizedMessage(), e);
 			logger.catching(e);
 			throw new DrumException("Error feeding bucket!", e);
 		}
@@ -498,14 +510,6 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 	{
 		this.stopRequested = true;
 		logger.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
-	}
-
-	@Override
-	public void forceWrite(List<InMemoryData<V, A>> data) throws DrumException
-	{
-		// feedBucket is synchronized which should prevent multiple threads to
-		// invoke the same method if a thread is already executing it
-		this.feedBucket(data, true);
 	}
 
 	@Override

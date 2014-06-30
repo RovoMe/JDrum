@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
-import at.rovo.caching.drum.event.DrumSynchronizeEvent;
 import at.rovo.caching.drum.internal.DiskBucketWriter;
 import at.rovo.caching.drum.internal.InMemoryData;
 import at.rovo.caching.drum.internal.InMemoryMessageBroker;
@@ -25,11 +24,9 @@ import at.rovo.caching.drum.util.NamedThreadFactory;
  * its
  * </p>
  * <ul>
- * <li>{@link #check(Number)} or {@link #check(Number, ByteSerializable)}</li>
- * <li>{@link #update(Number, ByteSerializable)} or
- * {@link #update(Number, ByteSerializable, ByteSerializable)}</li>
- * <li>{@link #checkUpdate(Number, ByteSerializable) or
- * {@link #checkUpdate(Number, ByteSerializable, ByteSerializable)}</li>
+ * <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
+ * <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
+ * <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
  * </ul>
  * <p>
  * methods.
@@ -49,11 +46,12 @@ import at.rovo.caching.drum.util.NamedThreadFactory;
  * 
  * @author Roman Vottner
  */
+@SuppressWarnings("unused")
 public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		implements IDrum<V, A>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager.getLogger(Drum.class);
+	private final static Logger LOG = LogManager.getLogger(Drum.class);
 
 	/** The name of the DRUM instance **/
 	protected String drumName = null;
@@ -126,7 +124,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		/** The size of the buffer before a flush is forced **/
 		private int bufferSize = 64;
 		/** The class responsible for dispatching the results **/
-		private IDispatcher<V,A> dispatcher = new NullDispatcher<V,A>();
+		private IDispatcher<V,A> dispatcher = new NullDispatcher<>();
 		/** A listener class which needs to be informed of state changes **/
 		private IDrumListener listener = null;
 		/** The factory which creates the backing storage service **/
@@ -255,7 +253,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		 */
 		public Drum<V,A> build() throws Exception
 		{
-			return new Drum<V,A>(this);
+			return new Drum<>(this);
 		}
 	}
 	
@@ -264,9 +262,11 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	 * Creates a new instance and assigns initial values contained within the 
 	 * builder object to the corresponding attributes.
 	 * </p>
-	 * 
-	 * @param builder
-	 * @throws DrumException
+	 *
+	 * @param builder The builder object which contains the initialization
+	 *                parameters specified by the invoker
+	 * @throws DrumException If during the initialization of the backing data
+	 *                       store an error occurred
 	 */
 	private Drum(Builder<V,A> builder) throws DrumException
 	{
@@ -285,6 +285,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 				builder.dispatcher, builder.valueClass,	builder.auxClass, 
 				factory);
 	}
+
 
 	/**
 	 * <p>
@@ -309,9 +310,6 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	 * @param factory
 	 *            The factory object which defines where data should be stored
 	 *            in. Note that factory must return an implementation of IMerger
-	 * @param listener
-	 *            The object which needs to be notified on certain internal
-	 *            state or statistic changes
 	 * @throws DrumException
 	 */
 	private void init(String drumName, int numBuckets, int bufferSize,
@@ -359,7 +357,9 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 			this.merger.addDiskFileWriter(consumer);
 		}
 		this.mergerThread = new Thread(this.merger, this.drumName + "-Merger");
-		this.mergerThread.setUncaughtExceptionHandler(exceptionHandler);
+		// this.mergerThread.setPriority(Math.min(10,
+		// this.mergerThread.getPriority()+1));
+		//this.mergerThread.setUncaughtExceptionHandler(exceptionHandler);
 		this.mergerThread.start();
 	}
 
@@ -412,38 +412,9 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	}
 
 	@Override
-	public void synchronize() throws DrumException
-	{
-		this.eventDispatcher.update(new DrumSynchronizeEvent(this.drumName));
-		logger.info("[{}] - SYNCHRONISING", this.drumName);
-
-		// send all currently buffered data to the disk writers to write these
-		// into the bucket files
-//		List<List<InMemoryData<V, A>>> memoryData = new ArrayList<>();
-//		for (IBroker<InMemoryData<V, A>, V, A> broker : this.inMemoryBuffer)
-//			memoryData.add(broker.flush());
-
-//		int i = 0;
-//		for (IDiskWriter<V, A> writer : this.diskWriters)
-//		{
-//			writer.forceWrite(memoryData.get(i++));
-//		}
-
-		// as we have used an in-thread invocation of the writer (the method is
-		// executed in the main-threads context), writer has finished his task.
-
-		// So we have actually to call the merger instance to tell him to merge
-		// the data written to the respective bucket file as the bucket file
-		// writer might not have had enough data to invoke the merger itself
-		this.merger.forceMerge();
-	}
-
-	@Override
 	public void dispose() throws DrumException
 	{
-		logger.debug("[{}] - Disposal initialted", this.drumName);
-		this.synchronize();
-
+		LOG.debug("[{}] - Disposal initiated", this.drumName);
 		// flip the buffers which sends the writers the latest data
 		for (IBroker<?, ?, ?> broker : this.inMemoryBuffer)
 			broker.stop();
@@ -462,7 +433,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		}
 		catch (InterruptedException e)
 		{
-
+			LOG.error("Error while terminating threads", e);
 		}
 
 		this.merger.stop();
@@ -481,7 +452,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		this.eventDispatcher.stop();
 		this.eventDispatcherThread.interrupt();
-		logger.trace("[{}] - disposed", this.drumName);
+		LOG.trace("[{}] - disposed", this.drumName);
 	}
 
 	@Override
@@ -519,7 +490,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 		// add a new InMemoryData object to the broker
 		this.inMemoryBuffer.get(bucketId).put(
-				new InMemoryData<V, A>(key, value, aux, operation));
+				new InMemoryData<>(key, value, aux, operation));
 	}
 
 	/**

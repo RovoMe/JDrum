@@ -74,7 +74,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - Could not initialize backing cache file!", this.drum);
+			logger.error("[{}] - Could not initialize backing cache file!", 
+					this.drum, e);
 			logger.catching(e);
 			throw new DrumException("Error initializing cache file! Caught reason: "
 							+ e.getLocalizedMessage(), e);
@@ -99,9 +100,11 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - Error extracting file length of cache file!", this.drum); 
+				logger.error("[{}] - Error extracting file length of cache file!", 
+						this.drum, e);
 				logger.catching(e);
-				throw new DrumException("Error extracting file length of cache file! Caught reason: "
+				throw new DrumException(
+						"Error extracting file length of cache file! Caught reason: "
 								+ e.getLocalizedMessage(), e);
 			}
 		}
@@ -137,7 +140,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - Error closing cache file!", this.drum); 
+				logger.error("[{}] - Error closing cache file!", this.drum, e);
 				logger.catching(e);
 			}
 		}
@@ -162,9 +165,9 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				logger.error("Error while resetting the file pointer! Reason {}",
-						e.getMessage());
-				logger.catching(e);
+				logger.error("Error while resetting the file pointer! Reason {}", 
+						e.getMessage(), e);
+                logger.catching(e);
 			}
 		}
 	}
@@ -209,7 +212,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (InstantiationException | IllegalAccessException | IOException ex)
 		{
-			logger.error("[{}] - Error fetching next entry from cache!", this.drum); 
+			logger.error("[{}] - Error fetching next entry from cache!", this.drum, ex);
 			logger.catching(ex);
 			throw ex;
 		}
@@ -352,7 +355,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				// data entry
 				// this results in an append instead of an replacement of the
 				// data entry
-				if (append && entry.getKey().equals(data.getKey()))
+				if (append && data.getKey().equals(entry.getKey()))
 				{
 					logger.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
 					data.appendValue(entry.getValue());
@@ -398,7 +401,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (IOException | InstantiationException | IllegalAccessException e)
 		{
-			logger.error("[{}] - Error writing entry to cache!", this.drum);
+			logger.error("[{}] - Error writing entry to cache!", this.drum, e);
 			logger.catching(e);
 			throw e;
 		}
@@ -460,8 +463,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (IOException | InstantiationException | IllegalAccessException e)
 		{
-			logger.error("[{}] - Exception while looking up key {}! Reason: {}",
-					this.drum, key, e.getLocalizedMessage());
+			logger.error("[{}] - Exception while looking up key {}! Reason: {}", 
+					this.drum, key, e.getLocalizedMessage(), e);
 			logger.catching(e);
 			throw e;
 		}
@@ -759,8 +762,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - Error while printing content of {}!",
-					this.drum, this.name);
+			logger.error("[{}] - Error while printing content of {}!", 
+					this.drum, this.name, e);
 			logger.catching(e);
 			throw new DrumException("Error while printing content of "
 					+ this.name + "! Reason: " + e.getLocalizedMessage());

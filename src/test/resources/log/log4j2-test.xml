@@ -21,7 +21,7 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
 
   <appenders>
   	<Console name="Console" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d{HH:mm:ss} %p %C{1}.%M() - %m%n"/>
+      <PatternLayout pattern="%d{HH:mm:ss} %p %C{1}.%M() - %m%n%ex"/>
       <!-- ThresholdFilter returns the onMatch result if the level in the LogEvent 
       is the same or more specific than the configured level and the onMismatch 
       value otherwise. For example, if the ThresholdFilter is configured with 
@@ -37,19 +37,19 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
     </Console>
     <!-- ... show them on the error-console! -->
     <Console name="Error" target="SYSTEM_ERR">
-      <PatternLayout pattern="%d{HH:mm:ss} %p %C{1}.%M() - %m%n"/>
+      <PatternLayout pattern="%d{HH:mm:ss} %-5p %C{1}.%M():%L - %m%n%ex"/>
       <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
     </Console>
     
     <!-- LogFile section -->
     <File name="DrumFile" fileName="${drumFile}" append="false">
-      <PatternLayout pattern="%d{HH:mm:ss} %p %C{1}.%M() - %m%n"/>
+      <PatternLayout pattern="%d{HH:mm:ss} %-5p %C{1}.%M():%L - %m%n%ex"/>
     </File>
 	<File name="CacheFile" fileName="${cacheFile}" append="false">
-      <PatternLayout pattern="%d{HH:mm:ss} %p %C{1}.%M() - %m%n"/>
+      <PatternLayout pattern="%d{HH:mm:ss} %-5p %C{1}.%M():%L - %m%n%ex"/>
     </File>
     <File name="TestFile" fileName="${testFile}" append="false">
-      <PatternLayout pattern="%d{HH:mm:ss} %p %C{1}.%M() - %m%n"/>
+      <PatternLayout pattern="%d{HH:mm:ss} %-5p %C{1}.%M():%L - %m%n%ex"/>
     </File>
   </appenders>
   
@@ -83,7 +83,10 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
 	  <appender-ref ref="DrumFile"/>
 	</logger>
 	
-	<!-- Test cases -->
+	<!-- Test classes -->
+	<logger name="at.rovo.test.BaseCacheTest" level="debug" additivity="false">
+	  <appender-ref ref="TestFile"/>
+	</logger>
 	<logger name="at.rovo.test.DrumTest" level="debug" additivity="false">
 	  <appender-ref ref="TestFile"/>
 	</logger>

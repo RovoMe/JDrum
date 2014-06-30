@@ -199,6 +199,7 @@ public class InMemoryData<V extends ByteSerializer<V>, A extends ByteSerializer<
 	 *             Thrown if the data object to append is not an instance of
 	 *             {@link AppendableData}
 	 */
+	@SuppressWarnings("unchecked")
 	public void appendValue(V data) throws NotAppendableException
 	{
 		if (this.value != null && this.value instanceof AppendableData)

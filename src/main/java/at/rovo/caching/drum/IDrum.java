@@ -187,14 +187,6 @@ public interface IDrum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 
 	/**
 	 * <p>
-	 * Forces a merge of all buckets. After the synchronization the backing DB
-	 * should include all previous open or cached data.
-	 * </p>
-	 */
-	public void synchronize() throws DrumException;
-
-	/**
-	 * <p>
 	 * Releases the lock to the local backing DB and the locks held to other
 	 * system imminent devices
 	 * </p>

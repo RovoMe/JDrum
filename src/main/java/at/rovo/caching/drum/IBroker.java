@@ -41,17 +41,4 @@ public interface IBroker<T extends InMemoryData<V, A>,
 	 * @throws InterruptedException
 	 */
 	public List<T> takeAll() throws InterruptedException;
-
-//	/**
-//	 * <p>
-//	 * Flushes all of data buffered in both the currently active and the back
-//	 * buffer into a new copy of the {@link List} that stores the actual data.
-//	 * The original {@link List} is afterwards cleared to prevent items to be
-//	 * written twice.
-//	 * </p>
-//	 * 
-//	 * @return All available data stored in both buffers copied into a new
-//	 *         {@link List}
-//	 */
-//	public List<T> flush();
 }

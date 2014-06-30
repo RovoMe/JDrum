@@ -1,19 +1,11 @@
 package at.rovo.test;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.Assert;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import at.rovo.caching.drum.Drum;
 import at.rovo.caching.drum.IDispatcher;
@@ -45,84 +37,32 @@ import at.rovo.caching.drum.util.DrumUtil;
  * 
  * @author Roman Vottner
  */
-public class DrumTest implements IDrumListener
-{	
-	/** The logger for this class **/
-	private static Logger logger;
-	
-	private File cache = null;
-
-	@BeforeClass
-	public static void initLogger() throws URISyntaxException
-	{
-		String path = DrumTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
-		System.setProperty("log4j.configurationFile", path);
-		logger = LogManager.getLogger(DrumTest.class);
-	}
-	
-	@AfterClass
-	public static void cleanLogger()
-	{
-		System.clearProperty("log4j.configurationFile");
-	}
-		
-	@Before
-	public void init()
-	{		
-		String appDirPath = System.getProperty("user.dir");
-		File appDir = new File(appDirPath);
-		if (appDir.isDirectory())
-		{
-			String[] items = appDir.list();
-			for (String item : items)
-			{
-				if (item.endsWith("cache"))
-				{
-					this.cache = new File(item);
-					if (this.cache.isDirectory() && "cache".equals(this.cache.getName()))
-					{
-						try
-						{
-							Files.walkFileTree(this.cache.toPath(), new CacheFileDeleter());
-						}
-						catch (IOException e)
-						{
-							e.printStackTrace();
-						}
-					}
-				}
-			}
-		}
-		if (this.cache == null)
-			this.cache = new File (appDir.getAbsoluteFile()+"/cache");
-		if (!this.cache.exists())
-			this.cache.mkdir();
-	}
-	
-	/**
-	 * Example-Output:
-	 * 
-	 * UniqueKeyUpdate: -7398944400403122887 Data: null Aux: http://www.java.com
-	 * UniqueKeyUpdate: -4053763844255691886 Data: null Aux: http://glinden.blogspot.co.at/2008/05/crawling-is-harder-than-it-looks.html
-	 * UniqueKeyUpdate: -4722211168175665381 Data: http://codeproject.com Aux: http://www.codeproject.com
-	 * DuplicateKeyUpdate: -4722211168175665381 Data: null Aux: http://www.codeproject.com
-	 * UniqueKeyUpdate: -8006353971568025323 Data: null Aux: http://www.boost.org
-	 * DuplicateKeyUpdate: -4722211168175665381 Data: null Aux: http://www.codeproject.com
-	 * UniqueKeyUpdate: -427820934381562479 Data: null Aux: http://www.tuwien.ac.at
-	 * UniqueKeyUpdate: -408508820557862601 Data: null Aux: http://www.univie.ac.at
-	 * UniqueKeyUpdate: -1003537773438859569 Data: null Aux: http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
-	 * UniqueKeyUpdate: 8763289732749923908 Data: null Aux: http://www.oracle.com/technology/products/berkeley-db/index.html
-	 * 
-	 * Content of disk storage:
-	 * Key: -8006353971568025323; value: null
-	 * Key: -7398944400403122887; value: null
-	 * Key: -4722211168175665381; value: http://codeproject.com
-	 * Key: -4053763844255691886; value: null
-	 * Key: -1003537773438859569; value: null
-	 * Key: -427820934381562479; value: null
-	 * Key: -408508820557862601; value: null
-	 * Key: 8763289732749923908; value: null
-	 */
+public class DrumTest extends BaseCacheTest  implements IDrumListener
+{
+		/**
+		 * Example-Output:
+		 *
+		 * UniqueKeyUpdate: -7398944400403122887 Data: null Aux: http://www.java.com
+		 * UniqueKeyUpdate: -4053763844255691886 Data: null Aux: http://glinden.blogspot.co.at/2008/05/crawling-is-harder-than-it-looks.html
+		 * UniqueKeyUpdate: -4722211168175665381 Data: http://codeproject.com Aux: http://www.codeproject.com
+		 * DuplicateKeyUpdate: -4722211168175665381 Data: null Aux: http://www.codeproject.com
+		 * UniqueKeyUpdate: -8006353971568025323 Data: null Aux: http://www.boost.org
+		 * DuplicateKeyUpdate: -4722211168175665381 Data: null Aux: http://www.codeproject.com
+		 * UniqueKeyUpdate: -427820934381562479 Data: null Aux: http://www.tuwien.ac.at
+		 * UniqueKeyUpdate: -408508820557862601 Data: null Aux: http://www.univie.ac.at
+		 * UniqueKeyUpdate: -1003537773438859569 Data: null Aux: http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
+		 * UniqueKeyUpdate: 8763289732749923908 Data: null Aux: http://www.oracle.com/technology/products/berkeley-db/index.html
+		 *
+		 * Content of disk storage:
+		 * Key: -8006353971568025323; value: null
+		 * Key: -7398944400403122887; value: null
+		 * Key: -4722211168175665381; value: http://codeproject.com
+		 * Key: -4053763844255691886; value: null
+		 * Key: -1003537773438859569; value: null
+		 * Key: -427820934381562479; value: null
+		 * Key: -408508820557862601; value: null
+		 * Key: 8763289732749923908; value: null
+		 */
 	
 	@Test
 	public void URLseenDrumTest()
@@ -139,18 +79,18 @@ public class DrumTest implements IDrumListener
 		List<Long> URLhashes = new ArrayList<>();
 		try
 		{
-			logger.info("Example of Drum usage:");
-			logger.info("----------------------");
-				
-			logger.info("Initializing Drum ... ");
-			IDispatcher<StringSerializer, StringSerializer>  dispatcher =
+			LOG.info("Example of Drum usage:");
+			LOG.info("----------------------");
+
+			LOG.info("Initializing Drum ... ");
+			IDispatcher<StringSerializer, StringSerializer> dispatcher =
 					new ConsoleDispatcher<>();
 //					new LogFileDispatcher<>();
 			try
 			{
 				drum = new Drum.Builder<>("urlSeenTest", 
 						StringSerializer.class, StringSerializer.class)
-					.numBucket(2)
+					.numBucket(4)
 					.bufferSize(64)
 					.dispatcher(dispatcher)
 					.listener(this)
@@ -160,11 +100,11 @@ public class DrumTest implements IDrumListener
 			{
 				Assert.fail("Could not create DRUM instance. Caught error: "
 						+ e.getLocalizedMessage());
-				logger.error("Could not create DRUM instance. Caught error: "
+				LOG.error("Could not create DRUM instance. Caught error: "
 						+ e.getLocalizedMessage(), e);
 				return;
 			}
-			logger.info("done!");		
+			LOG.info("done!");
 			
 			String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
 			String url2 = "http://www.oracle.com/technology/products/berkeley-db/index.html"; // produces 12 bytes in kvBucket and 64 bytes in auxBucket
@@ -180,8 +120,8 @@ public class DrumTest implements IDrumListener
 			// URLhashes.add(DrumUtil.hash(url4));
 			URLhashes.add(DrumUtil.hash(url5));
 			URLhashes.add(DrumUtil.hash(url6));
-			
-			logger.info("checkUpdating urls ... ");
+
+			LOG.info("checkUpdating urls ... ");
 			drum.checkUpdate(DrumUtil.hash(url1), null, new StringSerializer(url1));
 			drum.checkUpdate(DrumUtil.hash(url2), null, new StringSerializer(url2));
 			drum.checkUpdate(DrumUtil.hash(url3), null, new StringSerializer(url3));
@@ -203,16 +143,8 @@ public class DrumTest implements IDrumListener
 			}
 
 			drum.checkUpdate(DrumUtil.hash(url6), null, new StringSerializer(url6));
-			logger.info("done!");
-			
-			// buffer size is selected to be small enough to trigger automatic
-			// flipping, feeding and merging data - to test the synchronization
-			// comment out the code below
-//			logger.info("Synchronizing DB ... ");
-//			// Synchronize
-//			drum.synchronize();
-//			logger.info("done!");
-						
+			LOG.info("done!");
+									
 			String url7 = "http://www.tuwien.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
 			String url8 = "http://www.univie.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
 			String url9 = "http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a"; // produces 12 bytes in kvBucket and 92 bytes in auxBucket
@@ -220,14 +152,14 @@ public class DrumTest implements IDrumListener
 			URLhashes.add(DrumUtil.hash(url7));
 			URLhashes.add(DrumUtil.hash(url8));
 			URLhashes.add(DrumUtil.hash(url9));
-			
-			logger.info("Adding new urls ... ");
+
+			LOG.info("Adding new urls ... ");
 			drum.checkUpdate(DrumUtil.hash(url7), null, new StringSerializer(url7));
 			drum.checkUpdate(DrumUtil.hash(url8), null, new StringSerializer(url8));
 			drum.checkUpdate(DrumUtil.hash(url9), null, new StringSerializer(url9));
 			// check+update on an already stored URL
 			drum.checkUpdate(DrumUtil.hash(url1), new StringSerializer("http://codeproject.com"), new StringSerializer(url1));
-			logger.info("done!");
+			LOG.info("done!");
 		}
 		finally
 		{
@@ -242,6 +174,7 @@ public class DrumTest implements IDrumListener
 			catch(Exception e)
 			{
 				e.printStackTrace();
+				LOG.catching(e);
 			}
 		}
 		
@@ -259,7 +192,8 @@ public class DrumTest implements IDrumListener
 		}
 		catch (IOException e)
 		{
-			logger.catching(e);
+			LOG.error("Noticed error: {}", e.getMessage(), e);
+			LOG.catching(e);
 			Assert.fail();
 		}
 	}
@@ -271,7 +205,7 @@ public class DrumTest implements IDrumListener
 		
 		cacheFile.seek(0);
 		long fileSize = cacheFile.length();
-		logger.info("Content of disk storage:");
+		LOG.info("Content of disk storage:");
 		for (long pos = 0; pos < fileSize; pos = cacheFile.getFilePointer())
 		{
 			Long key = cacheFile.readLong();
@@ -283,34 +217,17 @@ public class DrumTest implements IDrumListener
 				cacheFile.read(valueBytes, 0, valueSize);
 				value = new String(valueBytes);
 			}
-			
-			logger.info("Key: {}; value: {}", key, value);
+
+			LOG.info("Key: {}; value: {}", key, value);
 			data.add(key);
 		}
 		
 		cacheFile.close();
 	}
-		
-	@After
-	public void clean()
-	{		
-		File cache = this.cache;
-		if (cache.isDirectory() && "cache".equals(cache.getName()))
-		{
-			try
-			{
-				Files.walkFileTree(cache.toPath(), new CacheFileDeleter());
-			}
-			catch (IOException e)
-			{
-				e.printStackTrace();
-			}
-		}
-	}
 
 	@Override
 	public void update(DrumEvent<? extends DrumEvent<?>> event)
 	{
-		logger.debug(event);		
+		LOG.debug(event);
 	}
 }
