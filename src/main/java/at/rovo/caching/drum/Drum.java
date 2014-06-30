@@ -361,7 +361,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		this.mergerThread = new Thread(this.merger, this.drumName + "-Merger");
 		// this.mergerThread.setPriority(Math.min(10,
 		// this.mergerThread.getPriority()+1));
-		this.mergerThread.setUncaughtExceptionHandler(exceptionHandler);
+		//this.mergerThread.setUncaughtExceptionHandler(exceptionHandler);
 		this.mergerThread.start();
 
 		// Thread.currentThread().setPriority(Math.max(0,
