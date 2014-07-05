@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.DrumException;
@@ -305,8 +306,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 			{
 				e.printStackTrace();
 				LOG.error("[{}] - [{}] - Error merging disk bucket files with data storage! Reason: {}",
-						this.drumName, writer.getKVFileName(), e.getLocalizedMessage(), e);
-                logger.catching(e);
+						this.drumName, writer.getKVFileName(), e.getLocalizedMessage());
+                LOG.catching(Level.ERROR, e);
 			}
 			finally
 			{
@@ -556,8 +557,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		{
             e.printStackTrace();
 			LOG.error("[{}] - [{}] - Could not read auxiliary bucket file! Reason: {}",
-					this.drumName, writer.getBucketId(), e.getLocalizedMessage(), e);
-			logger.catching(e);
+					this.drumName, writer.getBucketId(), e.getLocalizedMessage());
+			LOG.catching(Level.ERROR, e);
 			throw new DrumException(
 					"Could not read auxiliary bucket file! Reason: "
 							+ e.getLocalizedMessage(), e);

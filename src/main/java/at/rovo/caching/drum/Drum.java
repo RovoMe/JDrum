@@ -108,7 +108,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	 * 
 	 * @author Roman Vottner
 	 */
-	public static class Builder<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
+	public static class Builder<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		implements IBuilder<Drum<V, A>>
 	{
 		// required parameters
@@ -122,7 +122,7 @@ public class Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		/** The number of buckets managed by this DRUM instance **/
 		private int numBuckets = 512;
 		/** The size of the buffer before a flush is forced **/
-		private int bufferSize = 64;
+		private int bufferSize = 64*1024;
 		/** The class responsible for dispatching the results **/
 		private IDispatcher<V,A> dispatcher = new NullDispatcher<>();
 		/** A listener class which needs to be informed of state changes **/
