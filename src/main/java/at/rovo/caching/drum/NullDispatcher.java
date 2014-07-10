@@ -18,7 +18,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
  * @author Roman Vottner
  */
 public class NullDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		implements IDispatcher<V, A>
+		implements Dispatcher<V, A>
 {
 	/**
 	 * <p>

@@ -15,7 +15,7 @@ package at.rovo.caching.drum;
  * 
  * @author Roman Vottner
  */
-public interface IBuilder<T>
+public interface Builder<T>
 {
 	/**
 	 * <p>

@@ -10,7 +10,7 @@ import at.rovo.caching.drum.event.DrumEvent;
  * 
  * @author Roman Vottner
  */
-public interface IDrumListener
+public interface DrumListener
 {
 	/**
 	 * <p>

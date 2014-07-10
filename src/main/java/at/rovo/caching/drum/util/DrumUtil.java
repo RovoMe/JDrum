@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
-import java.io.StreamCorruptedException;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +29,7 @@ import at.rovo.common.Pair;
  * 
  * @author Roman Vottner
  */
+@SuppressWarnings("unused")
 public class DrumUtil
 {
 	/** The logger of this class **/
@@ -41,9 +41,10 @@ public class DrumUtil
 	 * </p>
 	 * 
 	 * @param string
-	 * @return
+	 *            The string object to generate the 64bit hash value for
+	 * @return The 64bit long hash value for the provided string
 	 */
-	public final static long hash(final String string)
+	public static long hash(final String string)
 	{
 		long h = 1125899906842597L; // prime
 		int len = string.length();
@@ -55,14 +56,16 @@ public class DrumUtil
 
 	/**
 	 * <p>
-	 * Calculates a 8-byte (64bit) hash from an object
+	 * Calculates a 8-byte (64bit) hash from an object by invoking the objects
+	 * {@link Object#toString()} first and then generating the hash value for
+	 * the generated string value.
 	 * </p>
 	 * 
 	 * @param object
 	 *            The object whose key shall be calculated
-	 * @return
+	 * @return The 64bit long hash value for the provided object
 	 */
-	public final static long hash(final Object object)
+	public static long hash(final Object object)
 	{
 		return hash(object.toString());
 	}
@@ -82,7 +85,7 @@ public class DrumUtil
 	 *            of two (e.g. 2, 4, 8, 16, 32, ...)
 	 * @return The bucket index the key should be in
 	 */
-	public final static int getBucketForKey(long key, final int numBuckets)
+	public static int getBucketForKey(long key, final int numBuckets)
 	{
 		// test if numBuckets is a power of 2
 		int exponent = Math.getExponent(numBuckets);
@@ -106,9 +109,9 @@ public class DrumUtil
 	 *            The total number of available buckets. This should be a power
 	 *            of two (e.g. 2, 4, 8, 16, 32, ...)
 	 * @return The bucket the key should be in
-	 * @see http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
+	 * @link http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
 	 */
-	public final static long getBucketOfKey(final long key, final int numBuckets)
+	public static long getBucketOfKey(final long key, final int numBuckets)
 	{
 		// test if numBuckets is a power of 2
 		int exponent = Math.getExponent(numBuckets);
@@ -143,9 +146,9 @@ public class DrumUtil
 	 *            The total number of available buckets. This should be a power
 	 *            of two (e.g. 2, 4, 8, 16, 32, ...)
 	 * @return The bucket the key should be in
-	 * @see http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
+	 * @link http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
 	 */
-	public final static int getBucketOfKey(final int key, final int numBuckets)
+	public static int getBucketOfKey(final int key, final int numBuckets)
 	{
 		// test if numBuckets is a power of 2
 		int exponent = Math.getExponent(numBuckets);
@@ -202,8 +205,6 @@ public class DrumUtil
 
 		oos.close();
 		baos.close();
-		baos = null;
-		oos = null;
 
 		return bytes;
 	}
@@ -219,43 +220,31 @@ public class DrumUtil
 	 * @throws IOException
 	 * @throws ClassNotFoundException
 	 */
-	public static <T> T deserialize(byte[] bytes, Class<T> type)
+	@SuppressWarnings("unchecked")
+	public static <T> T deserialize(byte[] bytes, Class<? super T> type)
 			throws IOException, ClassNotFoundException
 	{
-		T ret = null;
+		T ret;
 		// check if the byte array is a String (character array)
 		if (type.isAssignableFrom(String.class))
 		{
-			ret = type.cast(new String(bytes));
-			bytes = null;
+			ret = ((T)type.cast(new String(bytes)));
 		}
 		else
 		{
-			try
-			{
-				ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-				ObjectInputStream ois = new ObjectInputStream(bais);
-				// ois.mark(0);
-				Object obj = ois.readObject();
-				ret = type.cast(obj);
+			ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+			ObjectInputStream ois = new ObjectInputStream(bais);
+			// ois.mark(0);
+			Object obj = ois.readObject();
+			ret = ((T)type.cast(obj));
 
-				if (ois.markSupported())
-					ois.reset();
-				ois.close();
-				ois = null;
+			if (ois.markSupported())
+				ois.reset();
+			ois.close();
 
-				if (bais.markSupported())
-					bais.reset();
-				bais.close();
-				bais = null;
-			}
-			catch (StreamCorruptedException e)
-			{
-				System.err.println("Error deserializing object of type "
-						+ type.getCanonicalName() + " for bytes: " + bytes
-						+ "! Reason: " + e.getLocalizedMessage());
-				throw e;
-			}
+			if (bais.markSupported())
+				bais.reset();
+			bais.close();
 		}
 		return ret;
 	}
@@ -354,7 +343,7 @@ public class DrumUtil
 		RandomAccessFile cacheFile = new RandomAccessFile(cacheName, "r");
 		cacheFile.seek(0);
 
-		Pair<Long, V> data = null;
+		Pair<Long, V> data;
 		do
 		{
 			data = DrumUtil.getNextEntry(cacheFile, valueClass);
@@ -388,8 +377,9 @@ public class DrumUtil
 	 *             next Entry or the data can't be deserialized from bytes to
 	 *             an actual object
 	 */
+	@SuppressWarnings("unchecked")
 	public static <V extends ByteSerializer<V>> Pair<Long, V> getNextEntry(
-			RandomAccessFile cacheFile, Class<V> valueClass)
+			RandomAccessFile cacheFile, Class<? super V> valueClass)
 			throws DrumException
 	{
 		// Retrieve the key from the file
@@ -413,20 +403,23 @@ public class DrumUtil
 				{
 					try
 					{
-						value = valueClass.newInstance();
+						value = ((V)valueClass.newInstance());
 					}
 					catch (IllegalAccessException | InstantiationException e)
 					{
 						e.printStackTrace();
 					}
-					value = ((ByteSerializer<V>) value).readBytes(byteValue);
+					if (value != null)
+						value = value.readBytes(byteValue);
+					else
+						throw new DrumException("Could not read next entry as value was null before reading its bytes");
 				}
 				// should not happen - but in case we refactor again leaf it in
 				else
 					value = DrumUtil.deserialize(byteValue, valueClass);
-				return new Pair<Long, V>(key, value);
+				return new Pair<>(key, value);
 			}
-			return new Pair<Long, V>(key, null);
+			return new Pair<>(key, null);
 		}
 		catch (IOException | ClassNotFoundException e)
 		{

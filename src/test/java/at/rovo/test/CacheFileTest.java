@@ -1,4 +1,5 @@
 package at.rovo.test;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -6,6 +7,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.Assert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,7 +42,7 @@ import at.rovo.caching.drum.util.KeyComparator;
 public class CacheFileTest
 {
 	/** The logger for this class **/
-	private static Logger logger;
+	private static Logger LOG;
 	private File testDir = null;
 	
 	@BeforeClass
@@ -48,7 +50,7 @@ public class CacheFileTest
 	{
 		String path = CacheFileTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
 		System.setProperty("log4j.configurationFile", path);
-		logger = LogManager.getLogger(CacheFileTest.class);
+		LOG = LogManager.getLogger(CacheFileTest.class);
 	}
 	
 	@AfterClass
@@ -66,16 +68,24 @@ public class CacheFileTest
 		// check if the directories, the cache is located, exists
 		File cacheDir = new File(appDir+"/cache");
 		if (!cacheDir.exists())
-			cacheDir.mkdir();
+		{
+			boolean success = cacheDir.mkdir();
+			if (!success)
+				LOG.warn("Could not create cache directory");
+		}
 		this.testDir = new File(cacheDir+"/test");
 		if (!this.testDir.exists())
-			this.testDir.mkdir();
+		{
+			boolean success = this.testDir.mkdir();
+			if (!success)
+				LOG.warn("Could not create DRUM test directory");
+		}
 	}
 	
 	@Test
 	public void testURLseenCache()
 	{
-		CacheFile<StringSerializer> cacheFile = null;
+		CacheFile<StringSerializer, StringSerializer> cacheFile = null;
 		try
 		{
 			// create a new instance of our cache file
@@ -94,11 +104,11 @@ public class CacheFileTest
 			InMemoryData<StringSerializer, StringSerializer> data5 = createNewData("http://www.tuwien.ac.at");
 			data5.setValue(new StringSerializer("Test"));
 			dataList.add(data5);
-						
+
 			// sort the list
-			Collections.sort(dataList, new KeyComparator<InMemoryData<?,?>>());
+			Collections.sort(dataList, new KeyComparator<>());
 			// and write the entries
-			for (InMemoryData<StringSerializer, ?> data : dataList)
+			for (InMemoryData<StringSerializer, StringSerializer> data : dataList)
 				cacheFile.writeEntry(data, false);
 			
 			// print the current content of the cache
@@ -132,7 +142,7 @@ public class CacheFileTest
 			cacheFile.reset();
 			
 			// modify a data object and write its content again
-			logger.debug("Adding new data and modify existing ones: ");
+			LOG.debug("Adding new data and modify existing ones: ");
 			dataList.clear();
 			
 			InMemoryData<StringSerializer, StringSerializer> data6 = createNewData("http://www.krone.at");
@@ -149,9 +159,9 @@ public class CacheFileTest
 			dataList.add(data10);
 						
 			// sort the list
-			Collections.sort(dataList, new KeyComparator<InMemoryData<?,?>>());
+			Collections.sort(dataList, new KeyComparator<>());
 			// and write the entries
-			for (InMemoryData<StringSerializer, ?> data : dataList)
+			for (InMemoryData<StringSerializer, StringSerializer> data : dataList)
 				cacheFile.writeEntry(data, false);
 		
 			// print the current content of the cache
@@ -191,7 +201,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			logger.debug("Changing data item with key: {} from '{}' to 'test3'", data7.getKey(), data7.getValue());
+			LOG.debug("Changing data item with key: {} from '{}' to 'test3'", data7.getKey(), data7.getValue());
 			data7.setValue(new StringSerializer("test3"));
 			cacheFile.writeEntry(data7, false);
 			
@@ -231,7 +241,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			logger.debug("Changing data item with key: {} from '{}' to 'null'", data7.getKey(), data7.getValue());
+			LOG.debug("Changing data item with key: {} from '{}' to 'null'", data7.getKey(), data7.getValue());
 			data7.setValue(null);
 			cacheFile.writeEntry(data7, false);
 			
@@ -271,7 +281,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			logger.debug("Changing data item with key: {} from '{}' to 'Noch ein Test'", data7.getKey(), data7.getValue());
+			LOG.debug("Changing data item with key: {} from '{}' to 'Noch ein Test'", data7.getKey(), data7.getValue());
 			data7.setValue(new StringSerializer("Noch ein Test"));
 			cacheFile.writeEntry(data7);
 			
@@ -311,7 +321,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			logger.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
+			LOG.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
 			data8.setValue(new StringSerializer("test"));
 			cacheFile.writeEntry(data8);
 			
@@ -351,7 +361,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			logger.debug("Changing data item with key: {} from '{}' to 'null'", data8.getKey(), data8.getKey());
+			LOG.debug("Changing data item with key: {} from '{}' to 'null'", data8.getKey(), data8.getKey());
 			data8.setValue(null);
 			cacheFile.writeEntry(data8);
 			
@@ -391,7 +401,7 @@ public class CacheFileTest
 			
 			cacheFile.reset();
 			
-			logger.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
+			LOG.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
 			data8.setValue(new StringSerializer("test"));
 			cacheFile.writeEntry(data8);
 			
@@ -436,7 +446,8 @@ public class CacheFileTest
 		}
 		finally
 		{
-			cacheFile.close();
+			if (cacheFile != null)
+				cacheFile.close();
 		}
 	}
 	
@@ -445,17 +456,17 @@ public class CacheFileTest
 		InMemoryData<StringSerializer, StringSerializer> data = new InMemoryData<>();
 		data.setAuxiliary(new StringSerializer(auxiliaryData));
 		data.setKey(DrumUtil.hash(data.getAuxiliary().getData()));
-		logger.debug("Writing data: {}; auxiliary data: {}", data.getKey(), data.getAuxiliary());
+		LOG.debug("Writing data: {}; auxiliary data: {}", data.getKey(), data.getAuxiliary());
 		return data;
 	}
 	
 	private static void printCacheContent(List<Long> keys, List<StringSerializer> values)
 	{
-		logger.debug("Data contained in cache file:");
+		LOG.debug("Data contained in cache file:");
 		int size = keys.size();
 		for (int i=0; i<size; i++)
 		{
-			logger.debug("Key: {}, Value: {}", keys.get(i), values.get(i));
+			LOG.debug("Key: {}, Value: {}", keys.get(i), values.get(i));
 		}
 	}
 	

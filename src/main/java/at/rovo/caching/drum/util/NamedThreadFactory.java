@@ -12,6 +12,7 @@ import java.util.concurrent.ThreadFactory;
  * 
  * @author Roman Vottner
  */
+@SuppressWarnings("unused")
 public class NamedThreadFactory implements ThreadFactory
 {
 	/** The name of the thread to store in a thread pool **/

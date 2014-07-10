@@ -8,7 +8,7 @@ import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
-import at.rovo.caching.drum.IDispatcher;
+import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
@@ -36,11 +36,11 @@ import at.rovo.caching.drum.internal.InMemoryData;
 public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		extends DiskFileMerger<V, A>
 {
-	// create a logger
-	private final static Logger logger = LogManager.getLogger(CacheFileMerger.class);
+	/** The logger of this class **/
+	private final static Logger LOG = LogManager.getLogger(CacheFileMerger.class);
 
 	/** A reference to the actual cache file **/
-	private CacheFile<V> cacheFile = null;
+	private CacheFile<V, A> cacheFile = null;
 
 	/**
 	 * <p>
@@ -54,8 +54,8 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 	 * @throws DrumException
 	 */
 	public CacheFileMerger(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 			throws DrumException
 	{
 		super(drumName, numBuckets, dispatcher, valueClass, auxClass,
@@ -84,16 +84,28 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 		String appDir = System.getProperty("user.dir");
 		File cacheDir = new File(appDir + "/cache");
 		if (!cacheDir.exists())
-			cacheDir.mkdir();
+		{
+			boolean result = cacheDir.mkdir();
+			if (!result)
+				LOG.warn("Could not create cache directory");
+		}
 		File drumDir = new File(cacheDir + "/" + drumName);
 		if (!drumDir.exists())
-			drumDir.mkdir();
+		{
+			boolean result = drumDir.mkdir();
+			if (!result)
+				LOG.warn("Could not create DRUM directory!");
+		}
 		File cache = new File(drumDir + "/cache.db");
 		if (!cache.exists())
 		{
 			try
 			{
-				cache.createNewFile();
+				boolean result = cache.createNewFile();
+				if (!result)
+				{
+					LOG.warn("");
+				}
 			}
 			catch (IOException e)
 			{
@@ -102,8 +114,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 								+ e.getLocalizedMessage());
 			}
 		}
-
-		this.cacheFile = new CacheFile<V>(drumDir + "/cache.db", this.drumName,
+		this.cacheFile = new CacheFile<>(drumDir + "/cache.db", this.drumName,
 				this.valueClass);
 	}
 
@@ -128,7 +139,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 			{
 				try
 				{
-					InMemoryData<V, ?> entry = this.cacheFile.getEntry(key);
+					InMemoryData<V, A> entry = this.cacheFile.getEntry(key);
 					if (entry == null)
 					{
 						element.setResult(DrumResult.UNIQUE_KEY);
@@ -148,9 +159,6 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
-					logger.error("[{}] - Error retrieving data object for key: {} ({})! Reason: {}", 
-							this.drumName, key, element, e.getLocalizedMessage(), e);
-					logger.catching(e);
 					throw new DrumException(
 							"Error retrieving data object with key: " + key
 									+ "!", e);
@@ -171,9 +179,6 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
-					logger.error("[{}] - Error writing data object for key: {} ({})! Reason: {}", 
-							this.drumName, key, element, e.getLocalizedMessage(), e);
-					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",
 							e);
@@ -191,16 +196,13 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 				catch (IOException | InstantiationException
 						| IllegalAccessException e)
 				{
-					logger.error("[{}] - Error writing data object for key: {} ({})! Reason: {}", 
-							this.drumName, key, element, e.getLocalizedMessage(), e);
-					logger.catching(e);
 					throw new DrumException(
 							"Error writing data object with key: " + key + "!",
 							e);
 				}
 			}
 
-			logger.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'", 
+			LOG.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'",
 					this.drumName, key, op, element.getResult());
 		}
 	}
@@ -225,7 +227,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
 	 * 
 	 * @return A reference to the cache file
 	 */
-	public CacheFile<V> getCacheFile()
+	public CacheFile<V, A> getCacheFile()
 	{
 		return this.cacheFile;
 	}

@@ -2,12 +2,14 @@ package at.rovo.caching.drum.internal.backend.berkeley;
 
 import java.io.File;
 import java.util.List;
+
+import at.rovo.caching.drum.Dispatcher;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
-import at.rovo.caching.drum.IDispatcher;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskFileMerger;
@@ -45,14 +47,14 @@ import com.sleepycat.je.OperationStatus;
 public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		extends DiskFileMerger<V, A> implements ExceptionListener
 {
-	private final static Logger logger = LogManager.getLogger(BerkeleyCacheFileMerger.class);
+	private final static Logger LOG = LogManager.getLogger(BerkeleyCacheFileMerger.class);
 
 	private Environment environment = null;
 	private Database berkeleyDB;
 
 	public BerkeleyCacheFileMerger(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 			throws DrumException
 	{
 		super(drumName, numBuckets, dispatcher, valueClass, auxClass,
@@ -73,7 +75,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 */
 	private Database createDatabase(int cacheSize) throws DrumException
 	{
-		logger.debug("{} - creating berkeley db", this.drumName);
+		LOG.debug("{} - creating berkeley db", this.drumName);
 		try
 		{
 			EnvironmentConfig config = new EnvironmentConfig();
@@ -85,14 +87,22 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 			// check if the cache sub-directory exists - if not create one
 			File cacheDir = new File(System.getProperty("user.dir") + "/cache");
 			if (!cacheDir.exists())
-				cacheDir.mkdir();
+			{
+				boolean success = cacheDir.mkdir();
+				if (!success)
+					LOG.warn("Could not create cache directory");
+			}
 			// check if a sub-directory inside the cache sub-directory exists
 			// that has the
 			// name of this instance - if not create it
 			File file = new File(System.getProperty("user.dir") + "/cache/"
 					+ this.drumName);
 			if (!file.exists())
-				file.mkdir();
+			{
+				boolean success = file.mkdir();
+				if (!success)
+					LOG.warn("Could not create backend data-store");
+			}
 			// create the environment for the DB
 			this.environment = new Environment(file, config);
 
@@ -113,8 +123,6 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (DatabaseException e)
 		{
-			logger.error("{} - Creating Berkeley DB failed!", this.drumName, e);
-			logger.catching(e);
 			throw new DrumException(this.drumName
 					+ " - Creating Berkeley DB failed!", e);
 		}
@@ -128,8 +136,8 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 	@Override
 	public void exceptionThrown(ExceptionEvent exEvent)
 	{
-		logger.error("{} - Berkeley DB Exception!", this.drumName, exEvent.getException()); 
-		logger.catching(exEvent.getException());
+		LOG.error("{} - Berkeley DB Exception!", this.drumName);
+		LOG.catching(Level.ERROR, exEvent.getException());
 	}
 
 	@Override
@@ -179,7 +187,8 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 						if (DrumOperation.CHECK.equals(element.getOperation())
 								&& dbValue.getData().length > 0)
 						{
-							V value = DrumUtil.deserialize(dbValue.getData(), this.valueClass);
+							@SuppressWarnings("unchecked")
+							V value = ((V)this.valueClass.newInstance()).readBytes(dbValue.getData());
 							element.setValue(value);
 						}
 					}
@@ -222,7 +231,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 						throw new DrumException("Error merging with repository!");
 				}
 
-				logger.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'", 
+				LOG.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'",
 						this.drumName, key, op, element.getResult());
 
 				// Persist modifications
@@ -233,9 +242,6 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - Error synchronizing buckets with repository!", 
-					this.drumName, e); 
-			logger.catching(e);
 			throw new DrumException("Error synchronizing buckets with repository!", e);
 		}
 	}

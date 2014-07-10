@@ -11,9 +11,9 @@ import java.io.ObjectOutputStream;
 public class ObjectSerializer<O> implements ByteSerializer<ObjectSerializer<O>>
 {
 	private O object;
-	private Class<O> objectClass;
+	private Class<? super O> objectClass;
 
-	public ObjectSerializer(O object, Class<O> objectClass)
+	public ObjectSerializer(O object, Class<? super O> objectClass)
 	{
 		this.object = object;
 		this.objectClass = objectClass;
@@ -56,6 +56,7 @@ public class ObjectSerializer<O> implements ByteSerializer<ObjectSerializer<O>>
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public ObjectSerializer<O> readBytes(byte[] data)
 	{
 		// read the lenght of the Object
@@ -65,7 +66,7 @@ public class ObjectSerializer<O> implements ByteSerializer<ObjectSerializer<O>>
 		// read the object
 		byte[] objectBytes = new byte[objectLength];
 		System.arraycopy(data, 4, objectBytes, 0, objectLength);
-		O object = this.convertBytesToObject(objectBytes, objectClass);
+		O object = ((O)this.convertBytesToObject(objectBytes, objectClass));
 
 		// create and return a new instance of this class
 		return new ObjectSerializer<>(object, objectClass);

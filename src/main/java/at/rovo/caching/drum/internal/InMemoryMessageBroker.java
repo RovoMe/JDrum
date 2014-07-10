@@ -10,10 +10,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import at.rovo.caching.drum.Broker;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import at.rovo.caching.drum.IBroker;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.event.InMemoryBufferEvent;
@@ -22,7 +23,7 @@ import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
 
 /**
  * <p>
- * <em>InMemoryMessageBroker</em> is a {@link IBroker} implementation
+ * <em>InMemoryMessageBroker</em> is a {@link at.rovo.caching.drum.Broker} implementation
  * which manages {@link InMemoryData} objects.
  * </p>
  * <p>
@@ -47,7 +48,7 @@ import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
  */
 public class InMemoryMessageBroker<T extends InMemoryData<V, A>, 
 		V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		implements IBroker<T, V, A>
+		implements Broker<T, V, A>
 {
 	/** The logger of this class **/
 	private final static Logger LOG =

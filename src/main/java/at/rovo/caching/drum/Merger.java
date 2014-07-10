@@ -1,13 +1,13 @@
 package at.rovo.caching.drum;
 
 import at.rovo.caching.drum.data.ByteSerializer;
-import at.rovo.caching.drum.internal.IDrumRuntimeListener;
+import at.rovo.caching.drum.internal.DrumRuntimeListener;
 
 /**
- * <p><code>IMerger</code> iterates through all registered {@link IDiskWriter}
+ * <p><code>IMerger</code> iterates through all registered {@link DiskWriter}
  * instances and uses their bucket disk files to extract data to merge. It 
  * therefore only merges data that was created since the last merge. New
- * disk writer objects can be added on invoking {@link #addDiskFileWriter(IDiskWriter)}</p>
+ * disk writer objects can be added on invoking {@link #addDiskFileWriter(DiskWriter)}</p>
  * <p>The merge, by default, is done in the context of the {@link Thread} the
  * merger instance was placed in. The execution thread blocks until it is 
  * signaled about availability of data, which is done via {@link #doMerge()}.</p>
@@ -18,8 +18,8 @@ import at.rovo.caching.drum.internal.IDrumRuntimeListener;
  * 
  * @author Roman Vottner
  */
-public interface IMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
-	extends Runnable, IDrumRuntimeListener
+public interface Merger<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+	extends Runnable, DrumRuntimeListener
 {
 	/**
 	 * <p>Adds a disk writer object to the merger instance, which is used to 
@@ -30,7 +30,7 @@ public interface IMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A
 	 * 
 	 * @param writer
 	 */
-	public void addDiskFileWriter(IDiskWriter<V,A> writer);
+	public void addDiskFileWriter(DiskWriter<V,A> writer);
 	
 	/**
 	 * <p>Signals the merging implementation to start the merging process.</p>

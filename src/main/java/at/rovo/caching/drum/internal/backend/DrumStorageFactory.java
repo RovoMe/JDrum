@@ -1,8 +1,8 @@
 package at.rovo.caching.drum.internal.backend;
 
+import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
-import at.rovo.caching.drum.IDispatcher;
-import at.rovo.caching.drum.IMerger;
+import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStorageFactory;
@@ -15,7 +15,7 @@ import at.rovo.caching.drum.internal.backend.cacheFile.CacheFileStorageFactory;
  * <p>
  * Currently only a Berkeley DB and a self written CacheFile storage are
  * available. By default the CacheFile storage can be created through invoking
- * {@link #getDefaultStorageFactory(String, int, IDispatcher, Class, Class, DrumEventDispatcher)}
+ * {@link #getDefaultStorageFactory(String, int, at.rovo.caching.drum.Dispatcher, Class, Class, DrumEventDispatcher)}
  * </p>
  * 
  * @author Roman Vottner
@@ -31,12 +31,12 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	ByteSerializer<A>>
 {
 	/** The created merger implementation **/
-	protected IMerger<V, A> merger = null;
+	protected Merger<V, A> merger = null;
 
 	/**
 	 * <p>
 	 * On creating a new instance of this class, it will trigger
-	 * {@link #create(String, int, IDispatcher, Class, Class, DrumEventDispatcher)}
+	 * {@link #create(String, int, at.rovo.caching.drum.Dispatcher, Class, Class, DrumEventDispatcher)}
 	 * and therefore delegate the creation of the concrete implementation to its
 	 * child class.
 	 * </p>
@@ -46,7 +46,7 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 * @param numBuckets
 	 *            The number of bucket files used to store the data
 	 * @param dispatcher
-	 *            A reference to the {@link IDispatcher} instance that will
+	 *            A reference to the {@link at.rovo.caching.drum.Dispatcher} instance that will
 	 *            dispatch the results
 	 * @param valueClass
 	 *            The class of the value type
@@ -60,8 +60,8 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 *             If the backing data store could not be created
 	 */
 	public DrumStorageFactory(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 			throws DrumException
 	{
 		this.create(drumName, numBuckets, dispatcher, valueClass, auxClass,
@@ -79,7 +79,7 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 * @param numBuckets
 	 *            The number of bucket files used to store the data
 	 * @param dispatcher
-	 *            A reference to the {@link IDispatcher} instance that will
+	 *            A reference to the {@link at.rovo.caching.drum.Dispatcher} instance that will
 	 *            dispatch the results
 	 * @param valueClass
 	 *            The class of the value type
@@ -93,8 +93,8 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 *             If the backing data store could not be created
 	 */
 	protected abstract void create(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 			throws DrumException;
 
 	/**
@@ -104,7 +104,7 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 * 
 	 * @return The generated data storage
 	 */
-	public IMerger<V, A> getStorage()
+	public Merger<V, A> getStorage()
 	{
 		return this.merger;
 	}
@@ -119,7 +119,7 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 * @param numBuckets
 	 *            The number of bucket files used to store the data
 	 * @param dispatcher
-	 *            A reference to the {@link IDispatcher} instance that will
+	 *            A reference to the {@link at.rovo.caching.drum.Dispatcher} instance that will
 	 *            dispatch the results
 	 * @param valueClass
 	 *            The class of the value type
@@ -136,8 +136,8 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends
 	 */
 	public static <V extends ByteSerializer<V>, A extends 
 		ByteSerializer<A>> DrumStorageFactory<V, A> getDefaultStorageFactory(
-			String drumName, int numBuckets, IDispatcher<V, A> dispatcher,
-			Class<V> valueClass, Class<A> auxClass,
+			String drumName, int numBuckets, Dispatcher<V, A> dispatcher,
+			Class<? super V> valueClass, Class<? super A> auxClass,
 			DrumEventDispatcher eventDispatcher) throws DrumException
 	{
 		return new CacheFileStorageFactory<>(drumName, numBuckets, dispatcher,

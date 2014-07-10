@@ -5,12 +5,12 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 
+import at.rovo.caching.drum.Dispatcher;
+import at.rovo.caching.drum.DrumBuilder;
+import at.rovo.caching.drum.DrumListener;
 import org.junit.Assert;
 import org.junit.Test;
 import at.rovo.caching.drum.Drum;
-import at.rovo.caching.drum.IDispatcher;
-import at.rovo.caching.drum.IDrum;
-import at.rovo.caching.drum.IDrumListener;
 import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.event.DrumEvent;
 import at.rovo.caching.drum.util.DrumUtil;
@@ -37,7 +37,7 @@ import at.rovo.caching.drum.util.DrumUtil;
  * 
  * @author Roman Vottner
  */
-public class DrumTest extends BaseCacheTest  implements IDrumListener
+public class DrumTest extends BaseCacheTest  implements DrumListener
 {
 		/**
 		 * Example-Output:
@@ -75,7 +75,7 @@ public class DrumTest extends BaseCacheTest  implements IDrumListener
 		{
 			e1.printStackTrace();
 		}
-		IDrum<StringSerializer, StringSerializer> drum = null;
+		Drum<StringSerializer, StringSerializer> drum = null;
 		List<Long> URLhashes = new ArrayList<>();
 		try
 		{
@@ -83,12 +83,12 @@ public class DrumTest extends BaseCacheTest  implements IDrumListener
 			LOG.info("----------------------");
 
 			LOG.info("Initializing Drum ... ");
-			IDispatcher<StringSerializer, StringSerializer> dispatcher =
+			Dispatcher<StringSerializer, StringSerializer> dispatcher =
 					new ConsoleDispatcher<>();
 //					new LogFileDispatcher<>();
 			try
 			{
-				drum = new Drum.Builder<>("urlSeenTest", 
+				drum = new DrumBuilder<>("urlSeenTest",
 						StringSerializer.class, StringSerializer.class)
 					.numBucket(4)
 					.bufferSize(64)

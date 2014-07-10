@@ -4,11 +4,12 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingQueue;
-import at.rovo.caching.drum.IDrumListener;
+
+import at.rovo.caching.drum.DrumListener;
 
 public class DrumEventDispatcher implements Runnable, DrumEventListener
 {
-	private Set<IDrumListener> listeners = new CopyOnWriteArraySet<>();
+	private Set<DrumListener> listeners = new CopyOnWriteArraySet<>();
 	
 	private BlockingQueue<DrumEvent<? extends DrumEvent<?>>> events = new LinkedBlockingQueue<>();
 	private volatile boolean stopRequested = false;
@@ -18,12 +19,12 @@ public class DrumEventDispatcher implements Runnable, DrumEventListener
 		
 	}
 	
-	public void addDrumListener(IDrumListener listener)
+	public void addDrumListener(DrumListener listener)
 	{
 		this.listeners.add(listener);
 	}
 	
-	public void removeDrumListener(IDrumListener listener)
+	public void removeDrumListener(DrumListener listener)
 	{
 		this.listeners.remove(listener);
 	}
@@ -45,7 +46,7 @@ public class DrumEventDispatcher implements Runnable, DrumEventListener
 				event = this.events.take();
 				if (event != null)
 				{					
-					for (IDrumListener listener : this.listeners)
+					for (DrumListener listener : this.listeners)
 						listener.update(event);	
 				}
 			}

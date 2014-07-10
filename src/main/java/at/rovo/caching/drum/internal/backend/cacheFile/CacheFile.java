@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.DrumException;
@@ -28,10 +30,10 @@ import at.rovo.caching.drum.internal.InMemoryData;
  * @param <V>
  *            The type of the value object associated to a key
  */
-public class CacheFile<V extends ByteSerializer<V>>
+public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager.getLogger(CacheFile.class);
+	private final static Logger LOG = LogManager.getLogger(CacheFile.class);
 	/** The backing caching file to store data to and read it from **/
 	private RandomAccessFile file = null;
 	/** The name of the cache file **/
@@ -41,11 +43,11 @@ public class CacheFile<V extends ByteSerializer<V>>
 	/** The size of the last entry **/
 	private long entrySize = 0L;
 	/** The last stored element **/
-	private InMemoryData<V, ?> lastElement = null;
+	private InMemoryData<V, A> lastElement = null;
 	/** The name of the drum instance **/
 	private String drum = null;
 	/** The class-element of the value object **/
-	private Class<V> valueClass = null;
+	private Class<? super V> valueClass = null;
 	/** The number of entries in the cache file **/
 	private long numEntries = 0L;
 
@@ -62,7 +64,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 *            The class of the value object stored with the key
 	 * @throws DrumException
 	 */
-	public CacheFile(String name, String drum, Class<V> valueClass)
+	public CacheFile(String name, String drum, Class<? super V> valueClass)
 			throws DrumException
 	{
 		try
@@ -74,9 +76,6 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - Could not initialize backing cache file!", 
-					this.drum, e);
-			logger.catching(e);
 			throw new DrumException("Error initializing cache file! Caught reason: "
 							+ e.getLocalizedMessage(), e);
 		}
@@ -100,9 +99,6 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - Error extracting file length of cache file!", 
-						this.drum, e);
-				logger.catching(e);
 				throw new DrumException(
 						"Error extracting file length of cache file! Caught reason: "
 								+ e.getLocalizedMessage(), e);
@@ -127,8 +123,6 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * <p>
 	 * Closes the cache file.
 	 * </p>
-	 * 
-	 * @throws DrumException
 	 */
 	public void close()
 	{
@@ -140,8 +134,8 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - Error closing cache file!", this.drum, e);
-				logger.catching(e);
+				LOG.error("[{}] - Error closing cache file!", this.drum);
+				LOG.catching(Level.ERROR, e);
 			}
 		}
 	}
@@ -165,9 +159,9 @@ public class CacheFile<V extends ByteSerializer<V>>
 			}
 			catch (Exception e)
 			{
-				logger.error("Error while resetting the file pointer! Reason {}", 
-						e.getMessage(), e);
-                logger.catching(e);
+				LOG.error("Error while resetting the file pointer! Reason {}",
+						e.getMessage());
+                LOG.catching(Level.ERROR, e);
 			}
 		}
 	}
@@ -186,36 +180,28 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	public <A extends ByteSerializer<A>> InMemoryData<V, ?> getNextEntry()
+	@SuppressWarnings("unchecked")
+	public InMemoryData<V, A> getNextEntry()
 			throws IOException, InstantiationException, IllegalAccessException
 	{
-		try
-		{
-			if (this.file.getFilePointer() == this.file.length())
-				return null;
+		if (this.file.getFilePointer() == this.file.length())
+			return null;
 
-			Long key = file.readLong();
-			logger.trace("Reading key: {}", key);
+		Long key = file.readLong();
+		LOG.trace("Reading key: {}", key);
 
-			// Retrieve the value from the file
-			int valueSize = this.file.readInt();
-			logger.trace("value size: {}", valueSize);
-			if (valueSize > 0)
-			{
-				byte[] byteValue = new byte[valueSize];
-				this.file.read(byteValue);
-				logger.trace("byte value: {}", Arrays.toString(byteValue));
-				V value = this.valueClass.newInstance().readBytes(byteValue);
-				return new InMemoryData<V, A>(key, value, null, null);
-			}
-			return new InMemoryData<V, A>(key, null, null, null);
-		}
-		catch (InstantiationException | IllegalAccessException | IOException ex)
+		// Retrieve the value from the file
+		int valueSize = this.file.readInt();
+		LOG.trace("value size: {}", valueSize);
+		if (valueSize > 0)
 		{
-			logger.error("[{}] - Error fetching next entry from cache!", this.drum, ex);
-			logger.catching(ex);
-			throw ex;
+			byte[] byteValue = new byte[valueSize];
+			this.file.read(byteValue);
+			LOG.trace("byte value: {}", Arrays.toString(byteValue));
+			V value = ((V)this.valueClass.newInstance()).readBytes(byteValue);
+			return new InMemoryData<>(key, value, null, null);
 		}
+		return new InMemoryData<>(key, null, null, null);
 	}
 
 	/**
@@ -238,7 +224,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * @throws NotAppendableException
 	 * @throws DrumException
 	 */
-	public InMemoryData<V, ?> writeEntry(InMemoryData<V, ?> data)
+	public InMemoryData<V, ?> writeEntry(InMemoryData<V, A> data)
 			throws IOException, InstantiationException, IllegalAccessException,
 			NotAppendableException, DrumException
 	{
@@ -268,11 +254,11 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * @throws NotAppendableException
 	 * @throws DrumException
 	 */
-	public InMemoryData<V, ?> writeEntry(InMemoryData<V, ?> data, boolean append)
+	public InMemoryData<V, A> writeEntry(InMemoryData<V, A> data, boolean append)
 			throws IOException, InstantiationException, IllegalAccessException,
 			NotAppendableException, DrumException
 	{
-		logger.debug("[{}] - writing entry: {}; value: {}", 
+		LOG.debug("[{}] - writing entry: {}; value: {}",
 				this.drum, data.getKey(), data.getValue());
 
 		/*
@@ -314,12 +300,12 @@ public class CacheFile<V extends ByteSerializer<V>>
 			{
 				if ((this.lastKey != null && this.lastKey.equals(data.getKey())))
 				{
-					logger.trace("[{}] - updating last entry with '{}'!", this.drum, data);
+					LOG.trace("[{}] - updating last entry with '{}'!", this.drum, data);
 					this.updateLastEntry(data, append);
 				}
 				else
 				{
-					logger.trace("[{}] - adding to the end of the file: '{}'", this.drum, data);
+					LOG.trace("[{}] - adding to the end of the file: '{}'", this.drum, data);
 					this.addNewEntryAtTheEnd(data);
 					this.numEntries++;
 				}
@@ -329,10 +315,10 @@ public class CacheFile<V extends ByteSerializer<V>>
 			// insert in the middle of the file
 			else
 			{
-				logger.trace("[{}] - writing entry in the middle of the file!", this.drum);
+				LOG.trace("[{}] - writing entry in the middle of the file!", this.drum);
 				// get the old length of the entry and calculate the area to
 				// shift
-				InMemoryData<V, ?> entry = null;
+				InMemoryData<V, A> entry;
 				long shiftBits = 0L;
 				do
 				{
@@ -345,7 +331,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				// entry was not found so it is a new entry
 				if (entry == null)
 				{
-					logger.trace("[{}] - adding new entry for '{}'!", this.drum, data);
+					LOG.trace("[{}] - adding new entry for '{}'!", this.drum, data);
 					this.numEntries++;
 					this.writeDataEntry(data, true);
 					return this.lastElement;
@@ -357,7 +343,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				// data entry
 				if (append && data.getKey().equals(entry.getKey()))
 				{
-					logger.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
+					LOG.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
 					data.appendValue(entry.getValue());
 				}
 
@@ -380,7 +366,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 						- entry.getByteLengthKV(), 0L);
 				this.file.seek(pos);
 				// write the new data
-				logger.trace("[{}] - writing data '{}'", this.drum, data);
+				LOG.trace("[{}] - writing data '{}'", this.drum, data);
 				this.writeDataEntry(data, true);
 
 				// check if the entry is an update or an insert
@@ -388,7 +374,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				{
 					this.numEntries++;
 					// insert - add the old data after the new data
-					logger.trace("[{}] - re-adding entry '{}'", this.drum, entry);
+					LOG.trace("[{}] - re-adding entry '{}'", this.drum, entry);
 					this.writeDataEntry(entry, false);
 				}
 
@@ -399,74 +385,59 @@ public class CacheFile<V extends ByteSerializer<V>>
 				return this.lastElement;
 			}
 		}
-		catch (IOException | InstantiationException | IllegalAccessException e)
-		{
-			logger.error("[{}] - Error writing entry to cache!", this.drum, e);
-			logger.catching(e);
-			throw e;
-		}
 		finally
 		{
-			if (logger.isDebugEnabled())
+			if (LOG.isDebugEnabled())
 				this.printCacheContent(null, null);
 		}
 	}
 
-	public InMemoryData<V, ?> getEntry(Long key) throws IOException,
+	public InMemoryData<V, A> getEntry(Long key) throws IOException,
 			InstantiationException, IllegalAccessException
 	{
-		logger.debug("[{}] - Retrieving entry: {}", this.drum, key);
-		try
+		LOG.debug("[{}] - Retrieving entry: {}", this.drum, key);
+
+		long pos = this.file.getFilePointer();
+
+		if (pos < this.file.length())
 		{
-			long pos = this.file.getFilePointer();
-
-			if (pos < this.file.length())
+			InMemoryData<V, A> data;
+			do
 			{
-				InMemoryData<V, ?> data = null;
-				do
-				{
-					data = this.getNextEntry();
-				}
-				while (data != null && data.getKey() < key);
+				data = this.getNextEntry();
+			}
+			while (data != null && data.getKey() < key);
 
-				// we haven't found a item till the end - so we can safely
-				// assume
-				// that the key must be greater than any key stored within the
-				// cache. The file pointer can therefore be left at the end of
-				// the file
-				if (data == null)
-					return null;
-
-				// set the pointer back to the object before the last read
-				// item. We know that every further data item is greater and
-				// new queries for a key either deal the last object we've
-				// extracted or any object behind it - but not before
-				this.file.seek(Math.max(0, this.file.getFilePointer()
-						- data.getByteLengthKV()));
-				// check if the key equals
-				if (data.getKey().equals(key))
-				{
-					logger.debug("[{}] - Found entry: {}; value: {}",  
-							this.drum, data.getKey(), data.getValue());
-					return data;
-				}
+			// we haven't found a item till the end - so we can safely
+			// assume
+			// that the key must be greater than any key stored within the
+			// cache. The file pointer can therefore be left at the end of
+			// the file
+			if (data == null)
 				return null;
-			}
-			else
+
+			// set the pointer back to the object before the last read
+			// item. We know that every further data item is greater and
+			// new queries for a key either deal the last object we've
+			// extracted or any object behind it - but not before
+			this.file.seek(Math.max(0, this.file.getFilePointer()
+					- data.getByteLengthKV()));
+			// check if the key equals
+			if (data.getKey().equals(key))
 			{
-				// we have an entry at the end
-				if (key.equals(this.lastKey))
-				{
-					return this.lastElement;
-				}
+				LOG.debug("[{}] - Found entry: {}; value: {}",
+						this.drum, data.getKey(), data.getValue());
+				return data;
 			}
+			return null;
 		}
-		catch (IOException | InstantiationException | IllegalAccessException e)
+		else
 		{
-			logger.error("[{}] - Exception while looking up key {}! Reason: {}", 
-					this.drum, key, e.getLocalizedMessage(), e);
-			logger.catching(e);
-			throw e;
+			// we have an entry at the end
+			if (key.equals(this.lastKey))
+			{
+				return this.lastElement;
+			}
 		}
 		return null;
 	}
@@ -484,7 +455,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * @return The bytes actually written
 	 * @throws IOException
 	 */
-	private long writeDataEntry(InMemoryData<V, ?> data, boolean cacheEntry)
+	private long writeDataEntry(InMemoryData<V, A> data, boolean cacheEntry)
 			throws IOException
 	{
 		long byte2write = data.getByteLengthKV();
@@ -571,7 +542,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 				{
 					// extract the segment before the segment before as the end
 					// would get overwritten
-					int segment = 0;
+					int segment;
 					if (remainingBytes > segmentSize)
 						segment = segmentSize;
 					else
@@ -649,20 +620,18 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * 
 	 * @param data
 	 *            The object containing the data to write
-	 * @param byte2write
-	 *            The number of bytes to write
 	 * @return The number of bytes written
 	 * @throws IOException
 	 * @throws NotAppendableException
 	 */
-	private long updateLastEntry(InMemoryData<V, ?> data, boolean append)
+	private long updateLastEntry(InMemoryData<V, A> data, boolean append)
 			throws IOException, NotAppendableException
 	{
 		// the key to update was written before so set the cursor
 		// back to the start of the last entry
 		this.file.seek(this.file.getFilePointer() - this.entrySize);
 
-		long byte2write = 0;
+		long byte2write;
 		if (append)
 		{
 			this.lastElement.appendValue(data.getValue());
@@ -695,12 +664,10 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 * 
 	 * @param data
 	 *            The object containing the data to write
-	 * @param byte2write
-	 *            The number of bytes to write
 	 * @return The number of bytes written
 	 * @throws IOException
 	 */
-	private long addNewEntryAtTheEnd(InMemoryData<V, ?> data)
+	private long addNewEntryAtTheEnd(InMemoryData<V, A> data)
 			throws IOException
 	{
 		this.file.setLength(this.file.length() + data.getByteLengthKV());
@@ -717,12 +684,11 @@ public class CacheFile<V extends ByteSerializer<V>>
 	 *            A {@link List} which will contain the keys contained in the
 	 *            backing file after this call
 	 * @throws DrumException
-	 * @throws IOException
 	 */
 	public void printCacheContent(List<Long> keys, List<V> values)
 			throws DrumException
 	{
-		logger.info("[{}] - Data contained in backing cache:", this.drum);
+		LOG.info("[{}] - Data contained in backing cache:", this.drum);
 
 		// save current position
 		try
@@ -730,7 +696,7 @@ public class CacheFile<V extends ByteSerializer<V>>
 			long currentPosition = this.file.getFilePointer();
 			this.file.seek(0);
 
-			InMemoryData<V, ?> data = null;
+			InMemoryData<V, ?> data;
 			do
 			{
 				data = this.getNextEntry();
@@ -743,14 +709,14 @@ public class CacheFile<V extends ByteSerializer<V>>
 					{
 						if (values != null)
 							values.add(value);
-						logger.info("[{}] - Key: {}, Value: {}", 
+						LOG.info("[{}] - Key: {}, Value: {}",
 								this.drum, data.getKey(), value);
 					}
 					else
 					{
 						if (values != null)
 							values.add(null);
-						logger.info("[{}] - Key: {}, Value: {}", 
+						LOG.info("[{}] - Key: {}, Value: {}",
 								this.drum, data.getKey(), null);
 					}
 				}
@@ -762,9 +728,6 @@ public class CacheFile<V extends ByteSerializer<V>>
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - Error while printing content of {}!", 
-					this.drum, this.name, e);
-			logger.catching(e);
 			throw new DrumException("Error while printing content of "
 					+ this.name + "! Reason: " + e.getLocalizedMessage());
 		}

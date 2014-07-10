@@ -3,14 +3,14 @@ package at.rovo.caching.drum;
 import java.io.RandomAccessFile;
 import java.util.concurrent.Semaphore;
 import at.rovo.caching.drum.data.ByteSerializer;
-import at.rovo.caching.drum.internal.IDrumRuntimeListener;
+import at.rovo.caching.drum.internal.DrumRuntimeListener;
 import at.rovo.caching.drum.internal.InMemoryData;
 
 /**
  * <p>
  * Defines method needed to store and retrieve {@link InMemoryData} to or from a
  * disk bucket file which caches the data object until it is merged into a
- * backing data storage using an {@link IMerger} implementation.
+ * backing data storage using an {@link Merger} implementation.
  * </p>
  * <p>
  * Note that the disk bucket files should be merged with the backing data store
@@ -26,8 +26,8 @@ import at.rovo.caching.drum.internal.InMemoryData;
  * @param <A>
  *            The type of the auxiliary data object
  */
-public interface IDiskWriter<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		extends Runnable, IDrumRuntimeListener
+public interface DiskWriter<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+		extends Runnable, DrumRuntimeListener
 {
 	/**
 	 * <p>

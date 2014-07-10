@@ -11,7 +11,7 @@ package at.rovo.caching.drum.internal;
  * 
  * @author Roman Vottner
  */
-public interface IDrumRuntimeListener
+public interface DrumRuntimeListener
 {
 	/**
 	 * <p>

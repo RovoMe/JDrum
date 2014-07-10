@@ -1,17 +1,16 @@
 package at.rovo.caching.drum.internal.backend.cacheFile;
 
+import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
-import at.rovo.caching.drum.IDispatcher;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
-import at.rovo.caching.drum.IMerger;
 
 /**
  * <p>
  * <em>CacheFileStorageFactory</em> is an implementation of
  * {@link DrumStorageFactory} and takes care of initializing a proper instance
- * of a simple cache file merger. This returned {@link IMerger} instance can
+ * of a simple cache file merger. This returned {@link at.rovo.caching.drum.Merger} instance can
  * then be used to store and/or compare the data currently cached in bucket
  * files with the data stored in a backing data store.
  * </p>
@@ -37,7 +36,7 @@ public class CacheFileStorageFactory<V extends ByteSerializer<V>, A extends Byte
 	 * @param numBuckets
 	 *            The number of bucket files used to store the data
 	 * @param dispatcher
-	 *            A reference to the {@link IDispatcher} instance that will
+	 *            A reference to the {@link Dispatcher} instance that will
 	 *            dispatch the results
 	 * @param valueClass
 	 *            The class of the value type
@@ -51,8 +50,8 @@ public class CacheFileStorageFactory<V extends ByteSerializer<V>, A extends Byte
 	 *             If the backing data store could not be created
 	 */
 	public CacheFileStorageFactory(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 			throws DrumException
 	{
 		super(drumName, numBuckets, dispatcher, valueClass, auxClass,
@@ -61,11 +60,11 @@ public class CacheFileStorageFactory<V extends ByteSerializer<V>, A extends Byte
 
 	@Override
 	protected void create(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 			throws DrumException
 	{
-		this.merger = new CacheFileMerger<V, A>(drumName, numBuckets,
+		this.merger = new CacheFileMerger<>(drumName, numBuckets,
 				dispatcher, valueClass, auxClass, eventDispatcher);
 	}
 }

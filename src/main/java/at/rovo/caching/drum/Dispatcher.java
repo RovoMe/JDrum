@@ -15,7 +15,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
  * 
  * @author Roman Vottner
  */
-public interface IDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public interface Dispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 {
 	/**
 	 * <p>

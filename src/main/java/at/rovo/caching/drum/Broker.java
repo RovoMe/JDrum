@@ -2,7 +2,7 @@ package at.rovo.caching.drum;
 
 import java.util.List;
 import at.rovo.caching.drum.data.ByteSerializer;
-import at.rovo.caching.drum.internal.IDrumRuntimeListener;
+import at.rovo.caching.drum.internal.DrumRuntimeListener;
 import at.rovo.caching.drum.internal.InMemoryData;
 
 /**
@@ -18,9 +18,9 @@ import at.rovo.caching.drum.internal.InMemoryData;
  *            The type of the data stored by the broker
  * @author Roman Vottner
  */
-public interface IBroker<T extends InMemoryData<V, A>, 
+public interface Broker<T extends InMemoryData<V, A>,
 		V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		extends IDrumRuntimeListener
+		extends DrumRuntimeListener
 {
 	/**
 	 * <p>

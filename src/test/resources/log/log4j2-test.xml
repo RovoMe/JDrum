@@ -60,7 +60,7 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
 	</logger>
 	
 	<!-- DRUM classes -->
-  	<logger name="at.rovo.caching.drum.Drum" level="trace" additivity="false">
+  	<logger name="at.rovo.caching.drum.DrumImpl" level="trace" additivity="false">
 	  <appender-ref ref="DrumFile"/>
 	</logger>
 	<logger name="at.rovo.caching.drum.internal.InMemoryMessageBroker" level="trace" additivity="false">

@@ -1,6 +1,8 @@
 package at.rovo.caching.drum.util;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.internal.DiskBucketWriter;
@@ -15,17 +17,19 @@ import at.rovo.caching.drum.internal.DiskFileMerger;
 public class DrumExceptionHandler implements UncaughtExceptionHandler
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager.getLogger(
+	private final static Logger LOG = LogManager.getLogger(
 			DrumExceptionHandler.class);
 	
 	@Override
 	public void uncaughtException(Thread t, Throwable e)
 	{
 		// log the error and exit the application
-		if (logger.isErrorEnabled())
-			logger.error("Exception in Thread: "+t.getName()+"; Reason: "+
-				e.getClass().getName()+" - "+e.getLocalizedMessage(),e);
-		e.printStackTrace();
+		if (LOG.isErrorEnabled())
+		{
+			LOG.error("Exception in Thread: " + t.getName() + "; Reason: " +
+					e.getClass().getName() + " - " + e.getLocalizedMessage());
+			LOG.catching(Level.ERROR, e);
+		}
 		System.exit(1);
 	}
 }

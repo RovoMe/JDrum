@@ -6,15 +6,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import at.rovo.caching.drum.DiskWriter;
+import at.rovo.caching.drum.Dispatcher;
+import at.rovo.caching.drum.Merger;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
-import at.rovo.caching.drum.IDiskWriter;
-import at.rovo.caching.drum.IDispatcher;
-import at.rovo.caching.drum.IMerger;
 import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
@@ -42,7 +42,7 @@ import at.rovo.caching.drum.util.KeyComparator;
  * @author Roman Vottner
  */
 public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		implements IMerger<V, A>
+		implements Merger<V,A>
 {
 	/** The logger of this class **/
 	private final static Logger LOG = LogManager.getLogger(DiskFileMerger.class);
@@ -54,12 +54,12 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	/** The name of the DRUM instance this file merger is linked to **/
 	protected String drumName = null;
 	/** Dispatcher used to send results to for further processing **/
-	protected IDispatcher<V, A> dispatcher = null;
+	protected Dispatcher<V, A> dispatcher = null;
 	/**
 	 * A reference to the disk writers to synchronize access to the disk files
 	 * both objects need access to
 	 **/
-	private List<IDiskWriter<V, A>> diskWriters = null;
+	private List<DiskWriter<V, A>> diskWriters = null;
 	/** Used during merge with disk **/
 	private List<InMemoryData<V, A>> sortedMergeBuffer = null;
 	/** Original positions of elements in buckets **/
@@ -70,12 +70,12 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 * The class object of the value type. Necessary to safely cast the generic
 	 * type to a concrete type
 	 **/
-	protected Class<V> valueClass = null;
+	protected Class<? super V> valueClass = null;
 	/**
 	 * The class object of the auxiliary type. Necessary to safely cast the
 	 * generic type to a concrete type
 	 **/
-	protected Class<A> auxClass = null;
+	protected Class<? super A> auxClass = null;
 	/**
 	 * Indicates if the thread the runnable part is running in should stop its
 	 * work
@@ -95,8 +95,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 * </p>
 	 */
 	public DiskFileMerger(String drumName, int numBuckets,
-			IDispatcher<V, A> dispatcher, Class<V> valueClass,
-			Class<A> auxClass, DrumEventDispatcher eventDispatcher)
+			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
+			Class<? super A> auxClass, DrumEventDispatcher eventDispatcher)
 	{
 		this.drumName = drumName;
 		this.eventDispatcher = eventDispatcher;
@@ -115,7 +115,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	}
 
 	@Override
-	public void addDiskFileWriter(IDiskWriter<V, A> writer)
+	public void addDiskFileWriter(DiskWriter<V, A> writer)
 	{
 		this.diskWriters.add(writer);
 	}
@@ -171,13 +171,11 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					catch (InterruptedException e)
 					{
 						LOG.error("["+this.drumName+"] - Merger was interrupted", e);
-						e.printStackTrace();
 					}
 				}
 			}
 			catch (Exception e)
 			{
-				e.printStackTrace();
 				LOG.error("["+this.drumName+"] - got interrupted", e);
 				this.eventDispatcher.update(new MergerStateUpdate(
 						this.drumName, MergerState.FINISHED_WITH_ERRORS));
@@ -197,8 +195,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (DrumException e)
 		{
-			LOG.error("["+this.drumName+"] Caught exception while closing the writer", e);
-			e.printStackTrace();
+			LOG.error("["+this.drumName+"] Caught exception while closing the writer ", e);
 		}
 		this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.FINISHED));
 		LOG.trace("[{}] - stopped processing!", this.drumName);
@@ -241,7 +238,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	public void merge()
 	{
 		LOG.debug("[{}] - merging disk files", this.drumName);
-		for (IDiskWriter<V, A> writer : this.diskWriters)
+		for (DiskWriter<V, A> writer : this.diskWriters)
 		{
 			// try to lock the disk file so that the current disk
 			// writer can't write to the disk file while we are
@@ -322,7 +319,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 
 		this.reset();
-		System.gc();
+		// System.gc();
 	}
 
 	/**
@@ -336,7 +333,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 * @throws InterruptedException
 	 * @throws DrumException
 	 */
-	private boolean readDataFromDiskFile(IDiskWriter<V, A> writer)
+	private boolean readDataFromDiskFile(DiskWriter<V, A> writer)
 			throws InterruptedException, DrumException
 	{
 		if (writer.getKVFileBytesWritten() == 0)
@@ -392,7 +389,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					kvFile.read(byteValue);
 					// V value = DrumUtil.deserialize(byteValue,
 					// this.valueClass);
-					V value = this.valueClass.newInstance()
+					@SuppressWarnings("unchecked")
+					V value = ((V)this.valueClass.newInstance())
 							.readBytes(byteValue);
 					data.setValue(value);
 				}
@@ -405,9 +403,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
-			LOG.error("[{}] - Error during reading key/values from bucket file! Reason: {}",
-					this.drumName, e.getLocalizedMessage(), e);
-			e.printStackTrace();
 			throw new DrumException(
 					"Error during reading key/values from bucket file! Reason: "
 							+ e.getLocalizedMessage(), e);
@@ -495,7 +490,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 	 *            The already locked writer instance we access its disk file
 	 * @throws DrumException
 	 */
-	private void readAuxBucketForDispatching(IDiskWriter<V, A> writer)
+	private void readAuxBucketForDispatching(DiskWriter<V, A> writer)
 			throws DrumException
 	{
 		// get the number of bytes written since the last merge
@@ -536,7 +531,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 					// transform the byte-array into a valid Java object of type
 					// A
 					// A aux = DrumUtil.deserialize(byteAux, this.auxClass);
-					A aux = this.auxClass.newInstance().readBytes(byteAux);
+					@SuppressWarnings("unchecked")
+					A aux = ((A)this.auxClass.newInstance()).readBytes(byteAux);
 					// ... and add it to the auxiliary object created before
 					data.setAuxiliary(aux);
 					LOG.debug("[{}] - [{}] - read aux data: {}",
@@ -555,10 +551,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 		}
 		catch (Exception e)
 		{
-            e.printStackTrace();
-			LOG.error("[{}] - [{}] - Could not read auxiliary bucket file! Reason: {}",
-					this.drumName, writer.getBucketId(), e.getLocalizedMessage());
-			LOG.catching(Level.ERROR, e);
 			throw new DrumException(
 					"Could not read auxiliary bucket file! Reason: "
 							+ e.getLocalizedMessage(), e);

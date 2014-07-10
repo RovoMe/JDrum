@@ -6,13 +6,15 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+
+import at.rovo.caching.drum.Broker;
+import at.rovo.caching.drum.DiskWriter;
+import at.rovo.caching.drum.Merger;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
-import at.rovo.caching.drum.IBroker;
-import at.rovo.caching.drum.IDiskWriter;
-import at.rovo.caching.drum.IMerger;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DiskWriterEvent;
 import at.rovo.caching.drum.event.DiskWriterState;
@@ -33,7 +35,7 @@ import at.rovo.caching.drum.event.DrumEventDispatcher;
  * </p>
  * <p>
  * The current implementation uses the blocking method <code>takeAll()</code>
- * from {@link IBroker} to collect the items to write into the disk file.
+ * from {@link at.rovo.caching.drum.Broker} to collect the items to write into the disk file.
  * </p>
  * 
  * @param <V>
@@ -44,10 +46,10 @@ import at.rovo.caching.drum.event.DrumEventDispatcher;
  * @author Roman Vottner
  */
 public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		implements IDiskWriter<V, A>
+		implements DiskWriter<V, A>
 {
 	/** The logger of this class **/
-	private final static Logger logger = LogManager.getLogger(DiskBucketWriter.class);
+	private final static Logger LOG = LogManager.getLogger(DiskBucketWriter.class);
 
 	/** The name of the DRUM instance **/
 	private String drumName = null;
@@ -56,13 +58,13 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 	/** The size of a bucket before a merge action is invoked **/
 	private int bucketByteSize = 0;
 	/** The broker we get data to write from **/
-	private IBroker<InMemoryData<V, A>, V, A> broker = null;
+	private Broker<InMemoryData<V, A>, V, A> broker = null;
 	/**
 	 * The merger who takes care of merging disk files with the backing data
 	 * store. It needs to be informed if it should merge, which happens if the
 	 * bytes written to the disk file exceeds certain limits
 	 **/
-	private IMerger<V, A> merger = null;
+	private Merger<V, A> merger = null;
 	/**
 	 * The object responsible for updating listeners on state or statistic
 	 * changes
@@ -115,7 +117,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 	 *            The broker who administers the in memory data
 	 */
 	public DiskBucketWriter(String drumName, int bucketId, int bucketByteSize,
-			IBroker<InMemoryData<V, A>, V, A> broker, IMerger<V, A> merger,
+			Broker<InMemoryData<V, A>, V, A> broker, Merger<V, A> merger,
 			DrumEventDispatcher eventDispatcher) throws DrumException
 	{
 		this.drumName = drumName;
@@ -171,8 +173,6 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
-			logger.error("{} - Error creating bucket file!", this.drumName, e);
-			logger.catching(e);
 			throw new DrumException("Error creating bucket file!", e);
 		}
 	}
@@ -192,7 +192,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			{
 				if (this.lastState == null)
 				{
-					logger.debug("[{}] - [{}] - waiting for data", this.drumName, this.bucketId);
+					LOG.debug("[{}] - [{}] - waiting for data", this.drumName, this.bucketId);
 
 					this.lastState = DiskWriterState.WAITING_ON_DATA;
 					this.eventDispatcher.update(new DiskWriterStateUpdate(
@@ -212,7 +212,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				this.eventDispatcher.update(new DiskWriterStateUpdate(
 						this.drumName, this.bucketId, DiskWriterState.DATA_RECEIVED));
 
-				logger.debug("[{}] - [{}] - received {} data elements", 
+				LOG.debug("[{}] - [{}] - received {} data elements",
 						this.drumName, this.bucketId, elementsToPersist.size());
 				this.feedBucket(elementsToPersist);
 
@@ -229,7 +229,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			{
 				if (!DiskWriterState.FINISHED.equals(this.lastState))
 				{
-					logger.error("[{}] - [{}] - got interrupted!", 
+					LOG.error("[{}] - [{}] - got interrupted!",
 							this.drumName, this.bucketId);
 					this.lastState = DiskWriterState.FINISHED;
 				}
@@ -240,12 +240,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			}
 			catch (Exception e)
 			{
-				logger.error("[{}] - [{}] - caught exception: {}", 
+				LOG.error("[{}] - [{}] - caught exception: {}",
 						this.drumName, this.bucketId, e.getLocalizedMessage());
+				LOG.catching(Level.ERROR, e);
 				this.eventDispatcher.update(new DiskWriterStateUpdate(
 						this.drumName, this.bucketId,
 						DiskWriterState.FINISHED_WITH_ERROR));
-				e.printStackTrace();
 				Thread.currentThread().interrupt();
 			}
 		}
@@ -257,7 +257,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName,
 				this.bucketId, DiskWriterState.FINISHED));
-		logger.trace("[{}] - [{}] - stopped processing!", this.drumName, this.bucketId);
+		LOG.trace("[{}] - [{}] - stopped processing!", this.drumName, this.bucketId);
 	}
 
 	/**
@@ -277,14 +277,11 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - [{}] - Exception closing disk bucket!", 
-					this.drumName, this.bucketId);
-			logger.catching(e);
 			throw new DrumException("Exception closing disk bucket!");
 		}
 		finally
 		{
-			logger.debug("[{}] - [{}] - Closing file {}", 
+			LOG.debug("[{}] - [{}] - Closing file {}",
 					this.drumName, this.bucketId, bucketFile);
 		}
 	}
@@ -315,7 +312,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
 			for (InMemoryData<V, A> data : inMemoryData)
 			{
-				logger.info("[{}] - [{}] - feeding bucket with: {}; value: {}",  
+				LOG.info("[{}] - [{}] - feeding bucket with: {}; value: {}",
 						this.drumName, this.bucketId, data.getKey(), data.getValue());
 				long kvStartPos = this.kvFile.getFilePointer();
 				long auxStartPos = this.auxFile.getFilePointer();
@@ -358,7 +355,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				long kvEndPos = this.kvFile.getFilePointer();
 				if (byteValue != null)
 				{
-					logger.info("[{}] - [{}] - wrote to kvBucket file - "
+					LOG.info("[{}] - [{}] - wrote to kvBucket file - "
 							+ "operation: '{}' key: '{}', value.length: '{}' "
 							+ "byteValue: '{}' and value: '{}' - bytes written "
 							+ "in total: {}", this.drumName, this.bucketId, c, 
@@ -368,7 +365,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				}
 				else
 				{
-					logger.info("[{}] - [{}] - wrote to kvBucket file - "
+					LOG.info("[{}] - [{}] - wrote to kvBucket file - "
 							+ "operation: '{}' key: '{}', value.length: '0' "
 							+ "byteValue: 'null' and value: '{}' - bytes written "
 							+ "in total: {}", this.drumName, this.bucketId, c, 
@@ -393,7 +390,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				long auxEndPos = this.auxFile.getFilePointer();
 				if (byteAux != null)
 				{
-					logger.info("[{}] - [{}] - wrote to auxBucket file - "
+					LOG.info("[{}] - [{}] - wrote to auxBucket file - "
 							+ "aux.length: '{}' byteAux: '{}' and aux: '{}' - "
 							+ "bytes written in total: {}", this.drumName, 
 							this.bucketId, byteAux.length, 
@@ -402,7 +399,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 				}
 				else
 				{
-					logger.info("[{}] - [{}] - wrote to auxBucket file - "
+					LOG.info("[{}] - [{}] - wrote to auxBucket file - "
 							+ "aux.length: '0' byteAux: 'null' and aux: '{}' - "
 							+ "bytes written in total: {}", this.drumName, 
 							this.bucketId, data.getAuxiliary(), 
@@ -423,17 +420,14 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 			if (this.kvBytesWritten > this.bucketByteSize 
 					|| this.auxBytesWritten > this.bucketByteSize)
 			{
-				logger.info("[{}] - [{}] - requesting merge", 
+				LOG.info("[{}] - [{}] - requesting merge",
 						this.drumName, this.bucketId);
 				this.mergeRequired = true;
 			}
 		}
 		catch (Exception e)
 		{
-			logger.error("[{}] - [{}] - Error feeding bucket! Reason: {}", 
-					this.drumName, this.bucketId, e.getLocalizedMessage(), e);
-			logger.catching(e);
-			throw new DrumException("Error feeding bucket!", e);
+			throw new DrumException("Error feeding bucket "+this.drumName+"-"+this.bucketId+"!", e);
 		}
 		finally
 		{
@@ -496,7 +490,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			LOG.error("Error while resetting the disk bucket pointers of "+this.drumName+"-"+this.bucketId+"!", e);
 		}
 
 		this.eventDispatcher.update(new DiskWriterEvent(this.drumName,
@@ -509,7 +503,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 	public void stop()
 	{
 		this.stopRequested = true;
-		logger.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
+		LOG.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
 	}
 
 	@Override
@@ -522,7 +516,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 		}
 		catch (DrumException e)
 		{
-			logger.catching(e);
+			LOG.error("Error while closing disk bucket writer "+this.drumName+"-"+this.bucketId+"!", e);
 		}
 	}
 }
