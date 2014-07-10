@@ -683,6 +683,9 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	 * @param keys
 	 *            A {@link List} which will contain the keys contained in the
 	 *            backing file after this call
+	 * @param values
+	 *            A {@link List} which will contain the values contained in the
+	 *            backing file after this call
 	 * @throws DrumException
 	 */
 	public void printCacheContent(List<Long> keys, List<V> values)
