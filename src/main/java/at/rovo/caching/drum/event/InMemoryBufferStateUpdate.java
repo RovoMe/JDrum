@@ -24,7 +24,7 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
 	
 	public String toString()
 	{
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append(this.drumName);
 		buffer.append(" - ");
 		buffer.append(this.currentThread.getName());

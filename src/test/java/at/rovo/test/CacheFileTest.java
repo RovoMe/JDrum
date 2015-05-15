@@ -1,21 +1,5 @@
 package at.rovo.test;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.junit.Assert;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.data.StringSerializer;
@@ -23,65 +7,65 @@ import at.rovo.caching.drum.internal.InMemoryData;
 import at.rovo.caching.drum.internal.backend.cacheFile.CacheFile;
 import at.rovo.caching.drum.util.DrumUtil;
 import at.rovo.caching.drum.util.KeyComparator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * <p>
  * Tests the cache file which acts as a data store.
- * </p>
  * <p>
- * The test creates a couple of entries and sends them to the cache file, which
- * is then checked if it stored the data appropriately. In case of already known
- * data, the data should get replaced on using
- * {@link CacheFile#writeEntry(InMemoryData, boolean)} with the boolean flag set
- * to false as this indicates an update of the already known data. Setting the
- * flag to true should append the data to the end.
- * </p>
- * 
+ * The test creates a couple of entries and sends them to the cache file, which is then checked if it stored the data
+ * appropriately. In case of already known data, the data should get replaced on using {@link
+ * CacheFile#writeEntry(InMemoryData, boolean)} with the boolean flag set to false as this indicates an update of the
+ * already known data. Setting the flag to true should append the data to the end.
+ *
  * @author Roman Vottner
  */
 public class CacheFileTest
 {
 	/** The logger for this class **/
-	private static Logger LOG;
+	private static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+
 	private File testDir = null;
-	
-	@BeforeClass
-	public static void initLogger() throws URISyntaxException
-	{
-		String path = CacheFileTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
-		System.setProperty("log4j.configurationFile", path);
-		LOG = LogManager.getLogger(CacheFileTest.class);
-	}
-	
-	@AfterClass
-	public static void cleanLogger()
-	{
-		System.clearProperty("log4j.configurationFile");
-	}
-	
+
 	@Before
 	public void init()
 	{
 		// get application directory
 		String appDir = System.getProperty("user.dir");
-		
+
 		// check if the directories, the cache is located, exists
-		File cacheDir = new File(appDir+"/cache");
+		File cacheDir = new File(appDir + "/cache");
 		if (!cacheDir.exists())
 		{
 			boolean success = cacheDir.mkdir();
 			if (!success)
+			{
 				LOG.warn("Could not create cache directory");
+			}
 		}
-		this.testDir = new File(cacheDir+"/test");
+		this.testDir = new File(cacheDir + "/test");
 		if (!this.testDir.exists())
 		{
 			boolean success = this.testDir.mkdir();
 			if (!success)
+			{
 				LOG.warn("Could not create DRUM test directory");
+			}
 		}
 	}
-	
+
 	@Test
 	public void testURLseenCache()
 	{
@@ -89,8 +73,8 @@ public class CacheFileTest
 		try
 		{
 			// create a new instance of our cache file
-			cacheFile = new CacheFile<>(this.testDir+"/cache.db","test", StringSerializer.class);
-			
+			cacheFile = new CacheFile<>(this.testDir + "/cache.db", "test", StringSerializer.class);
+
 			// create a couple of test data and write them to the disk file
 			List<InMemoryData<StringSerializer, StringSerializer>> dataList = new ArrayList<>();
 			InMemoryData<StringSerializer, StringSerializer> data1 = createNewData("http://www.tuwien.ac.at");
@@ -109,23 +93,25 @@ public class CacheFileTest
 			Collections.sort(dataList, new KeyComparator<>());
 			// and write the entries
 			for (InMemoryData<StringSerializer, StringSerializer> data : dataList)
+			{
 				cacheFile.writeEntry(data, false);
-			
+			}
+
 			// print the current content of the cache
 			List<Long> keys = new ArrayList<>();
 			List<StringSerializer> values = new ArrayList<>();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -7747270999347618272, Value: null          ... 8+4 bytes
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: null          ... 8+4 bytes
 			// Key:   356380646382129811, Value: null          ... 8+4 bytes
-			
+
 			Assert.assertEquals(4, keys.size());
 			Assert.assertEquals(4, values.size());
-			
+
 			Assert.assertEquals(-7747270999347618272L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-427820934381562479L, keys.get(1).longValue());
@@ -134,17 +120,17 @@ public class CacheFileTest
 			Assert.assertNull(values.get(2));
 			Assert.assertEquals(356380646382129811L, keys.get(3).longValue());
 			Assert.assertNull(values.get(3));
-			
+
 			Assert.assertEquals(52L, cacheFile.length());
-			
+
 			// set the cursor back to the start - mock a new iteration of a
 			// merging process
 			cacheFile.reset();
-			
+
 			// modify a data object and write its content again
 			LOG.debug("Adding new data and modify existing ones: ");
 			dataList.clear();
-			
+
 			InMemoryData<StringSerializer, StringSerializer> data6 = createNewData("http://www.krone.at");
 			dataList.add(data6);
 			InMemoryData<StringSerializer, StringSerializer> data7 = createNewData("http://www.univie.ac.at");
@@ -157,19 +143,21 @@ public class CacheFileTest
 			dataList.add(data9);
 			InMemoryData<StringSerializer, StringSerializer> data10 = createNewData("http://www.google.com");
 			dataList.add(data10);
-						
+
 			// sort the list
 			Collections.sort(dataList, new KeyComparator<>());
 			// and write the entries
 			for (InMemoryData<StringSerializer, StringSerializer> data : dataList)
+			{
 				cacheFile.writeEntry(data, false);
-		
+			}
+
 			// print the current content of the cache
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -178,10 +166,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: Noch ein Test ... 8+4+13 bytes
 			// Key:   356380646382129811, Value: test2         ... 8+4+5 bytes
-			
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -196,20 +184,20 @@ public class CacheFileTest
 			Assert.assertEquals("Noch ein Test", values.get(5).getData());
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertEquals("test2", values.get(6).getData());
-			
+
 			Assert.assertEquals(106L, cacheFile.length());
-			
+
 			cacheFile.reset();
-			
+
 			LOG.debug("Changing data item with key: {} from '{}' to 'test3'", data7.getKey(), data7.getValue());
 			data7.setValue(new StringSerializer("test3"));
 			cacheFile.writeEntry(data7, false);
-			
+
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -218,10 +206,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: test3         ... 8+4+5 bytes
 			// Key:   356380646382129811, Value: test2         ... 8+4+5 bytes
-			
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -236,20 +224,20 @@ public class CacheFileTest
 			Assert.assertEquals("test3", values.get(5).getData());
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertEquals("test2", values.get(6).getData());
-			
+
 			Assert.assertEquals(98L, cacheFile.length());
-			
+
 			cacheFile.reset();
-			
+
 			LOG.debug("Changing data item with key: {} from '{}' to 'null'", data7.getKey(), data7.getValue());
 			data7.setValue(null);
 			cacheFile.writeEntry(data7, false);
-			
+
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -258,10 +246,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: null          ... 8+4 bytes
 			// Key:   356380646382129811, Value: test2         ... 8+4+5 bytes
-						
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -276,20 +264,20 @@ public class CacheFileTest
 			Assert.assertNull(values.get(5));
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertEquals("test2", values.get(6).getData());
-			
+
 			Assert.assertEquals(93L, cacheFile.length());
-			
+
 			cacheFile.reset();
-			
+
 			LOG.debug("Changing data item with key: {} from '{}' to 'Noch ein Test'", data7.getKey(), data7.getValue());
 			data7.setValue(new StringSerializer("Noch ein Test"));
 			cacheFile.writeEntry(data7);
-			
+
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -298,10 +286,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: Noch ein Test ... 8+4+13 bytes
 			// Key:   356380646382129811, Value: test2         ... 8+4+5 bytes
-						
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -316,20 +304,20 @@ public class CacheFileTest
 			Assert.assertEquals("Noch ein Test", values.get(5).getData());
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertEquals("test2", values.get(6).getData());
-			
+
 			Assert.assertEquals(106L, cacheFile.length());
-			
+
 			cacheFile.reset();
-			
+
 			LOG.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
 			data8.setValue(new StringSerializer("test"));
 			cacheFile.writeEntry(data8);
-			
+
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -338,10 +326,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: Noch ein Test ... 8+4+13 bytes
 			// Key:   356380646382129811, Value: test          ... 8+4+4 bytes
-						
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -356,20 +344,20 @@ public class CacheFileTest
 			Assert.assertEquals("Noch ein Test", values.get(5).getData());
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertEquals("test", values.get(6).getData());
-			
+
 			Assert.assertEquals(105L, cacheFile.length());
-			
+
 			cacheFile.reset();
-			
+
 			LOG.debug("Changing data item with key: {} from '{}' to 'null'", data8.getKey(), data8.getKey());
 			data8.setValue(null);
 			cacheFile.writeEntry(data8);
-			
+
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -378,10 +366,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: Noch ein Test ... 8+4+13 bytes
 			// Key:   356380646382129811, Value: null          ... 8+4 bytes
-			
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -396,21 +384,21 @@ public class CacheFileTest
 			Assert.assertEquals("Noch ein Test", values.get(5).getData());
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertNull(values.get(6));
-			
+
 			Assert.assertEquals(101L, cacheFile.length());
-			
+
 			cacheFile.reset();
-			
+
 			LOG.debug("Changing data item with key: {} from '{}' to 'test'", data8.getKey(), data8.getValue());
 			data8.setValue(new StringSerializer("test"));
 			cacheFile.writeEntry(data8);
-			
+
 			keys.clear();
 			values.clear();
 			cacheFile.printCacheContent(keys, values);
 			printCacheContent(keys, values);
-			
-			
+
+
 			// Data contained in backing cache:
 			// Key: -8389167973104044848, Value: null          ... 8+4 bytes
 			// Key: -8388954286180259435, Value: null          ... 8+4 bytes
@@ -419,10 +407,10 @@ public class CacheFileTest
 			// Key:  -427820934381562479, Value: Test          ... 8+4+4 bytes
 			// Key:  -408508820557862601, Value: Noch ein Test ... 8+4+13 bytes
 			// Key:   356380646382129811, Value: test          ... 8+4+4 bytes
-			
+
 			Assert.assertEquals(7, keys.size());
 			Assert.assertEquals(7, values.size());
-			
+
 			Assert.assertEquals(-8389167973104044848L, keys.get(0).longValue());
 			Assert.assertNull(values.get(0));
 			Assert.assertEquals(-8388954286180259435L, keys.get(1).longValue());
@@ -437,7 +425,7 @@ public class CacheFileTest
 			Assert.assertEquals("Noch ein Test", values.get(5).getData());
 			Assert.assertEquals(356380646382129811L, keys.get(6).longValue());
 			Assert.assertEquals("test", values.get(6).getData());
-			
+
 			Assert.assertEquals(105L, cacheFile.length());
 		}
 		catch (IOException | InstantiationException | IllegalAccessException | DrumException | NotAppendableException e)
@@ -447,10 +435,12 @@ public class CacheFileTest
 		finally
 		{
 			if (cacheFile != null)
+			{
 				cacheFile.close();
+			}
 		}
 	}
-	
+
 	private static InMemoryData<StringSerializer, StringSerializer> createNewData(String auxiliaryData)
 	{
 		InMemoryData<StringSerializer, StringSerializer> data = new InMemoryData<>();
@@ -459,17 +449,17 @@ public class CacheFileTest
 		LOG.debug("Writing data: {}; auxiliary data: {}", data.getKey(), data.getAuxiliary());
 		return data;
 	}
-	
+
 	private static void printCacheContent(List<Long> keys, List<StringSerializer> values)
 	{
 		LOG.debug("Data contained in cache file:");
 		int size = keys.size();
-		for (int i=0; i<size; i++)
+		for (int i = 0; i < size; i++)
 		{
 			LOG.debug("Key: {}, Value: {}", keys.get(i), values.get(i));
 		}
 	}
-	
+
 	@After
 	public void clean()
 	{

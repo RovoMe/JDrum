@@ -1,25 +1,24 @@
 package at.rovo.caching.drum.util;
 
-import java.lang.Thread.UncaughtExceptionHandler;
-
+import at.rovo.caching.drum.internal.DiskBucketWriter;
+import at.rovo.caching.drum.internal.DiskFileMerger;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import at.rovo.caching.drum.internal.DiskBucketWriter;
-import at.rovo.caching.drum.internal.DiskFileMerger;
+
+import java.lang.Thread.UncaughtExceptionHandler;
 
 /**
- * <p>Catches any uncaught exceptions during the execution of the threaded 
- * instances of {@link DiskFileMerger} or {@link DiskBucketWriter}.</p>
- * 
+ * Catches any uncaught exceptions during the execution of the threaded instances of {@link DiskFileMerger} or {@link
+ * DiskBucketWriter}.
+ *
  * @author Roman Vottner
  */
 public class DrumExceptionHandler implements UncaughtExceptionHandler
 {
 	/** The logger of this class **/
-	private final static Logger LOG = LogManager.getLogger(
-			DrumExceptionHandler.class);
-	
+	private final static Logger LOG = LogManager.getLogger(DrumExceptionHandler.class);
+
 	@Override
 	public void uncaughtException(Thread t, Throwable e)
 	{
@@ -27,7 +26,7 @@ public class DrumExceptionHandler implements UncaughtExceptionHandler
 		if (LOG.isErrorEnabled())
 		{
 			LOG.error("Exception in Thread: " + t.getName() + "; Reason: " +
-					e.getClass().getName() + " - " + e.getLocalizedMessage());
+					  e.getClass().getName() + " - " + e.getLocalizedMessage());
 			LOG.catching(Level.ERROR, e);
 		}
 		System.exit(1);

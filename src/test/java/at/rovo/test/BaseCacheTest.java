@@ -3,42 +3,23 @@ package at.rovo.test;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 
 /**
- * <p>
- * Base class for all cache based unit tests. This abstract class does take
- * responsibility of the creation and deletion of the actual cache files and
- * the initialization of the logger instance.
- * </p>
+ * Base class for all cache based unit tests. This abstract class does take responsibility of the creation and deletion
+ * of the actual cache files and the initialization of the logger instance.
  */
 public abstract class BaseCacheTest
 {
 	/** The logger of this class **/
-	protected static Logger LOG;
+	protected static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	protected File cacheDir = null;
-
-	@BeforeClass
-	public static void initLogger() throws URISyntaxException
-	{
-		String path = BaseCacheTest.class.getResource("/log/log4j2-test.xml").toURI().getPath();
-		System.setProperty("log4j.configurationFile", path);
-		LOG = LogManager.getLogger(BaseCacheTest.class);
-	}
-
-	@AfterClass
-	public static void cleanLogger()
-	{
-		System.clearProperty("log4j.configurationFile");
-	}
 
 	@Before
 	public final void init() throws Exception
@@ -68,7 +49,9 @@ public abstract class BaseCacheTest
 			}
 		}
 		if (this.cacheDir == null)
-			this.cacheDir = new File (appDir.getAbsoluteFile()+"/cache");
+		{
+			this.cacheDir = new File(appDir.getAbsoluteFile() + "/cache");
+		}
 		if (!this.cacheDir.exists())
 		{
 			if (!this.cacheDir.mkdir())

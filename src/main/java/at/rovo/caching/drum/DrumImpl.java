@@ -1,12 +1,5 @@
 package at.rovo.caching.drum;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskBucketWriter;
@@ -16,42 +9,38 @@ import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
 import at.rovo.caching.drum.util.DrumExceptionHandler;
 import at.rovo.caching.drum.util.DrumUtil;
 import at.rovo.caching.drum.util.NamedThreadFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
+ * This implementation of the 'Disk Repository with Update Management' structure utilizes a consumer/producer pattern to
+ * store and process input received by its <ul> <li>{@link #check(Long)} or {@link #check(Long, A)}</li> <li>{@link
+ * #update(Long, V)} or {@link #update(Long, V, A)}</li> <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long,
+ * V, A)}</li> </ul> methods.
  * <p>
- * This implementation of the 'Disk Repository with Update Management' structure
- * utilizes a consumer/producer pattern to store and process input received by
- * its
- * </p>
- * <ul>
- * <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
- * <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
- * <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
- * </ul>
- * <p>
- * methods.
- * </p>
- * <p>
- * Internally <code>numBuckets</code> buffers and buckets will be created which
- * will hold the data sent to DRUM. Buffers are the in-memory storage while
- * buckets are the intermediary disk files. Buffers fill up to <code>
- * bufferSize</code> bytes before they get sent to a disk file.
- * </p>
- * 
- * 
+ * Internally <code>numBuckets</code> buffers and buckets will be created which will hold the data sent to DRUM. Buffers
+ * are the in-memory storage while buckets are the intermediary disk files. Buffers fill up to <code> bufferSize</code>
+ * bytes before they get sent to a disk file.
+ *
  * @param <V>
- *            The type of the value
+ * 		The type of the value
  * @param <A>
- *            The type of the auxiliary data attached to a key
- * 
+ * 		The type of the auxiliary data attached to a key
+ *
  * @author Roman Vottner
  */
 @SuppressWarnings("unused")
-public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-		implements Drum<V, A>
+public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> implements Drum<V, A>
 {
 	/** The logger of this class **/
-	private final static Logger LOG = LogManager.getLogger(DrumImpl.class);
+	private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	/** The name of the DRUM instance **/
 	protected String drumName = null;
@@ -60,18 +49,17 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	/** The size of an in-memory buffer **/
 	protected int bufferSize = 0;
 	/**
-	 * The broker list which holds elements in memory until they get written to
-	 * the disk file
+	 * The broker list which holds elements in memory until they get written to the disk file
 	 **/
 	protected List<Broker<InMemoryData<V, A>, V, A>> inMemoryBuffer = null;
 	/**
-	 * The set of writer objects that listens to notifications of a broker and
-	 * write content from the broker to a disk file
+	 * The set of writer objects that listens to notifications of a broker and write content from the broker to a disk
+	 * file
 	 **/
 	protected List<DiskWriter<V, A>> diskWriters = null;
 	/**
-	 * The object that compares keys of data-objects for their uniqueness and
-	 * merges them into the data store in case the need to be updated
+	 * The object that compares keys of data-objects for their uniqueness and merges them into the data store in case
+	 * the need to be updated
 	 **/
 	protected Merger<V, A> merger = null;
 	/** The execution service which hosts our threads **/
@@ -79,73 +67,70 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	/** The merger thread **/
 	protected Thread mergerThread = null;
 	/**
-	 * The event dispatcher used to inform listeners of internal state changes
-	 * and certain statistics
+	 * The event dispatcher used to inform listeners of internal state changes and certain statistics
 	 **/
 	protected DrumEventDispatcher eventDispatcher = new DrumEventDispatcher();
 	/** The event dispatcher thread **/
 	protected Thread eventDispatcherThread = null;
-	
+
 	/**
-	 * <p>
-	 * Creates a new instance and assigns initial values contained within the 
-	 * builder object to the corresponding attributes.
-	 * </p>
+	 * Creates a new instance and assigns initial values contained within the builder object to the corresponding
+	 * attributes.
 	 *
-	 * @param builder The builder object which contains the initialization
-	 *                parameters specified by the invoker
-	 * @throws DrumException If during the initialization of the backing data
-	 *                       store an error occurred
+	 * @param builder
+	 * 		The builder object which contains the initialization parameters specified by the invoker
+	 *
+	 * @throws DrumException
+	 * 		If during the initialization of the backing data store an error occurred
 	 */
-	DrumImpl(DrumBuilder<V,A> builder) throws DrumException
+	DrumImpl(DrumBuilder<V, A> builder) throws DrumException
 	{
 		if (builder.getListener() != null)
+		{
 			this.addDrumListener(builder.getListener());
-		
-		DrumStorageFactory<V,A> factory;
+		}
+
+		DrumStorageFactory<V, A> factory;
 		if (builder.getFactory() != null)
+		{
 			factory = builder.getFactory();
+		}
 		else
-			factory = DrumStorageFactory.getDefaultStorageFactory(
-					builder.getDrumName(), builder.getNumBuckets(),
-					builder.getDispatcher(), builder.getValueClass(),
-					builder.getAuxClass(), this.eventDispatcher);
-		
-		this.init(builder.getDrumName(), builder.getNumBuckets(),
-				builder.getBufferSize(), builder.getDispatcher(),
-				builder.getValueClass(), builder.getAuxClass(),
-				factory);
+		{
+			factory = DrumStorageFactory
+					.getDefaultStorageFactory(builder.getDrumName(), builder.getNumBuckets(), builder.getDispatcher(),
+											  builder.getValueClass(), builder.getAuxClass(), this.eventDispatcher);
+		}
+
+		this.init(builder.getDrumName(), builder.getNumBuckets(), builder.getBufferSize(), builder.getDispatcher(),
+				  builder.getValueClass(), builder.getAuxClass(), factory);
 	}
 
 
 	/**
-	 * <p>
-	 * Initializes the DRUM instance with required data and starts the worker
-	 * threads.
-	 * </p>
-	 * 
+	 * Initializes the DRUM instance with required data and starts the worker threads.
+	 *
 	 * @param drumName
-	 *            The name of the DRUM instance
+	 * 		The name of the DRUM instance
 	 * @param numBuckets
-	 *            The number of buckets to be used
+	 * 		The number of buckets to be used
 	 * @param bufferSize
-	 *            The size of a single buffer in bytes
+	 * 		The size of a single buffer in bytes
 	 * @param dispatcher
-	 *            The {@link Dispatcher} implementation which will receive
-	 *            information on items added via <code>check</code>,
-	 *            <code>update</code> or <code>checkUpdate</code>.
+	 * 		The {@link Dispatcher} implementation which will receive information on items added via <code>check</code>,
+	 * 		<code>update</code> or <code>checkUpdate</code>.
 	 * @param valueClass
-	 *            The class-type of the value for a certain key
+	 * 		The class-type of the value for a certain key
 	 * @param auxClass
-	 *            The auxiliary data-type attached to a certain key
+	 * 		The auxiliary data-type attached to a certain key
 	 * @param factory
-	 *            The factory object which defines where data should be stored
-	 *            in. Note that factory must return an implementation of IMerger
+	 * 		The factory object which defines where data should be stored in. Note that factory must return an
+	 * 		implementation of IMerger
+	 *
 	 * @throws DrumException
 	 */
-	private void init(String drumName, int numBuckets, int bufferSize,
-			Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
-			Class<? super A> auxClass, DrumStorageFactory<V, A> factory)
+	private void init(String drumName, int numBuckets, int bufferSize, Dispatcher<V, A> dispatcher,
+					  Class<? super V> valueClass, Class<? super A> auxClass, DrumStorageFactory<V, A> factory)
 			throws DrumException
 	{
 		this.eventDispatcherThread = new Thread(this.eventDispatcher);
@@ -165,15 +150,14 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		NamedThreadFactory writerFactory = new NamedThreadFactory();
 		writerFactory.setName(this.drumName + "-Writer");
 		writerFactory.setUncaughtExceptionHanlder(exceptionHandler);
-		this.executor = Executors.newFixedThreadPool(this.numBuckets,
-				writerFactory);
+		this.executor = Executors.newFixedThreadPool(this.numBuckets, writerFactory);
 
 		for (int i = 0; i < numBuckets; i++)
 		{
-			Broker<InMemoryData<V, A>, V, A> broker = new InMemoryMessageBroker<>(
-					drumName, i, bufferSize, this.eventDispatcher);
-			DiskWriter<V, A> consumer = new DiskBucketWriter<>(drumName,
-					i, bufferSize, broker, this.merger, this.eventDispatcher);
+			Broker<InMemoryData<V, A>, V, A> broker =
+					new InMemoryMessageBroker<>(drumName, i, bufferSize, this.eventDispatcher);
+			DiskWriter<V, A> consumer =
+					new DiskBucketWriter<>(drumName, i, bufferSize, broker, this.merger, this.eventDispatcher);
 
 			this.inMemoryBuffer.add(broker);
 			this.diskWriters.add(consumer);
@@ -247,13 +231,11 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	{
 		LOG.debug("[{}] - Disposal initiated", this.drumName);
 		// flip the buffers which sends the writers the latest data
-		for (Broker<?, ?, ?> broker : this.inMemoryBuffer)
-			broker.stop();
+		this.inMemoryBuffer.forEach(Broker::stop);
 
 		// give the threads a chance to finish their work without being
 		// interrupted
-		for (DiskWriter<V, A> writer : this.diskWriters)
-			writer.stop();
+		this.diskWriters.forEach(DiskWriter::stop);
 
 		this.executor.shutdown();
 
@@ -278,8 +260,7 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		}
 
 		// close the open resources held by the writers
-		for (DiskWriter<V, A> writer : this.diskWriters)
-			writer.close();
+		this.diskWriters.forEach(DiskWriter::close);
 
 		this.eventDispatcher.stop();
 		this.eventDispatcherThread.interrupt();
@@ -299,19 +280,17 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	}
 
 	/**
-	 * <p>
-	 * Stores the key, the value and the auxiliary data as well as the operation
-	 * to be executed on these data in the according in-memory buffer.
-	 * </p>
-	 * 
+	 * Stores the key, the value and the auxiliary data as well as the operation to be executed on these data in the
+	 * according in-memory buffer.
+	 *
 	 * @param key
-	 *            The hash value of the data
+	 * 		The hash value of the data
 	 * @param value
-	 *            The value associated with the key
+	 * 		The value associated with the key
 	 * @param aux
-	 *            The auxiliary data of the key
+	 * 		The auxiliary data of the key
 	 * @param operation
-	 *            The operation to be used on the data
+	 * 		The operation to be used on the data
 	 */
 	private void add(Long key, V value, A aux, DrumOperation operation)
 	{
@@ -320,15 +299,12 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 		int bucketId = DrumUtil.getBucketForKey(key, this.numBuckets);
 
 		// add a new InMemoryData object to the broker
-		this.inMemoryBuffer.get(bucketId).put(
-				new InMemoryData<>(key, value, aux, operation));
+		this.inMemoryBuffer.get(bucketId).put(new InMemoryData<>(key, value, aux, operation));
 	}
 
 	/**
-	 * <p>
 	 * Returns the name of the DRUM instance.
-	 * </p>
-	 * 
+	 *
 	 * @return The name of the DRUM instance
 	 */
 	public String getName()
@@ -337,10 +313,8 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 	}
 
 	/**
-	 * <p>
 	 * Returns the number of buckets used by this DRUM instance.
-	 * </p>
-	 * 
+	 *
 	 * @return The number of buckets used
 	 */
 	public int getNumberOfBuckets()

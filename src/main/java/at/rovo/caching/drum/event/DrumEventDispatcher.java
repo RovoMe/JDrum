@@ -47,7 +47,9 @@ public class DrumEventDispatcher implements Runnable, DrumEventListener
 				if (event != null)
 				{					
 					for (DrumListener listener : this.listeners)
-						listener.update(event);	
+					{
+						listener.update(event);
+					}
 				}
 			}
 			catch (InterruptedException e)

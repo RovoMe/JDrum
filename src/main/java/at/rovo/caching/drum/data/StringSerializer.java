@@ -1,12 +1,9 @@
 package at.rovo.caching.drum.data;
 
 /**
- * <p>
  * Convenience class to serialize and de-serialize {@link String} objects.
- * </p>
- * 
+ *
  * @author Roman Vottner
- * 
  */
 public class StringSerializer implements AppendableData<StringSerializer>
 {
@@ -14,9 +11,7 @@ public class StringSerializer implements AppendableData<StringSerializer>
 	private String data = null;
 
 	/**
-	 * <p>
 	 * Creates a new instance with an empty String.
-	 * </p>
 	 */
 	public StringSerializer()
 	{
@@ -24,12 +19,10 @@ public class StringSerializer implements AppendableData<StringSerializer>
 	}
 
 	/**
-	 * <p>
 	 * Creates a new instance with the provided String.
-	 * </p>
-	 * 
+	 *
 	 * @param data
-	 *            The string to be used for serialization
+	 * 		The string to be used for serialization
 	 */
 	public StringSerializer(String data)
 	{
@@ -37,10 +30,8 @@ public class StringSerializer implements AppendableData<StringSerializer>
 	}
 
 	/**
-	 * <p>
 	 * Returns the deserialized string.
-	 * </p>
-	 * 
+	 *
 	 * @return The deserialized string
 	 */
 	public String getData()
@@ -52,15 +43,16 @@ public class StringSerializer implements AppendableData<StringSerializer>
 	public byte[] toBytes()
 	{
 		if (this.data != null)
+		{
 			return this.data.getBytes();
+		}
 		return null;
 	}
 
 	@Override
 	public StringSerializer readBytes(byte[] data)
 	{
-		StringSerializer obj = new StringSerializer(new String(data));
-		return obj;
+		return new StringSerializer(new String(data));
 	}
 
 	@Override
@@ -81,7 +73,9 @@ public class StringSerializer implements AppendableData<StringSerializer>
 		if (o instanceof StringSerializer)
 		{
 			if (((StringSerializer) o).getData().equals(this.data))
+			{
 				return true;
+			}
 		}
 		return false;
 	}

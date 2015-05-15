@@ -32,7 +32,7 @@ public class InMemoryBufferEvent extends DrumEvent<InMemoryBufferEvent>
 	@Override
 	public String toString()
 	{
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append(this.drumName);
 		buffer.append(" - ");
 		buffer.append(this.currentThread.getName());
