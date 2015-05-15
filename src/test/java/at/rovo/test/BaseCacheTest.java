@@ -17,7 +17,7 @@ import java.nio.file.Files;
 public abstract class BaseCacheTest
 {
 	/** The logger of this class **/
-	protected static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+	private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	protected File cacheDir = null;
 

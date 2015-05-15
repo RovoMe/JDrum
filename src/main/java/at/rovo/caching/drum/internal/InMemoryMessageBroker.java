@@ -13,9 +13,8 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -53,22 +52,13 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 	private DrumEventDispatcher eventDispatcher = null;
 	/** The ID of the buffer **/
 	private int bucketId = 0;
-	/**
-	 * The buffer array. The activeBuffer index will point to the currently active buffer
-	 **/
-	@SuppressWarnings("unchecked")
-	private ConcurrentLinkedQueue<T>[] buffer =
-			(ConcurrentLinkedQueue<T>[]) Array.newInstance(ConcurrentLinkedQueue.class, 2);
 	/** The index of the currently active buffer **/
-	private AtomicBoolean activeBuffer = new AtomicBoolean(false);
+	private AtomicInteger activeBuffer = new AtomicInteger(0);
 	/**
-	 * Will contain the the index of the buffers as key and the size of each key/value buffer as value
-	 **/
-	private ConcurrentHashMap<Boolean, Integer> byteLengthKV = new ConcurrentHashMap<>(2);
-	/**
-	 * Contains the index of the buffers as key and the size of each auxiliary buffer as value
-	 **/
-	private ConcurrentHashMap<Boolean, Integer> byteLengthAux = new ConcurrentHashMap<>(2);
+	 * Will contain the actual buffer as well as the length of the key/value and auxiliary queue
+	 */
+	@SuppressWarnings("unchecked")
+	private MemoryBuffer<T>[] buffers = (MemoryBuffer<T>[]) Array.newInstance(MemoryBuffer.class, 2);
 
 	/**
 	 * The size of the buffer before the two buffers get exchanged and the results being available through
@@ -109,16 +99,8 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 		this.bucketId = id;
 		this.byteSizePerBuffer = byteSizePerBuffer;
 
-		this.buffer[0] = new ConcurrentLinkedQueue<>();
-		this.buffer[1] = new ConcurrentLinkedQueue<>();
-
-		// set the initial key/value size of each buffer to 0
-		this.byteLengthKV.put(false, 0);
-		this.byteLengthKV.put(true, 0);
-
-		// set the initial auxiliary size of each buffer to 0
-		this.byteLengthAux.put(false, 0);
-		this.byteLengthAux.put(true, 0);
+		this.buffers[0] = new MemoryBuffer<>(new ConcurrentLinkedQueue<>(), 0, 0);
+		this.buffers[1] = new MemoryBuffer<>(new ConcurrentLinkedQueue<>(), 0, 0);
 
 		// the old state used to filter multiple state updates on the same state
 		this.oldState = InMemoryBufferState.EMPTY;
@@ -130,14 +112,15 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 	@Override
 	public void put(T data)
 	{
-		LOG.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
-				 this.bucketId, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
+		int activeQueue = this.activeBuffer.get();
+		MemoryBuffer<T> activeBuffer = this.buffers[activeQueue];
+		activeBuffer.getBuffer().add(data);
 
-		boolean activeQueue = this.activeBuffer.get();
-		this.buffer[this.bool2Int(activeQueue)].add(data);
+		LOG.info("[{}] - [{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
+				 this.bucketId, activeQueue, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
 
-		Integer keyLength = data.getKeyAsBytes().length;
-		Integer valLength = 0;
+		int keyLength = data.getKeyAsBytes().length;
+		int valLength = 0;
 		if (data.getValue() != null)
 		{
 			valLength = data.getValueAsBytes().length;
@@ -148,15 +131,15 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 			auxLength = data.getAuxiliaryAsBytes().length;
 		}
 
-		int bytesKV = this.byteLengthKV.get(activeQueue) + (keyLength + valLength);
-		this.byteLengthKV.put(activeQueue, bytesKV);
-		int bytesAux = this.byteLengthAux.get(activeQueue) + auxLength;
-		this.byteLengthAux.put(activeQueue, bytesAux);
+		activeBuffer.addByteLengthKV(keyLength + valLength);
+		activeBuffer.addByteLengthAux(auxLength);
 
-		this.eventDispatcher.update(new InMemoryBufferEvent(this.drumName, this.bucketId, bytesKV, bytesAux));
+		this.eventDispatcher
+				.update(new InMemoryBufferEvent(this.drumName, this.bucketId, activeBuffer.getByteLengthKV(),
+												activeBuffer.getByteLengthAux()));
 
-		if ((this.byteLengthKV.get(activeQueue) > this.byteSizePerBuffer ||
-			 this.byteLengthAux.get(activeQueue) > this.byteSizePerBuffer))
+		if ((activeBuffer.getByteLengthKV() > this.byteSizePerBuffer ||
+			 activeBuffer.getByteLengthAux() > this.byteSizePerBuffer))
 		{
 			if (!InMemoryBufferState.EXCEEDED_LIMIT.equals(this.oldState))
 			{
@@ -206,12 +189,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 				this.dataAvailable.await(); // wait for available data
 			}
 
-			this.flip();
-
-			// make a copy of the list
-			boolean active = this.activeBuffer.get();
-			// the data to send is in the currently inactive buffer after the flip
-			ConcurrentLinkedQueue<T> queue = this.buffer[this.bool2Int(!active)];
+			ConcurrentLinkedQueue<T> queue = this.flip();
 			List<T> ret;
 			if (queue.isEmpty())
 			{
@@ -223,6 +201,10 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 			}
 			this.isDataAvailable = false;
 			LOG.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
+			if (LOG.isTraceEnabled())
+			{
+				ret.forEach(entry -> LOG.trace("Transmitted: ", entry));
+			}
 
 			// clear the old "copied" content
 			queue.clear();
@@ -255,36 +237,25 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 
 	/**
 	 * Flips the currently active buffer with the back-buffer and notifies other threads about the availability of data
+	 *
+	 * @return Returns a reference to the currently inactive buffer
 	 */
-	private void flip()
+	private ConcurrentLinkedQueue<T> flip()
 	{
-		if (LOG.isDebugEnabled())
-		{
-			LOG.debug("[{}] - [{}] - flipping buffers", this.drumName, this.bucketId);
-		}
-		boolean active = this.activeBuffer.get();
+		int active = this.activeBuffer.get();
+		int inactive = active ^ 1;
+		LOG.debug("[{}] - [{}] - [{}->{}] - flipping buffers", this.drumName, this.bucketId, active, inactive);
 		// the currently inactive buffer still hold the bytes of the period
 		// when the buffer was last active, so clear it first
-		this.byteLengthKV.put(!active, 0);
-		this.byteLengthAux.put(!active, 0);
+		MemoryBuffer<T> inactiveBuffer = this.buffers[inactive];
+		inactiveBuffer.setByteLengthKV(0);
+		inactiveBuffer.setByteLengthAux(0);
 		// and now flip the currently active buffer
-		this.activeBuffer.compareAndSet(active, !active);
+		this.activeBuffer.compareAndSet(active, inactive);
 
 		this.eventDispatcher
 				.update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, InMemoryBufferState.EMPTY));
-	}
-
-	/**
-	 * Converts a boolean to an integer value where a value of true will be converted to 1 and a value of false will
-	 * return 0.
-	 *
-	 * @param val
-	 * 		The boolean value to convert to an int
-	 *
-	 * @return 1 if the value is true; 0 otherwise
-	 */
-	private int bool2Int(boolean val)
-	{
-		return (val) ? 1 : 0;
+		// the value of the active variable still points to the now inactive buffer so we are safe here
+		return this.buffers[active].getBuffer();
 	}
 }

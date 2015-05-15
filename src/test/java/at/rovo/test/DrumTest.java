@@ -7,11 +7,14 @@ import at.rovo.caching.drum.DrumListener;
 import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.event.DrumEvent;
 import at.rovo.caching.drum.util.DrumUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +35,8 @@ import java.util.List;
  */
 public class DrumTest extends BaseCacheTest  implements DrumListener
 {
+	private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+
 	/**
 	 * Example-Output:
 	 *
@@ -175,7 +180,7 @@ public class DrumTest extends BaseCacheTest  implements DrumListener
 			Assert.assertNotNull(keys);
 			for (Long URLhash : URLhashes)
 			{
-				Assert.assertTrue(keys.contains(URLhash));
+				Assert.assertTrue(URLhash + " not found in datastore!", keys.contains(URLhash));
 				keys.remove(URLhash);
 			}
 			Assert.assertTrue(keys.isEmpty());

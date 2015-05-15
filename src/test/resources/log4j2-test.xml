@@ -92,7 +92,7 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
             <appender-ref ref="TestFile"/>
         </logger>
         <logger name="at.rovo.test.DrumTest" level="debug" additivity="false">
-            <appender-ref ref="TestFile"/>
+            <appender-ref ref="DrumFile"/>
         </logger>
         <logger name="at.rovo.test.LogFileDispatcher" level="debug" additivity="false">
             <appender-ref ref="TestFile"/>
@@ -102,7 +102,7 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         </logger>
 
         <!-- General output -->
-        <logger name="at.rovo" level="info" additivity="true">
+        <logger name="at.rovo" level="info" additivity="false">
             <appender-ref ref="Console"/>
         </logger>
         <root level="error">
