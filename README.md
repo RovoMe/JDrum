@@ -294,6 +294,6 @@ public class PLDData implements AppendableData<PLDData>
 
 ## Further links
 
-[Paper: IRLbot: Scaling to 6 Billion Pages and Beyond](http://www2008.org/papers/pdf/p427-leeA.pdf)
-[DRUMS: Disk Repository with Update Management and Select Option](http://mgledi.github.io/DRUMS/)
-[C++ Draft-Implementation](http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a)
+* [Paper: IRLbot: Scaling to 6 Billion Pages and Beyond](http://www2008.org/papers/pdf/p427-leeA.pdf)
+* [DRUMS: Disk Repository with Update Management and Select Option](http://mgledi.github.io/DRUMS/)
+* [C++ Draft-Implementation](http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a)
