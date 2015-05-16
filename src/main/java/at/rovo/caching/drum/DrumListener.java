@@ -9,11 +9,11 @@ import at.rovo.caching.drum.event.DrumEvent;
  */
 public interface DrumListener
 {
-	/**
-	 * Will be invoked if a new DRUM event arises.
-	 *
-	 * @param event
-	 * 		The DRUM event that triggered the invocation
-	 */
-	void update(DrumEvent<? extends DrumEvent<?>> event);
+    /**
+     * Will be invoked if a new DRUM event arises.
+     *
+     * @param event
+     *         The DRUM event that triggered the invocation
+     */
+    void update(DrumEvent<? extends DrumEvent<?>> event);
 }

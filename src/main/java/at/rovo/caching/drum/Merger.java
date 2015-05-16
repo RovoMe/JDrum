@@ -15,24 +15,24 @@ import at.rovo.caching.drum.internal.DrumRuntimeListener;
  */
 public interface Merger<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends Runnable, DrumRuntimeListener
 {
-	/**
-	 * Adds a disk writer object to the merger instance, which is used to share a lock on the disk file both objects try
-	 * to access. This is necessary as the disk writer could write additional data to the file while the merger is
-	 * reading from the same file, which could result in an inconsistent state.
-	 *
-	 * @param writer
-	 * 		The responsible class for writing the actual data to disk
-	 */
-	void addDiskFileWriter(DiskWriter<V, A> writer);
+    /**
+     * Adds a disk writer object to the merger instance, which is used to share a lock on the disk file both objects try
+     * to access. This is necessary as the disk writer could write additional data to the file while the merger is
+     * reading from the same file, which could result in an inconsistent state.
+     *
+     * @param writer
+     *         The responsible class for writing the actual data to disk
+     */
+    void addDiskFileWriter(DiskWriter<V, A> writer);
 
-	/**
-	 * Signals the merging implementation to start the merging process. <p> Note that execution of the merge happens in
-	 * the context of the {@link Thread} the merger was placed in.</p>
-	 */
-	void doMerge();
+    /**
+     * Signals the merging implementation to start the merging process. <p> Note that execution of the merge happens in
+     * the context of the {@link Thread} the merger was placed in.</p>
+     */
+    void doMerge();
 
-	/**
-	 * Returns the number of unique entries stored into the data store.
-	 */
-	long getNumberUniqueEntriesStored();
+    /**
+     * Returns the number of unique entries stored into the data store.
+     */
+    long getNumberUniqueEntriesStored();
 }

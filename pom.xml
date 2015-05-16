@@ -1,63 +1,66 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-	<artifactId>Drum</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+    <artifactId>Drum</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
 
-	<name>Disk Repository with Update Management (DRUM)</name>
-	<description>Drum divides data received via its check, checkUpdate or update method into a number of buckets and stores them efficiently with the help of bucket sort into bucket disk files. If a disk files gets full all the data is stored and compared with the data in a general backend data store and updated if required.</description>
+    <name>Disk Repository with Update Management (DRUM)</name>
+    <description>Drum divides data received via its check, checkUpdate or update method into a number of buckets and
+        stores them efficiently with the help of bucket sort into bucket disk files. If a disk files gets full all the
+        data is stored and compared with the data in a general backend data store and updated if required.
+    </description>
 
-	<parent>
-		<groupId>at.rovo</groupId>
-		<artifactId>super-pom</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
-	</parent>
+    <parent>
+        <groupId>at.rovo</groupId>
+        <artifactId>super-pom</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
 
-	<dependencies>
-		<!-- Log4J -->
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-		</dependency>
-		<!-- JUnit -->
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<!-- berkeley db -->
-		<dependency>
-			<groupId>com.sleepycat</groupId>
-			<artifactId>je</artifactId>
-			<version>${sleepycat.version}</version>
-		</dependency>
-		<!-- Common -->
-		<dependency>
-			<groupId>at.rovo</groupId>
-			<artifactId>Common</artifactId>
-			<version>${commons.version}</version>
-		</dependency>
-	</dependencies>
+    <dependencies>
+        <!-- Log4J -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+        </dependency>
+        <!-- JUnit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- berkeley db -->
+        <dependency>
+            <groupId>com.sleepycat</groupId>
+            <artifactId>je</artifactId>
+            <version>${sleepycat.version}</version>
+        </dependency>
+        <!-- Common -->
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>Common</artifactId>
+            <version>${commons.version}</version>
+        </dependency>
+    </dependencies>
 
-	<build>
-		<plugins>
-			<!-- compiler settings -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-			</plugin>
-			<!-- Surefire is a test framework project. -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
+    <build>
+        <plugins>
+            <!-- compiler settings -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <!-- Surefire is a test framework project. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

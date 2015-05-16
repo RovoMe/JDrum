@@ -28,9 +28,9 @@ import at.rovo.caching.drum.data.ByteSerializer;
  * this implementation support synchronization.
  *
  * @param <V>
- * 		The type of the value to be stored in the cache
+ *         The type of the value to be stored in the cache
  * @param <A>
- * 		The type of auxiliary data, which needs to be attached to key/value-pairs
+ *         The type of auxiliary data, which needs to be attached to key/value-pairs
  *
  * @author Roman Vottner
  * @version 0.1
@@ -38,114 +38,114 @@ import at.rovo.caching.drum.data.ByteSerializer;
  */
 public interface Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
 {
-	/**
-	 * Informs the caching system to check for the availability of the provided key. There are only two options here:
-	 * The key can already be present therefore a {@link DrumResult#DUPLICATE_KEY} will be returned via the dispatcher,
-	 * otherwise {@link DrumResult#UNIQUE_KEY} is returned
-	 *
-	 * @param key
-	 * 		The key which should be checked for.
-	 */
-	void check(final Long key);
+    /**
+     * Informs the caching system to check for the availability of the provided key. There are only two options here:
+     * The key can already be present therefore a {@link DrumResult#DUPLICATE_KEY} will be returned via the dispatcher,
+     * otherwise {@link DrumResult#UNIQUE_KEY} is returned
+     *
+     * @param key
+     *         The key which should be checked for.
+     */
+    void check(final Long key);
 
-	/**
-	 * Informs the caching system to check for the availability of the provided key
-	 *
-	 * @param key
-	 * 		The key which should be checked for.
-	 * @param aux
-	 * 		The auxiliary data of a key.
-	 */
-	void check(final Long key, final A aux);
+    /**
+     * Informs the caching system to check for the availability of the provided key
+     *
+     * @param key
+     *         The key which should be checked for.
+     * @param aux
+     *         The auxiliary data of a key.
+     */
+    void check(final Long key, final A aux);
 
-	/**
-	 * Instructs the caching system to update the value of a certain key on the next merge phase. If the key is not
-	 * present in the cache yet, it will be created with the provided value.
-	 *
-	 * @param key
-	 * 		The key which value should be updated
-	 * @param value
-	 * 		The new value of the key
-	 */
-	void update(final Long key, final V value);
+    /**
+     * Instructs the caching system to update the value of a certain key on the next merge phase. If the key is not
+     * present in the cache yet, it will be created with the provided value.
+     *
+     * @param key
+     *         The key which value should be updated
+     * @param value
+     *         The new value of the key
+     */
+    void update(final Long key, final V value);
 
-	/**
-	 * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
-	 * If the key does not exist in the cache yet, if will be created with the provided value/auxiliary data. If the key
-	 * already exists the entry will be replaced by the new data entry.
-	 *
-	 * @param key
-	 * 		The key which value should be updated
-	 * @param value
-	 * 		The new value of the key
-	 * @param aux
-	 * 		The new auxiliary data of the key
-	 */
-	void update(final Long key, final V value, final A aux);
+    /**
+     * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
+     * If the key does not exist in the cache yet, if will be created with the provided value/auxiliary data. If the key
+     * already exists the entry will be replaced by the new data entry.
+     *
+     * @param key
+     *         The key which value should be updated
+     * @param value
+     *         The new value of the key
+     * @param aux
+     *         The new auxiliary data of the key
+     */
+    void update(final Long key, final V value, final A aux);
 
-	/**
-	 * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
-	 * If the key does not exist in the cache yet, if will be created with the provided value/auxiliary data. If the key
-	 * already exists the content of the new data will be added to the already existing entry instead of replacing the
-	 * content with the new version.
-	 *
-	 * @param key
-	 * 		The key which value should be updated
-	 * @param value
-	 * 		The new value of the key
-	 */
-	void appendUpdate(final Long key, final V value);
+    /**
+     * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
+     * If the key does not exist in the cache yet, if will be created with the provided value/auxiliary data. If the key
+     * already exists the content of the new data will be added to the already existing entry instead of replacing the
+     * content with the new version.
+     *
+     * @param key
+     *         The key which value should be updated
+     * @param value
+     *         The new value of the key
+     */
+    void appendUpdate(final Long key, final V value);
 
-	/**
-	 * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
-	 * If the key does not exist in the cache yet, if will be created with the provided value/auxiliary data. If the key
-	 * already exists the content of the new data will be added to the already existing entry instead of replacing the
-	 * content with the new version.
-	 *
-	 * @param key
-	 * 		The key which value should be updated
-	 * @param value
-	 * 		The new value of the key
-	 * @param aux
-	 * 		The new auxiliary data of the key
-	 */
-	void appendUpdate(final Long key, final V value, final A aux);
+    /**
+     * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
+     * If the key does not exist in the cache yet, if will be created with the provided value/auxiliary data. If the key
+     * already exists the content of the new data will be added to the already existing entry instead of replacing the
+     * content with the new version.
+     *
+     * @param key
+     *         The key which value should be updated
+     * @param value
+     *         The new value of the key
+     * @param aux
+     *         The new auxiliary data of the key
+     */
+    void appendUpdate(final Long key, final V value, final A aux);
 
-	/**
-	 * Executes the check and update operations in one single pass
-	 *
-	 * @param key
-	 * 		The key which existence should be checked and its associated data needs to be updated.
-	 * @param value
-	 * 		The value of the key that needs to be updated.
-	 */
-	void checkUpdate(final Long key, final V value);
+    /**
+     * Executes the check and update operations in one single pass
+     *
+     * @param key
+     *         The key which existence should be checked and its associated data needs to be updated.
+     * @param value
+     *         The value of the key that needs to be updated.
+     */
+    void checkUpdate(final Long key, final V value);
 
-	/**
-	 * Executes the check and update operations in one single pass
-	 *
-	 * @param key
-	 * 		The key which existence should be checked and its associated data needs to be updated.
-	 * @param value
-	 * 		The value of the key that needs to be updated.
-	 * @param aux
-	 * 		The auxiliary data that needs to be updated.
-	 */
-	void checkUpdate(final Long key, final V value, final A aux);
+    /**
+     * Executes the check and update operations in one single pass
+     *
+     * @param key
+     *         The key which existence should be checked and its associated data needs to be updated.
+     * @param value
+     *         The value of the key that needs to be updated.
+     * @param aux
+     *         The auxiliary data that needs to be updated.
+     */
+    void checkUpdate(final Long key, final V value, final A aux);
 
-	/**
-	 * Releases the lock to the local backing DB and the locks held to other system imminent devices
-	 */
-	void dispose() throws DrumException;
+    /**
+     * Releases the lock to the local backing DB and the locks held to other system imminent devices
+     */
+    void dispose() throws DrumException;
 
-	/**
-	 * Adds an object to the {@link java.util.Set Set} of objects to be notified on state or statistic changes.
-	 */
-	void addDrumListener(DrumListener listener);
+    /**
+     * Adds an object to the {@link java.util.Set Set} of objects to be notified on state or statistic changes.
+     */
+    void addDrumListener(DrumListener listener);
 
-	/**
-	 * Removes a previously added object from the {@link java.util.Set Set} of objects which require notifications on
-	 * state or statistic changes.
-	 */
-	void removeDrumListener(DrumListener listener);
+    /**
+     * Removes a previously added object from the {@link java.util.Set Set} of objects which require notifications on
+     * state or statistic changes.
+     */
+    void removeDrumListener(DrumListener listener);
 }

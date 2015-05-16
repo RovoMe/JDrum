@@ -1,7 +1,6 @@
 package at.rovo.caching.drum.util;
 
 import at.rovo.caching.drum.internal.InMemoryData;
-
 import java.util.Comparator;
 
 /**
@@ -12,24 +11,24 @@ import java.util.Comparator;
  * object.
  *
  * @param <T>
- * 		The type of the objects to compare. Note that the object must implement a getKey() method which returns a {@link
- * 		Comparable} object.
+ *         The type of the objects to compare. Note that the object must implement a getKey() method which returns a
+ *         {@link Comparable} object.
  *
  * @author Roman Vottner
  */
 public class KeyComparator<T extends InMemoryData<?, ?>> implements Comparator<T>
 {
-	@Override
-	public int compare(T o1, T o2)
-	{
-		if (o1.getKey() < o2.getKey())
-		{
-			return -1;
-		}
-		else if (o1.getKey() > o2.getKey())
-		{
-			return 1;
-		}
-		return 0;
-	}
+    @Override
+    public int compare(T o1, T o2)
+    {
+        if (o1.getKey() < o2.getKey())
+        {
+            return -1;
+        }
+        else if (o1.getKey() > o2.getKey())
+        {
+            return 1;
+        }
+        return 0;
+    }
 }

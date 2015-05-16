@@ -7,23 +7,23 @@ package at.rovo.caching.drum.data;
  */
 public class NullSerializer implements ByteSerializer<NullSerializer>
 {
-	/**
-	 * Instantiates a new instance which represents a null value.
-	 */
-	public NullSerializer()
-	{
+    /**
+     * Instantiates a new instance which represents a null value.
+     */
+    public NullSerializer()
+    {
 
-	}
+    }
 
-	@Override
-	public byte[] toBytes()
-	{
-		return new byte[0];
-	}
+    @Override
+    public byte[] toBytes()
+    {
+        return new byte[0];
+    }
 
-	@Override
-	public NullSerializer readBytes(byte[] data)
-	{
-		return new NullSerializer();
-	}
+    @Override
+    public NullSerializer readBytes(byte[] data)
+    {
+        return new NullSerializer();
+    }
 }

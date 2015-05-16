@@ -8,12 +8,12 @@ package at.rovo.caching.drum;
  */
 public enum DrumResult
 {
-	/**
-	 * Is returned by the caching system if the given key was not found in the synchronized Berkeley DB
-	 */
-	UNIQUE_KEY,
-	/**
-	 * Is returned by the caching system if the given key was found in the synchronized Berkeley DB
-	 */
-	DUPLICATE_KEY
+    /**
+     * Is returned by the caching system if the given key was not found in the synchronized Berkeley DB
+     */
+    UNIQUE_KEY,
+    /**
+     * Is returned by the caching system if the given key was found in the synchronized Berkeley DB
+     */
+    DUPLICATE_KEY
 }
