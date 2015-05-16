@@ -35,7 +35,8 @@ public class DrumTest implements DrumListener
     public void testDrum() throws DrumException, IOException
     {
         Drum<V, A> drum = new DrumBuilder<>("keyValueName", V.class, A.class)
-                                           .numBuckets(4).bufferSize(64).dispatcher(new LogFileDispatcher<>())
+                                           .numBuckets(4).bufferSize(64)
+                                           .dispatcher(new LogFileDispatcher<>())
                                            .listener(this).build();
         ...
         
@@ -103,8 +104,9 @@ public class DrumTest extends NullDispatcher<PLDData, StringSerializer>
 {
     public void testDrum() throws DrumException, IOException
     {
-        Drum<PLDData, StringSerializer> drum = new DrumBuilder<>("pldIndegree", PLDData.class, StringSerializer.class)
-                                           .numBuckets(4).bufferSize(64).dispatcher(this).build();
+        Drum<PLDData, StringSerializer> drum = 
+                new DrumBuilder<>("pldIndegree", PLDData.class, StringSerializer.class)
+                                 .numBuckets(4).bufferSize(64).dispatcher(this).build();
         ...
         
         String String url = "https://github.com/RovoMe/JDrum";
