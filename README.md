@@ -57,21 +57,21 @@ As the API makes use of an own serialization mechanism, `V` and `A`, which are t
 attached to the key/value tuple, need to implement either `ByteSerializer<T>` or `AppendableData<T>`. Currently this API
 ships with two pre-made serializers: `StringSerializer` which handles Java Strings and `ObjectSerializer<O>`.
 
-The builder provides a series of configuration options. The only required ones are the constructor-parameters which 
+The builder provides a series of configuration options. The only ones required are the constructor-parameters which 
 specify the instance name of the JDrum key/value store and the expected classes for key and values.
 
 | Method                      | Explanation                                                                               | Default |
 | --------------------------- | ----------------------------------------------------------------------------------------- | ------- |
 | numBuckets(int)             | The number of buckets JDrum will use. This should be a power of 2 (e.g. 2, 4, 8, 16, ...) | 512     |
-| bufferSize(int)             | The size in bytes of buffers before the request a merge. This has to be a power of 2      | 64kb    |
+| bufferSize(int)             | The size in bytes a buffers has to reach before it requests a merge. This has to be a power of 2      | 64kb    |
 | listener(DrumListener)      | Assigns an object to JDrum which gets notified on internal state changes like the filling up of buffers or disk files or on the current state of each disk bucket | null |
-| dispatcher(Dispatcher)      | An object implementing this interface which will receive `UNIQUE_KEY` or `DUPLICATE_KEY` responses as well as the current value of an updated object | NullDispatcher |
+| dispatcher(Dispatcher)      | An object implementing this interface which will receive responses to the invoked operation like f.e. `UNIQUE_KEY` or `DUPLICATE_KEY` classifications and/or the current value of an updated object | NullDispatcher |
 | factory(DrumStorageFactory) | A DrumStorageFactory which creates the backing data store. As of now only a self-written key/value store as well as a Berkeley-DB are supported. `CacheFile` key/value store is created by default. | null |
 
 ### Insert or update data
 
-Once a JDrum instance is initialized, data can be stored or updated in the backing data store using one of the following
-operations:
+Once a JDrum instance is initialized, data can be stored or updated in the underlying data store using one of the 
+following operations:
 
 * `drum.update(Long, V);`
 * `drum.update(Long, V, A);`
@@ -80,8 +80,8 @@ operations:
 * `drum.checkUpdate(Long, V);`
 * `drum.checkUpdate(Long, V, A);`
 
-The first parameter is always the 64-bit long key which can be generated using `DrumUtils.hash(String)` or `DrumUtils.hash(Object)` 
-while the second parameter is the value which should be stored to the data store. The third parameter is optional and 
+The first parameter is always a 64-bit long key, which can be generated using `DrumUtils.hash(String)` or `DrumUtils.hash(Object)`, 
+while the second parameter is the value which should be stored into the data store. The third parameter is optional and 
 allows to add additional data to the key/value. This auxiliary data can therefore be some meta data about the key/value 
 pair or the current state of the environment when the invocation occurred or simply data you want to get back once the 
 dispatcher returned results.
@@ -95,7 +95,7 @@ append the state of the value object to the existing one, the value object needs
 interface. The last two operations perform a regular `update(...)` operation but will also return a classification
 result regarding the uniqueness of the key via the dispatcher.
 
-To code example below showcases a more complex scenario where a custom bean is used to store and append data to the 
+The example code below showcases a more complex scenario where a custom bean is used to store and append data to the 
 data store. This sample makes use of a custom `PLDData` bean which is taken from the JIRLbot project and described in
 short further below.
 
@@ -126,7 +126,7 @@ public class DrumTest extends NullDispatcher<PLDData, StringSerializer>
         neighbor2.add(4L);
         data2.setIndegreeNeighbors(neighbor2);
         
-        drum.update(DrumUtils.hash(url), data2, new StringSerializer(url));
+        drum.appendUpdate(DrumUtils.hash(url), data2, new StringSerializer(url));
         
         ...
         
@@ -164,7 +164,7 @@ The code above will check if the 64-bit hash code for the given URL is already k
 class specified as dispatcher while instantiating JDrum will receive a `UNIQUE_KEY` or `DUPLICATE_KEY` notification when
 the merge-phase of the disk bucket files actually occurred.
 
-A simple dispatcher which just prints the output the the console could look like this: 
+A simple dispatcher which just prints the output to the console could look like this: 
 
 ```java
 public class ConsoleDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends NullDispatcher<V, A>
@@ -199,7 +199,7 @@ public class ConsoleDispatcher<V extends ByteSerializer<V>, A extends ByteSerial
 
 In order to persist more complex objects a custom serializable object needs to be created. As the current version of the
 JDrum API ships with a custom serialization mechanism an object which should be serialized to the backing data store
-either needs to implemnet `ByteSerializer<T>` or `AppendableData<T>`.
+either needs to implement `ByteSerializer<T>` or `AppendableData<T>`.
 
 The primer one simply transforms the state of an object to a byte array while the latter one also contains a method for
 appending data.
