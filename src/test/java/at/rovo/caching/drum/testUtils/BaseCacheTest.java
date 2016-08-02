@@ -1,4 +1,4 @@
-package at.rovo.test;
+package at.rovo.caching.drum.testUtils;
 
 import java.io.File;
 import java.io.IOException;

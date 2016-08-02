@@ -338,9 +338,7 @@ public class DrumUtils
     {
         LOG.info("Data contained in cache.db:");
 
-        String userDir = System.getProperty("user.dir");
-        String cacheName = userDir + "/cache/" + name + "/cache.db";
-        RandomAccessFile cacheFile = new RandomAccessFile(cacheName, "r");
+        RandomAccessFile cacheFile = DrumUtils.openDataStore(name);
         cacheFile.seek(0);
 
         Pair<Long, V> data;
@@ -364,6 +362,20 @@ public class DrumUtils
         while (data != null);
 
         cacheFile.close();
+    }
+
+    /**
+     * Opens the backing data store and returns a {@link RandomAccessFile} reference to the opened file.
+     *
+     * @param name The name of the DRUM instance the data store should be opened for
+     * @return A reference to the random access file
+     * @throws IOException If the file could not be accessed
+     */
+    public static RandomAccessFile openDataStore(String name) throws IOException
+    {
+        String userDir = System.getProperty("user.dir");
+        String cacheName = userDir + "/cache/" + name + "/cache.db";
+        return new RandomAccessFile(cacheName, "r");
     }
 
     /**

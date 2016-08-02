@@ -88,16 +88,16 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         </logger>
 
         <!-- Test classes -->
-        <logger name="at.rovo.test.BaseCacheTest" level="debug" additivity="false">
+        <logger name="at.rovo.caching.drum.testUtils.BaseCacheTest" level="debug" additivity="false">
             <appender-ref ref="TestFile"/>
         </logger>
-        <logger name="at.rovo.test.DrumTest" level="debug" additivity="false">
+        <logger name="at.rovo.caching.drum.DrumImplTest" level="debug" additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
-        <logger name="at.rovo.test.LogFileDispatcher" level="debug" additivity="false">
+        <logger name="at.rovo.caching.drum.testUtils.LogFileDispatcher" level="debug" additivity="false">
             <appender-ref ref="TestFile"/>
         </logger>
-        <logger name="at.rovo.test.CacheFileTest" level="debug" additivity="false">
+        <logger name="at.rovo.caching.drum.internal.backend.cacheFile.CacheFileTest" level="debug" additivity="false">
             <appender-ref ref="TestFile"/>
         </logger>
 

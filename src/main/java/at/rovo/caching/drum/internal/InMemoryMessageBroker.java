@@ -6,6 +6,7 @@ import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.event.InMemoryBufferEvent;
 import at.rovo.caching.drum.event.InMemoryBufferState;
 import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,7 +42,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
         implements Broker<T, V, A>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(InMemoryMessageBroker.class);
+    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     /** The name of the DRUM instance **/
     private String drumName = null;
@@ -88,8 +89,15 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
     /**
      * Creates a new instance and initializes necessary fields.
      *
+     * @param drumName
+     *         The name of the drum instance. This value is only required to log more appropriate and therefore
+     *         traceable statements
+     * @param id
+     *         The bucket identifier this broker will act on
      * @param byteSizePerBuffer
      *         The length of the buffer in size upon which the consumer will get the buffered data
+     * @param eventDispatcher
+     *         A reference to the event dispatcher in order to inform listeners about state changes on the broker
      */
     public InMemoryMessageBroker(String drumName, int id, int byteSizePerBuffer, DrumEventDispatcher eventDispatcher)
     {

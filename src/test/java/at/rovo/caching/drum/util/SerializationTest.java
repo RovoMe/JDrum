@@ -1,10 +1,18 @@
-import at.rovo.caching.drum.util.DrumUtils;
+package at.rovo.caching.drum.util;
+
+import at.rovo.caching.drum.testUtils.TestClass;
+import at.rovo.common.ParallelRunner;
+import at.rovo.common.UnitTest;
 import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import static org.hamcrest.CoreMatchers.is;
 
+@RunWith(ParallelRunner.class)
+@Category(UnitTest.class)
 public class SerializationTest
 {
     @Test

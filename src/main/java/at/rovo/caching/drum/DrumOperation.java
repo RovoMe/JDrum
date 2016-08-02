@@ -30,7 +30,7 @@ public enum DrumOperation
      */
     APPEND_UPDATE('a');
 
-    private char c;
+    private final char c;
 
     DrumOperation(char c)
     {
@@ -42,7 +42,7 @@ public enum DrumOperation
      *
      * @return A character identifying the current DRUM operation
      */
-    public char getTokenForOperation()
+    public final char getTokenForOperation()
     {
         return c;
     }
@@ -61,25 +61,22 @@ public enum DrumOperation
     public static DrumOperation fromToken(char c) throws DrumException
     {
         DrumOperation op;
-        if (c == 'c')
+        switch (c)
         {
-            op = DrumOperation.CHECK;
-        }
-        else if (c == 'u')
-        {
-            op = DrumOperation.UPDATE;
-        }
-        else if (c == 'b')
-        {
-            op = DrumOperation.CHECK_UPDATE;
-        }
-        else if (c == 'a')
-        {
-            op = DrumOperation.APPEND_UPDATE;
-        }
-        else
-        {
-            throw new DrumException("Invalid DRUM operation token received: " + c);
+            case 'c':
+                op = DrumOperation.CHECK;
+                break;
+            case 'u':
+                op = DrumOperation.UPDATE;
+                break;
+            case 'b':
+                op = DrumOperation.CHECK_UPDATE;
+                break;
+            case 'a':
+                op = DrumOperation.APPEND_UPDATE;
+                break;
+            default:
+                throw new DrumException("Invalid DRUM operation token received: " + c);
         }
         return op;
     }

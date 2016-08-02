@@ -28,12 +28,6 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
         </dependency>
-        <!-- JUnit -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!-- berkeley db -->
         <dependency>
             <groupId>com.sleepycat</groupId>
@@ -45,6 +39,29 @@
             <groupId>at.rovo</groupId>
             <artifactId>Common</artifactId>
             <version>${commons.version}</version>
+        </dependency>
+
+        <!-- Test dependencies-->
+
+        <!-- JUnit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- UnitTest, IntegrationTest, ... annotations-->
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>Common</artifactId>
+            <version>${commons.version}</version>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency>
+        <!-- Wildcard pattern suite -->
+        <dependency>
+            <groupId>com.googlecode.junit-toolbox</groupId>
+            <artifactId>junit-toolbox</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

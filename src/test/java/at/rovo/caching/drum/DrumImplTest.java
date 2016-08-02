@@ -1,12 +1,11 @@
-package at.rovo.test;
+package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.Dispatcher;
-import at.rovo.caching.drum.Drum;
-import at.rovo.caching.drum.DrumBuilder;
-import at.rovo.caching.drum.DrumListener;
 import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.event.DrumEvent;
+import at.rovo.caching.drum.testUtils.BaseCacheTest;
+import at.rovo.caching.drum.testUtils.ConsoleDispatcher;
 import at.rovo.caching.drum.util.DrumUtils;
+import at.rovo.common.IntegrationTest;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.invoke.MethodHandles;
@@ -16,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Tests the functionality of DRUM through adding a couple of URLs which get first stored in memory. If a certain
@@ -32,7 +32,8 @@ import org.junit.Test;
  *
  * @author Roman Vottner
  */
-public class DrumTest extends BaseCacheTest implements DrumListener
+@Category(IntegrationTest.class)
+public class DrumImplTest extends BaseCacheTest implements DrumListener
 {
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 

@@ -1,12 +1,13 @@
-package at.rovo.test;
+package at.rovo.caching.drum.internal.backend.cacheFile;
 
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.internal.InMemoryData;
-import at.rovo.caching.drum.internal.backend.cacheFile.CacheFile;
+import at.rovo.caching.drum.testUtils.CacheFileDeleter;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.KeyComparator;
+import at.rovo.common.IntegrationTest;
 import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -20,6 +21,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Tests the cache file which acts as a data store.
@@ -31,6 +33,7 @@ import org.junit.Test;
  *
  * @author Roman Vottner
  */
+@Category(IntegrationTest.class)
 public class CacheFileTest
 {
     /** The logger for this class **/

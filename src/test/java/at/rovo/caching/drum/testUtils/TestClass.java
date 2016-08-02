@@ -1,3 +1,5 @@
+package at.rovo.caching.drum.testUtils;
+
 import java.io.Serializable;
 
 public class TestClass implements Serializable

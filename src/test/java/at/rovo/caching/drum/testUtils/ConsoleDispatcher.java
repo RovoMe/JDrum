@@ -1,4 +1,4 @@
-package at.rovo.test;
+package at.rovo.caching.drum.testUtils;
 
 import at.rovo.caching.drum.NullDispatcher;
 import at.rovo.caching.drum.data.ByteSerializer;
