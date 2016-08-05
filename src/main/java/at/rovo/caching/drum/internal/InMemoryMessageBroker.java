@@ -6,13 +6,10 @@ import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.event.InMemoryBufferEvent;
 import at.rovo.caching.drum.event.InMemoryBufferState;
 import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
+import at.rovo.caching.drum.util.lockfree.FlippableData;
+import at.rovo.caching.drum.util.lockfree.FlippableDataContainer;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Queue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -46,45 +43,30 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
 
     /** The name of the DRUM instance **/
     private String drumName = null;
-    /**
-     * The object responsible for updating listeners on state or statistic changes
-     **/
+    /** The object responsible for updating listeners on state or statistic changes **/
     private DrumEventDispatcher eventDispatcher = null;
     /** The ID of the buffer **/
     private int bucketId = 0;
-    /** The index of the currently active buffer **/
-    private AtomicInteger activeBuffer = new AtomicInteger(0);
-    /**
-     * Will contain the actual buffer as well as the length of the key/value and auxiliary queue
-     */
-    @SuppressWarnings("unchecked")
-    private MemoryBuffer<T>[] buffers = (MemoryBuffer<T>[]) Array.newInstance(MemoryBuffer.class, 2);
-
-    /**
-     * The size of the buffer before the two buffers get exchanged and the results being available through
-     * <code>takeAll</code>
-     **/
+    /** The flippable queue to add in memory data to **/
+    private FlippableDataContainer<T> queue = new FlippableDataContainer<>();
+    /** The size of the buffer before the two buffers get exchanged and the results being available through
+     * <code>takeAll</code> **/
     private int byteSizePerBuffer = 0;
-
-    /**
-     * Indicates if the thread the runnable part is running in should stop its work
-     **/
-    private volatile boolean stopRequested = false;
-    /**
-     * The old state of the crawler. Used to minimize state updates if the state remained the same as the old state
-     **/
+    /** The old state of the crawler. Used to minimize state updates if the state remained the same as the old state **/
     private InMemoryBufferState oldState = null;
 
-    /** The lock object used to synchronize the threads **/
+    /** The lock object is needed to let consumers wait on invoking {@link #takeAll()} if no data is available **/
     private Lock lock = new ReentrantLock();
-    /**
-     * Informs a waiting thread, which invoked await() previously, that data is available for writing to disk bucket
-     * through invoking signal().
-     **/
+    /** Informs a waiting thread, which invoked await() previously, that data is available for writing to disk bucket
+     * through invoking signal() **/
     private Condition dataAvailable = lock.newCondition();
-
     /** Flag to indicate that the data is available **/
     private volatile boolean isDataAvailable = false;
+
+    /** Indicates if the thread the runnable part is running in should stop its work **/
+    private volatile boolean stopRequested = false;
+    /** To avoid logging of multiple stopped sending data messages **/
+    private boolean stopAlreadyLogged = false;
 
     /**
      * Creates a new instance and initializes necessary fields.
@@ -106,9 +88,6 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
         this.bucketId = id;
         this.byteSizePerBuffer = byteSizePerBuffer;
 
-        this.buffers[0] = new MemoryBuffer<>(new ConcurrentLinkedQueue<>(), 0, 0);
-        this.buffers[1] = new MemoryBuffer<>(new ConcurrentLinkedQueue<>(), 0, 0);
-
         // the old state used to filter multiple state updates on the same state
         this.oldState = InMemoryBufferState.EMPTY;
         this.eventDispatcher
@@ -119,40 +98,38 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
     @Override
     public void put(T data)
     {
-        int activeQueue = this.activeBuffer.get();
-        MemoryBuffer<T> activeBuffer = this.buffers[activeQueue];
-        activeBuffer.getBuffer().add(data);
-
-        LOG.info("[{}] - [{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
-                 this.bucketId, activeQueue, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
-
-        int keyLength = data.getKeyAsBytes().length;
-        int valLength = 0;
-        if (data.getValue() != null)
+        if (null == data)
         {
-            valLength = data.getValueAsBytes().length;
-        }
-        int auxLength = 0;
-        if (data.getAuxiliary() != null)
-        {
-            auxLength = data.getAuxiliaryAsBytes().length;
+            return;
         }
 
-        activeBuffer.addByteLengthKV(keyLength + valLength);
-        activeBuffer.addByteLengthAux(auxLength);
+        FlippableData<T> _data = this.queue.put(data);
+        this.isDataAvailable = true;
 
-        this.eventDispatcher
-                .update(new InMemoryBufferEvent(this.drumName, this.bucketId, activeBuffer.getByteLengthKV(),
-                                                activeBuffer.getByteLengthAux()));
+        LOG.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
+                 this.bucketId, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
 
-        if ((activeBuffer.getByteLengthKV() > this.byteSizePerBuffer ||
-             activeBuffer.getByteLengthAux() > this.byteSizePerBuffer))
+       int byteLengthKV = _data.getKeyLength() + _data.getValLength();
+       int byteLengthAux = _data.getAuxLength();
+
+        this.eventDispatcher.update(
+                new InMemoryBufferEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
+
+        this.checStateChange(byteLengthKV, byteLengthAux);
+
+        this.signalDataAvailable();
+    }
+
+    private void checStateChange(int byteLengthKV, int byteLengthAux) {
+        if ((byteLengthKV > this.byteSizePerBuffer ||
+             byteLengthAux > this.byteSizePerBuffer))
         {
             if (!InMemoryBufferState.EXCEEDED_LIMIT.equals(this.oldState))
             {
                 this.oldState = InMemoryBufferState.EXCEEDED_LIMIT;
-                this.eventDispatcher.update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId,
-                                                                          InMemoryBufferState.EXCEEDED_LIMIT));
+                this.eventDispatcher.update(
+                        new InMemoryBufferStateUpdate(this.drumName, this.bucketId,
+                                                      InMemoryBufferState.EXCEEDED_LIMIT));
             }
         }
         else
@@ -160,15 +137,17 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
             if (!InMemoryBufferState.WITHIN_LIMIT.equals(this.oldState))
             {
                 this.oldState = InMemoryBufferState.WITHIN_LIMIT;
-                this.eventDispatcher.update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId,
-                                                                          InMemoryBufferState.WITHIN_LIMIT));
+                this.eventDispatcher.update(
+                        new InMemoryBufferStateUpdate(this.drumName, this.bucketId,
+                                                      InMemoryBufferState.WITHIN_LIMIT));
             }
         }
+    }
 
+    private void signalDataAvailable() {
         try
         {
             this.lock.lock();
-            this.isDataAvailable = true;
             this.dataAvailable.signal();
         }
         finally
@@ -178,11 +157,15 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
     }
 
     @Override
-    public List<T> takeAll() throws InterruptedException
+    public Queue<T> takeAll() throws InterruptedException
     {
         if (!this.isDataAvailable && this.stopRequested)
         {
-            LOG.trace("[{}] - [{}] - stopped sending data!", this.drumName, this.bucketId);
+            if (!this.stopAlreadyLogged)
+            {
+                LOG.trace("[{}] - [{}] - stopped sending data!", this.drumName, this.bucketId);
+                this.stopAlreadyLogged = true;
+            }
             return null;
         }
 
@@ -190,34 +173,21 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
         {
             this.lock.lock();
 
-            // check if data is already available or we have to wait
             if (!this.isDataAvailable)
             {
-                this.dataAvailable.await(); // wait for available data
+                // wait till data is available
+                this.dataAvailable.await();
             }
 
-            ConcurrentLinkedQueue<T> queue = this.flip();
-            List<T> ret;
-            if (queue.isEmpty())
-            {
-                ret = Collections.emptyList();
-            }
-            else
-            {
-                ret = new ArrayList<>(queue);
-            }
+            Queue<T> queue = this.queue.flip();
             this.isDataAvailable = false;
             LOG.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
             if (LOG.isTraceEnabled())
             {
-                ret.forEach(entry -> LOG.trace("Transmitted: ", entry));
+                queue.forEach(entry -> LOG.trace("Transmitted: ", entry));
             }
 
-            // clear the old "copied" content
-            queue.clear();
-
-            // return the copy
-            return ret;
+            return queue;
         }
         finally
         {
@@ -234,35 +204,14 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
         try
         {
             this.lock.lock();
+            // if a consumer thread is waiting for data and we need to shutdown, we invoke the currently blocked
+            // consumer thread in order to shut down the broker correctly. Signaling a blocked thread however requires
+            // to be done while a lock is active otherwise an illegal monitor exception is thrown!
             this.dataAvailable.signal();
         }
         finally
         {
             this.lock.unlock();
         }
-    }
-
-    /**
-     * Flips the currently active buffer with the back-buffer and notifies other threads about the availability of data
-     *
-     * @return Returns a reference to the currently inactive buffer
-     */
-    private ConcurrentLinkedQueue<T> flip()
-    {
-        int active = this.activeBuffer.get();
-        int inactive = active ^ 1;
-        LOG.debug("[{}] - [{}] - [{}->{}] - flipping buffers", this.drumName, this.bucketId, active, inactive);
-        // the currently inactive buffer still hold the bytes of the period
-        // when the buffer was last active, so clear it first
-        MemoryBuffer<T> inactiveBuffer = this.buffers[inactive];
-        inactiveBuffer.setByteLengthKV(0);
-        inactiveBuffer.setByteLengthAux(0);
-        // and now flip the currently active buffer
-        this.activeBuffer.compareAndSet(active, inactive);
-
-        this.eventDispatcher
-                .update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, InMemoryBufferState.EMPTY));
-        // the value of the active variable still points to the now inactive buffer so we are safe here
-        return this.buffers[active].getBuffer();
     }
 }

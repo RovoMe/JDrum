@@ -14,7 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.Semaphore;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -51,14 +51,10 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
     private int bucketByteSize = 0;
     /** The broker we get data to write from **/
     private Broker<InMemoryData<V, A>, V, A> broker = null;
-    /**
-     * The merger who takes care of merging disk files with the backing data store. It needs to be informed if it should
-     * merge, which happens if the bytes written to the disk file exceeds certain limits
-     **/
+    /** The merger who takes care of merging disk files with the backing data store. It needs to be informed if it should
+     * merge, which happens if the bytes written to the disk file exceeds certain limits **/
     private Merger<V, A> merger = null;
-    /**
-     * The object responsible for updating listeners on state or statistic changes
-     **/
+    /** The object responsible for updating listeners on state or statistic changes **/
     private DrumEventDispatcher eventDispatcher = null;
     /** The name of the disk file this instance will write key/value data to **/
     private String kvFileName = null;
@@ -74,18 +70,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
     private long auxBytesWritten = 0L;
     /** flag if merging is required **/
     private boolean mergeRequired = false;
-    /**
-     * As semaphores can be used from different threads use it here as a lock for getting access to the disk bucket
-     * file
-     **/
+    /** As semaphores can be used from different threads use it here as a lock for getting access to the disk bucket
+     * file **/
     private Semaphore lock = new Semaphore(1);
-    /**
-     * Indicates if the thread the runnable part is running in should stop its work
-     **/
+    /** Indicates if the thread the runnable part is running in should stop its work **/
     private volatile boolean stopRequested = false;
-    /**
-     * Used to reduce multiple WAITING_ON_MERGE_REQUEST event updates to a single update
-     **/
+    /** Used to reduce multiple WAITING_ON_MERGE_REQUEST event updates to a single update **/
     private DiskWriterState lastState = null;
 
     /**
@@ -179,7 +169,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
                 // use a blocking call to retrieve the elements to persist
                 // takeAll() waits on the broker instance to retrieve data
-                List<InMemoryData<V, A>> elementsToPersist = this.broker.takeAll();
+                Queue<InMemoryData<V, A>> elementsToPersist = this.broker.takeAll();
 
                 // in case a flush was invoked but there aren't any data
                 // available
@@ -261,7 +251,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
      * @param inMemoryData
      *         The buffer which contains the data to persist to disk
      */
-    private void feedBucket(List<InMemoryData<V, A>> inMemoryData) throws DrumException
+    private void feedBucket(Queue<InMemoryData<V, A>> inMemoryData) throws DrumException
     {
         try
         {

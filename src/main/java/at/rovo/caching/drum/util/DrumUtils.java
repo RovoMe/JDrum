@@ -222,13 +222,14 @@ public class DrumUtils
      * @throws ClassNotFoundException
      */
     @SuppressWarnings("unchecked")
-    public static <T> T deserialize(byte[] bytes, Class<? super T> type) throws IOException, ClassNotFoundException
+    public static <V extends ByteSerializer> V deserialize(byte[] bytes, Class<? super V> type)
+            throws IOException, ClassNotFoundException
     {
-        T ret;
+        V ret;
         // check if the byte array is a String (character array)
         if (type.isAssignableFrom(String.class))
         {
-            ret = ((T) type.cast(new String(bytes)));
+            ret = ((V) type.cast(new String(bytes)));
         }
         else
         {
@@ -236,7 +237,7 @@ public class DrumUtils
             ObjectInputStream ois = new ObjectInputStream(bais);
             // ois.mark(0);
             Object obj = ois.readObject();
-            ret = ((T) type.cast(obj));
+            ret = ((V) type.cast(obj));
 
             if (ois.markSupported())
             {
@@ -435,7 +436,7 @@ public class DrumUtils
                         throw new DrumException("Could not read next entry as value was null before reading its bytes");
                     }
                 }
-                // should not happen - but in case we refactor again leaf it in
+                // should not happen - but in case we refactor again leave it in
                 else
                 {
                     value = DrumUtils.deserialize(byteValue, valueClass);

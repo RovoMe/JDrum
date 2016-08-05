@@ -4,6 +4,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.internal.DrumRuntimeListener;
 import at.rovo.caching.drum.internal.InMemoryData;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * The broker manages message exchange between a producer and a consumer.
@@ -33,5 +34,5 @@ public interface Broker<T extends InMemoryData<V, A>, V extends ByteSerializer<V
      *
      * @throws InterruptedException
      */
-    List<T> takeAll() throws InterruptedException;
+    Queue<T> takeAll() throws InterruptedException;
 }
