@@ -1,8 +1,8 @@
 package at.rovo.caching.drum.util.lockfree;
 
 import at.rovo.caching.drum.internal.InMemoryData;
-import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -25,7 +25,7 @@ public class FlippableDataContainer<E extends InMemoryData>
      */
     public FlippableDataContainer()
     {
-        dataObj.set(new FlippableData<>(new LinkedList<>(), 0, 0, 0));
+        dataObj.set(new FlippableData<>(new ConcurrentLinkedQueue<>(), 0, 0, 0));
     }
 
     /**
@@ -75,7 +75,7 @@ public class FlippableDataContainer<E extends InMemoryData>
         while (true)
         {
             oldData = dataObj.get();
-            if (dataObj.compareAndSet(oldData, new FlippableData<>(new LinkedList<>(), 0, 0, 0)))
+            if (dataObj.compareAndSet(oldData, new FlippableData<>(new ConcurrentLinkedQueue<>(), 0, 0, 0)))
             {
                 break;
             }

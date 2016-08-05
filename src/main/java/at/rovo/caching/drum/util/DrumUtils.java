@@ -222,7 +222,7 @@ public class DrumUtils
      * @throws ClassNotFoundException
      */
     @SuppressWarnings("unchecked")
-    public static <V extends ByteSerializer> V deserialize(byte[] bytes, Class<? super V> type)
+    public static <V> V deserialize(byte[] bytes, Class<? super V> type)
             throws IOException, ClassNotFoundException
     {
         V ret;
@@ -439,7 +439,7 @@ public class DrumUtils
                 // should not happen - but in case we refactor again leave it in
                 else
                 {
-                    value = DrumUtils.deserialize(byteValue, valueClass);
+                    value = (V)DrumUtils.deserialize(byteValue, valueClass);
                 }
                 return new Pair<>(key, value);
             }
