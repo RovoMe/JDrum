@@ -162,9 +162,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
                 {
                     LOG.debug("[{}] - [{}] - waiting for data", this.drumName, this.bucketId);
 
-                    this.lastState = DiskWriterState.WAITING_ON_DATA;
-                    this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId,
-                                                                          DiskWriterState.WAITING_ON_DATA));
+                    this.lastState = updateState(DiskWriterState.WAITING_ON_DATA);
                 }
 
                 // use a blocking call to retrieve the elements to persist
@@ -179,8 +177,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
                 }
 
                 this.lastState = null;
-                this.eventDispatcher
-                        .update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.DATA_RECEIVED));
+                updateState(DiskWriterState.DATA_RECEIVED);
 
                 LOG.debug("[{}] - [{}] - received {} data elements", this.drumName, this.bucketId,
                           elementsToPersist.size());
@@ -198,18 +195,15 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
                 if (!DiskWriterState.FINISHED.equals(this.lastState))
                 {
                     LOG.error("[{}] - [{}] - got interrupted!", this.drumName, this.bucketId);
-                    this.lastState = DiskWriterState.FINISHED;
+                    this.lastState = updateState(DiskWriterState.FINISHED);
                 }
-                this.eventDispatcher
-                        .update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.FINISHED));
                 Thread.currentThread().interrupt();
             }
             catch (Exception e)
             {
                 LOG.error("[{}] - [{}] - caught exception: {}", this.drumName, this.bucketId, e.getLocalizedMessage());
                 LOG.catching(Level.ERROR, e);
-                this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId,
-                                                                      DiskWriterState.FINISHED_WITH_ERROR));
+                updateState(DiskWriterState.FINISHED_WITH_ERROR);
                 Thread.currentThread().interrupt();
             }
         }
@@ -221,6 +215,32 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
         }
         this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.FINISHED));
         LOG.trace("[{}] - [{}] - stopped processing!", this.drumName, this.bucketId);
+    }
+
+    /**
+     * Generates an {@link DiskWriterStateUpdate} event for the provided state.
+     *
+     * @param newState
+     *         The new state this instance is in
+     *
+     * @return The new state of this instance
+     */
+    private DiskWriterState updateState(DiskWriterState newState) {
+        this.eventDispatcher
+                .update(new DiskWriterStateUpdate(this.drumName, this.bucketId, newState));
+        return newState;
+    }
+
+    /**
+     * Generates an {@link DiskWriterEvent} for the given <em>byteLengthKV</em> and <em>byteLengthAux</em> values.
+     *
+     * @param byteLengthKV
+     *         The length of the key-value pair bytes
+     * @param byteLengthAux
+     *         The length of the auxiliary data bytes
+     */
+    private void updateState(long byteLengthKV, long byteLengthAux) {
+        this.eventDispatcher.update(new DiskWriterEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
     }
 
     /**
@@ -255,11 +275,9 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
     {
         try
         {
-            this.eventDispatcher
-                    .update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.WAITING_ON_LOCK));
+            updateState(DiskWriterState.WAITING_ON_LOCK);
             this.lock.acquire();
-            this.eventDispatcher
-                    .update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.WRITING));
+            updateState(DiskWriterState.WRITING);
 
             long kvStart = this.kvFile.getFilePointer();
             long auxStart = this.auxFile.getFilePointer();
@@ -351,8 +369,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
             this.kvBytesWritten += (this.kvFile.getFilePointer() - kvStart);
             this.auxBytesWritten += (this.auxFile.getFilePointer() - auxStart);
 
-            this.eventDispatcher.update(new DiskWriterEvent(this.drumName, this.bucketId, this.kvBytesWritten,
-                                                            this.auxBytesWritten));
+            updateState(this.kvBytesWritten, this.auxBytesWritten);
 
             // is it merge time? If the feed was forced the merge will be done
             // by the main-thread so do not set the merge flag therefore else
@@ -433,9 +450,8 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
                       e);
         }
 
-        this.eventDispatcher
-                .update(new DiskWriterEvent(this.drumName, this.bucketId, this.kvBytesWritten, this.auxBytesWritten));
-        this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.EMPTY));
+        updateState(this.kvBytesWritten, this.auxBytesWritten);
+        updateState(DiskWriterState.EMPTY);
     }
 
     @Override

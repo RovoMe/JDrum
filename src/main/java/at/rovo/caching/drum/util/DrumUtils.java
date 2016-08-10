@@ -217,9 +217,6 @@ public class DrumUtils
      *         The bytes of the object
      *
      * @return The object deserialized from the array of bytes provided
-     *
-     * @throws IOException
-     * @throws ClassNotFoundException
      */
     @SuppressWarnings("unchecked")
     public static <V> V deserialize(byte[] bytes, Class<? super V> type)
@@ -342,26 +339,20 @@ public class DrumUtils
         RandomAccessFile cacheFile = DrumUtils.openDataStore(name);
         cacheFile.seek(0);
 
-        Pair<Long, V> data;
-        do
+        Pair<Long, V> data = DrumUtils.getNextEntry(cacheFile, valueClass);
+        for (; data != null; data = DrumUtils.getNextEntry(cacheFile, valueClass))
         {
-            data = DrumUtils.getNextEntry(cacheFile, valueClass);
-            if (data != null)
+            keys.add(data.getFirst());
+            V hostData = data.getLast();
+            if (hostData != null)
             {
-                keys.add(data.getFirst());
-                V hostData = data.getLast();
-                if (hostData != null)
-                {
-                    LOG.info("Key: {}, Value: {}", data.getFirst(), hostData);
-                }
-                else
-                {
-                    LOG.info("Key: {}, Value: {}", data.getFirst(), null);
-                }
+                LOG.info("Key: {}, Value: {}", data.getFirst(), hostData);
+            }
+            else
+            {
+                LOG.info("Key: {}, Value: {}", data.getFirst(), null);
             }
         }
-        while (data != null);
-
         cacheFile.close();
     }
 
@@ -401,7 +392,7 @@ public class DrumUtils
         // Retrieve the key from the file
         try
         {
-            if (cacheFile.getFilePointer() == cacheFile.length())
+            if (cacheFile.getFilePointer() >= cacheFile.length())
             {
                 return null;
             }

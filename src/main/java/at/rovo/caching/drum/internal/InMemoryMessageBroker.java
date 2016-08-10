@@ -18,10 +18,14 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * <em>InMemoryMessageBroker</em> is a {@link at.rovo.caching.drum.Broker} implementation which manages {@link
- * InMemoryData} objects.
+ * InMemoryData} objects. If will store new data objects in a lock free {@link FlippableDataContainer} on invoking
+ * {@link #put(InMemoryData)} and return all currently buffered data objects through invoking {@link #takeAll()}. This
+ * implementation will block consumer threads if no buffered data are currently available.
  * <p>
- * This implementation buffers data into an active buffer while an attached consumer (IDiskWriter) instance is writing
- * the data stored in the back-buffer.
+ * On invoking {@link #takeAll()} the backing {@link FlippableDataContainer} will be flipped which results in the buffer
+ * holding the buffered data from being returned while a new {@link Queue} is set to store new received {@link
+ * InMemoryData} objects. The flip will be executed atomically guaranteeing that no data is lost while processing the
+ * flip operation.
  * <p>
  * A value representing the admissible byte size can be provided which sends an event if the bytes stored in the active
  * buffer exceeds this value. The value of the byte size can be set on invoking the constructor.
@@ -47,8 +51,8 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
     private DrumEventDispatcher eventDispatcher = null;
     /** The ID of the buffer **/
     private int bucketId = 0;
-    /** The flippable queue to add in memory data to **/
-    private FlippableDataContainer<T> queue = new FlippableDataContainer<>();
+    /** The flippable lock-free buffer to add in memory data to **/
+    private FlippableDataContainer<T> buffer = new FlippableDataContainer<>();
     /** The size of the buffer before the two buffers get exchanged and the results being available through
      * <code>takeAll</code> **/
     private int byteSizePerBuffer = 0;
@@ -89,11 +93,55 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
         this.byteSizePerBuffer = byteSizePerBuffer;
 
         // the old state used to filter multiple state updates on the same state
-        this.oldState = InMemoryBufferState.EMPTY;
-        this.eventDispatcher
-                .update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, InMemoryBufferState.EMPTY));
+        this.oldState = updateState(InMemoryBufferState.EMPTY);
     }
 
+    @Override
+    public void stop()
+    {
+        LOG.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
+        this.stopRequested = true;
+
+        // if a consumer thread is waiting for data and we need to shutdown, we invoke the currently blocked
+        // consumer thread in order to shut down the broker correctly.
+        this.signalNotEmpty();
+
+        updateState(InMemoryBufferState.STOPED);
+    }
+
+    /**
+     * Generates a new event for the provided {@link InMemoryBufferState state}.
+     *
+     * @param newState
+     *         The new {@link InMemoryBufferState} to set
+     *
+     * @return Returns a reference of the new state
+     */
+    private InMemoryBufferState updateState(InMemoryBufferState newState)
+    {
+        this.eventDispatcher
+                .update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, newState));
+        return newState;
+    }
+
+    /**
+     * Generates a new {@link InMemoryBufferEvent event} for the given <em>byteLengthKV</em> and <em>byteLengthAux</em>
+     * values.
+     *
+     * @param byteLengthKV
+     *         The length of the key-value pair bytes
+     * @param byteLengthAux
+     *         The length of the auxiliary data bytes
+     */
+    private void updateState(int byteLengthKV, int byteLengthAux)
+    {
+        this.eventDispatcher
+                .update(new InMemoryBufferEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///                                invoked usually by producer threads                                           ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     public void put(T data)
@@ -103,51 +151,61 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
             return;
         }
 
-        FlippableData<T> _data = this.queue.put(data);
+        FlippableData<T> _data = this.buffer.put(data);
         this.isDataAvailable = true;
 
         LOG.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
                  this.bucketId, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
 
-       int byteLengthKV = _data.getKeyLength() + _data.getValLength();
-       int byteLengthAux = _data.getAuxLength();
+        int byteLengthKV = _data.getKeyLength() + _data.getValLength();
+        int byteLengthAux = _data.getAuxLength();
 
-        this.eventDispatcher.update(
-                new InMemoryBufferEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
+        updateState(byteLengthKV, byteLengthAux);
 
-        this.checStateChange(byteLengthKV, byteLengthAux);
+        this.checkStateChange(byteLengthKV, byteLengthAux);
 
-        this.signalDataAvailable();
+        this.signalNotEmpty();
     }
 
-    private void checStateChange(int byteLengthKV, int byteLengthAux) {
+    /**
+     * Checks if the provided byte length of the key-value or auxiliary data exceed a predefined threshold value and if
+     * so will trigger a state change which indicates that the limit was exceeded. In order to avoid multiple
+     * notifications on the same state change, this implementation includes a check with the previous state and only
+     * fires an event if the previous state does not equal the new state and thus indicate a real state change.
+     *
+     * @param byteLengthKV
+     *         The length of the key and value bytes
+     * @param byteLengthAux
+     *         The length of the auxiliary data bytes
+     */
+    private void checkStateChange(int byteLengthKV, int byteLengthAux)
+    {
         if ((byteLengthKV > this.byteSizePerBuffer ||
              byteLengthAux > this.byteSizePerBuffer))
         {
             if (!InMemoryBufferState.EXCEEDED_LIMIT.equals(this.oldState))
             {
-                this.oldState = InMemoryBufferState.EXCEEDED_LIMIT;
-                this.eventDispatcher.update(
-                        new InMemoryBufferStateUpdate(this.drumName, this.bucketId,
-                                                      InMemoryBufferState.EXCEEDED_LIMIT));
+                this.oldState = updateState(InMemoryBufferState.EXCEEDED_LIMIT);
             }
         }
         else
         {
             if (!InMemoryBufferState.WITHIN_LIMIT.equals(this.oldState))
             {
-                this.oldState = InMemoryBufferState.WITHIN_LIMIT;
-                this.eventDispatcher.update(
-                        new InMemoryBufferStateUpdate(this.drumName, this.bucketId,
-                                                      InMemoryBufferState.WITHIN_LIMIT));
+                this.oldState = updateState(InMemoryBufferState.WITHIN_LIMIT);
             }
         }
     }
 
-    private void signalDataAvailable() {
+    /**
+     * Signals a blocked consumer thread that data are available now so that it can wake up and proceed with retrieving
+     * buffered data objects.
+     */
+    private void signalNotEmpty()
+    {
+        this.lock.lock();
         try
         {
-            this.lock.lock();
             this.dataAvailable.signal();
         }
         finally
@@ -155,6 +213,10 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
             this.lock.unlock();
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///                                invoked usually by consumer threads                                           ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     public Queue<T> takeAll() throws InterruptedException
@@ -169,17 +231,25 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
             return null;
         }
 
+        this.lock.lockInterruptibly();
         try
         {
-            this.lock.lock();
-
-            if (!this.isDataAvailable)
+            try
             {
-                // wait till data is available
-                this.dataAvailable.await();
+                while (!this.isDataAvailable)
+                {
+                    // wait till data is available
+                    this.dataAvailable.await();
+                }
+            }
+            catch (InterruptedException ie)
+            {
+                // propagate to a non-interrupted thread
+                this.dataAvailable.signal();
+                throw ie;
             }
 
-            Queue<T> queue = this.queue.flip();
+            Queue<T> queue = this.buffer.flip();
             this.isDataAvailable = false;
             LOG.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
             if (LOG.isTraceEnabled())
@@ -188,26 +258,6 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
             }
 
             return queue;
-        }
-        finally
-        {
-            this.lock.unlock();
-        }
-    }
-
-    @Override
-    public void stop()
-    {
-        LOG.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
-        this.stopRequested = true;
-
-        try
-        {
-            this.lock.lock();
-            // if a consumer thread is waiting for data and we need to shutdown, we invoke the currently blocked
-            // consumer thread in order to shut down the broker correctly. Signaling a blocked thread however requires
-            // to be done while a lock is active otherwise an illegal monitor exception is thrown!
-            this.dataAvailable.signal();
         }
         finally
         {

@@ -4,5 +4,6 @@ public enum InMemoryBufferState
 {
     EMPTY,
     WITHIN_LIMIT,
-    EXCEEDED_LIMIT
+    EXCEEDED_LIMIT,
+    STOPED
 }

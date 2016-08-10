@@ -124,15 +124,13 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
                 // WAITING_ON_MERGE_REQUEST
                 if (this.lastState == null)
                 {
-                    this.lastState = MergerState.WAITING_ON_MERGE_REQUEST;
-                    this.eventDispatcher
-                            .update(new MergerStateUpdate(this.drumName, MergerState.WAITING_ON_MERGE_REQUEST));
+                    this.lastState = updateState(MergerState.WAITING_ON_MERGE_REQUEST);
                 }
 
                 if (this.mergeList.contains(Boolean.TRUE))
                 {
                     this.lastState = null;
-                    this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.MERGE_REQUESTED));
+                    updateState(MergerState.MERGE_REQUESTED);
 
                     LOG.debug("[{}] - Notify received! Merging data", this.drumName);
 
@@ -156,7 +154,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
             catch (Exception e)
             {
                 LOG.error("[" + this.drumName + "] - got interrupted", e);
-                this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.FINISHED_WITH_ERRORS));
+                updateState(MergerState.FINISHED_WITH_ERRORS);
                 break;
             }
         }
@@ -175,8 +173,43 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
         {
             LOG.error("[" + this.drumName + "] Caught exception while closing the writer ", e);
         }
-        this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.FINISHED));
+        updateState(MergerState.FINISHED);
         LOG.trace("[{}] - stopped processing!", this.drumName);
+    }
+
+    /**
+     * Generates a new event for the provided {@link MergerState event}.
+     *
+     * @param newState
+     *         The new {@link MergerState state} to set
+     *
+     * @return The new state
+     */
+    private MergerState updateState(MergerState newState) {
+        this.eventDispatcher.update(new MergerStateUpdate(this.drumName, newState));
+        return newState;
+    }
+
+    /**
+     * Generates a new event for the specified bucket ID.
+     *
+     * @param bucketId
+     *         The bucket ID to generate the event for
+     * @param newState
+     *         The new {@link MergerState state} to set
+     */
+    private void updateStateForBucket(int bucketId, MergerState newState) {
+        this.eventDispatcher.update(new MergerStateUpdate(this.drumName, newState, bucketId));
+    }
+
+    /**
+     * Generates a new {@link StorageEvent} with the given number of unique entries.
+     *
+     * @param numUniqueEntries
+     *         The number of unique entries
+     */
+    private void updateState(long numUniqueEntries) {
+        this.eventDispatcher.update(new StorageEvent(this.drumName, numUniqueEntries));
     }
 
     @Override
@@ -218,14 +251,12 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
             // first finish his task
             try
             {
-                this.eventDispatcher.update(new MergerStateUpdate(this.drumName, MergerState.WAITING_ON_LOCK,
-                                                                  writer.getBucketId()));
+                updateStateForBucket(writer.getBucketId(), MergerState.WAITING_ON_LOCK);
                 LOG.debug("[{}] - [{}] - available permits for diskWriter: {}", this.drumName, writer.getBucketId(),
                           writer.accessDiskFile().availablePermits());
                 writer.accessDiskFile().acquire();
 
-                this.eventDispatcher
-                        .update(new MergerStateUpdate(this.drumName, MergerState.MERGING, writer.getBucketId()));
+                updateStateForBucket(writer.getBucketId(), MergerState.MERGING);
                 LOG.debug("[{}] - [{}] - got lock of disk writer", this.drumName, writer.getBucketId());
                 // writer has finished his work and we have the lock to the disk file
 
@@ -252,7 +283,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
                     // reset the cursors of the files back to the start
                     writer.reset();
 
-                    this.eventDispatcher.update(new StorageEvent(this.drumName, this.numUniqueEntries));
+                    updateState(this.numUniqueEntries);
                 }
                 else
                 {
@@ -283,7 +314,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
         }
 
         this.reset();
-        // System.gc();
     }
 
     /**
@@ -293,8 +323,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
      * @param writer
      *         The already locked writer instance we access its disk file
      *
-     * @throws InterruptedException
-     * @throws DrumException
+     * @return Returns true if data could be read from the disk bucket file, false otherwise
      */
     private boolean readDataFromDiskFile(DiskWriter<V, A> writer) throws InterruptedException, DrumException
     {
@@ -344,9 +373,9 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
                 {
                     byteValue = new byte[valueSize];
                     kvFile.read(byteValue);
-                    // V value = DrumUtil.deserialize(byteValue,
-                    // this.valueClass);
-                    @SuppressWarnings("unchecked") V value = ((V) this.valueClass.newInstance()).readBytes(byteValue);
+//                     V value = DrumUtils.deserialize(byteValue, this.valueClass);
+                    @SuppressWarnings("unchecked")
+                    V value = ((V) this.valueClass.newInstance()).readBytes(byteValue);
                     data.setValue(value);
                 }
                 LOG.debug("[{}] - [{}] - read from bucket file - " + "operation: '{}', key: '{}', value.length: '{}' " +
@@ -425,8 +454,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
      *
      * @param writer
      *         The already locked writer instance we access its disk file
-     *
-     * @throws DrumException
      */
     private void readAuxBucketForDispatching(DiskWriter<V, A> writer) throws DrumException
     {
@@ -498,8 +525,6 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
 
     /**
      * Dispatches {@link DrumResult}s to the caller.
-     *
-     * @throws DrumException
      */
     private void dispatch() throws DrumException
     {
