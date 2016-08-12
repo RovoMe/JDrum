@@ -1,11 +1,11 @@
 package at.rovo.caching.drum.testUtils;
 
 import at.rovo.caching.drum.NullDispatcher;
-import at.rovo.caching.drum.data.ByteSerializer;
+import java.io.Serializable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class LogFileDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends NullDispatcher<V, A>
+public class LogFileDispatcher<V extends Serializable, A extends Serializable> extends NullDispatcher<V, A>
 {
     private final static Logger logger = LogManager.getLogger(LogFileDispatcher.class);
 

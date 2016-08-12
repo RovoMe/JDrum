@@ -3,10 +3,10 @@ package at.rovo.caching.drum.internal.backend;
 import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.Merger;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStorageFactory;
 import at.rovo.caching.drum.internal.backend.cacheFile.CacheFileStorageFactory;
+import java.io.Serializable;
 
 /**
  * A basic Factory class for creating a DRUM backing data storage.
@@ -24,7 +24,7 @@ import at.rovo.caching.drum.internal.backend.cacheFile.CacheFileStorageFactory;
  * @see BerkeleyDBStorageFactory
  * @see CacheFileStorageFactory
  */
-public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public abstract class DrumStorageFactory<V extends Serializable, A extends Serializable>
 {
     /** The created merger implementation **/
     protected Merger<V, A> merger = null;
@@ -112,7 +112,7 @@ public abstract class DrumStorageFactory<V extends ByteSerializer<V>, A extends 
      * @throws DrumException
      *         If the backing data store could not be created
      */
-    public static <V extends ByteSerializer<V>, A extends ByteSerializer<A>> DrumStorageFactory<V, A> getDefaultStorageFactory(
+    public static <V extends Serializable, A extends Serializable> DrumStorageFactory<V, A> getDefaultStorageFactory(
             String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
             Class<? super A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
     {

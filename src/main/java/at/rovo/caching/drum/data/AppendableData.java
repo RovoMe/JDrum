@@ -8,7 +8,7 @@ package at.rovo.caching.drum.data;
  *
  * @author Roman Vottner
  */
-public interface AppendableData<T> extends ByteSerializer<T>
+public interface AppendableData<T>
 {
     /**
      * Appends data to the value field of this object.

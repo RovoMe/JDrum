@@ -1,7 +1,7 @@
 package at.rovo.caching.drum.testUtils;
 
 import at.rovo.caching.drum.NullDispatcher;
-import at.rovo.caching.drum.data.ByteSerializer;
+import java.io.Serializable;
 
 /**
  * The ConsoleDispatcher simply prints out the unique- and duplicate key updates to the console.
@@ -13,7 +13,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
  *
  * @author Roman Vottner
  */
-public class ConsoleDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends NullDispatcher<V, A>
+public class ConsoleDispatcher<V extends Serializable, A extends Serializable> extends NullDispatcher<V, A>
 {
     @Override
     public void uniqueKeyUpdate(Long key, V value, A aux)

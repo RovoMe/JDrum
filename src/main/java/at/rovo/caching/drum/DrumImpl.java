@@ -1,6 +1,5 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskBucketWriter;
 import at.rovo.caching.drum.internal.InMemoryData;
@@ -9,6 +8,7 @@ import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
 import at.rovo.caching.drum.util.DrumExceptionHandler;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.NamedThreadFactory;
+import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +35,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-@SuppressWarnings("unused")
-public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> implements Drum<V, A>
+public class DrumImpl<V extends Serializable, A extends Serializable> implements Drum<V, A>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
@@ -45,32 +44,27 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
     protected String drumName = null;
     /** The number of buffers and buckets used **/
     protected int numBuckets = 0;
-    /** The size of an in-memory buffer **/
-    protected int bufferSize = 0;
-    /**
-     * The broker list which holds elements in memory until they get written to the disk file
-     **/
-    protected List<Broker<InMemoryData<V, A>, V, A>> inMemoryBuffer = null;
+
+    /** The broker list which holds elements in memory until they get written to the disk file **/
+    private List<Broker<InMemoryData<V, A>, V, A>> inMemoryBuffer = null;
     /**
      * The set of writer objects that listens to notifications of a broker and write content from the broker to a disk
      * file
      **/
-    protected List<DiskWriter<V, A>> diskWriters = null;
+    private List<DiskWriter<V, A>> diskWriters = null;
     /**
      * The object that compares keys of data-objects for their uniqueness and merges them into the data store in case
      * the need to be updated
      **/
-    protected Merger<V, A> merger = null;
+    private Merger<V, A> merger = null;
     /** The execution service which hosts our threads **/
-    protected ExecutorService executor = null;
+    private ExecutorService executor = null;
     /** The merger thread **/
-    protected Thread mergerThread = null;
-    /**
-     * The event dispatcher used to inform listeners of internal state changes and certain statistics
-     **/
-    protected DrumEventDispatcher eventDispatcher = new DrumEventDispatcher();
+    private Thread mergerThread = null;
+    /** The event dispatcher used to inform listeners of internal state changes and certain statistics **/
+    private DrumEventDispatcher eventDispatcher = new DrumEventDispatcher();
     /** The event dispatcher thread **/
-    protected Thread eventDispatcherThread = null;
+    private Thread eventDispatcherThread = null;
 
     /**
      * Creates a new instance and assigns initial values contained within the builder object to the corresponding
@@ -105,7 +99,6 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
                   builder.getValueClass(), builder.getAuxClass(), factory);
     }
 
-
     /**
      * Initializes the DRUM instance with required data and starts the worker threads.
      *
@@ -125,8 +118,6 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
      * @param factory
      *         The factory object which defines where data should be stored in. Note that factory must return an
      *         implementation of IMerger
-     *
-     * @throws DrumException
      */
     private void init(String drumName, int numBuckets, int bufferSize, Dispatcher<V, A> dispatcher,
                       Class<? super V> valueClass, Class<? super A> auxClass, DrumStorageFactory<V, A> factory)
@@ -138,7 +129,6 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
 
         this.drumName = drumName;
         this.numBuckets = numBuckets;
-        this.bufferSize = bufferSize;
 
         // create the broker and the consumer listening to the broker
         this.inMemoryBuffer = new ArrayList<>(numBuckets);
@@ -163,11 +153,9 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
 
             this.executor.submit(consumer);
 
-            // add a reference of the disk writer to the merger, so it can use
-            // the semaphore to lock the file it is currently reading from to
-            // merge the data into the backing data store.
-            // While reading from a file, a further access to the file (which
-            // should result in a write access) is therefore refused.
+            // add a reference of the disk writer to the merger, so it can use the semaphore to lock the file it is
+            // currently reading from to merge the data into the backing data store. While reading from a file, a
+            // further access to the file (which should result in a write access) is therefore refused.
             this.merger.addDiskFileWriter(consumer);
         }
         this.mergerThread = new Thread(this.merger, this.drumName + "-Merger");
@@ -232,8 +220,7 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
         // flip the buffers which sends the writers the latest data
         this.inMemoryBuffer.forEach(Broker::stop);
 
-        // give the threads a chance to finish their work without being
-        // interrupted
+        // give the threads a chance to finish their work without being interrupted
         this.diskWriters.forEach(DiskWriter::stop);
 
         this.executor.shutdown();
@@ -293,8 +280,7 @@ public class DrumImpl<V extends ByteSerializer<V>, A extends ByteSerializer<A>> 
      */
     private void add(Long key, V value, A aux, DrumOperation operation)
     {
-        // get the bucket index based on the first n bits of the key, according
-        // to the number of defined buckets
+        // get the bucket index based on the first n bits of the key, according to the number of defined buckets
         int bucketId = DrumUtils.getBucketForKey(key, this.numBuckets);
 
         // add a new InMemoryData object to the broker

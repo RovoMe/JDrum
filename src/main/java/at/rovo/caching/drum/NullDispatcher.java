@@ -1,6 +1,6 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
+import java.io.Serializable;
 
 /**
  * The null dispatcher implements the null object design pattern that offers suitable default do nothing behavior for
@@ -14,7 +14,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
  *
  * @author Roman Vottner
  */
-public class NullDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>> implements Dispatcher<V, A>
+public class NullDispatcher<V extends Serializable, A extends Serializable> implements Dispatcher<V, A>
 {
     /**
      * Handles unique key check events

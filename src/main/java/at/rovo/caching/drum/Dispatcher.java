@@ -1,6 +1,6 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
+import java.io.Serializable;
 
 /**
  * Defines the methods required by the dispatcher to handle responses of the caching system.
@@ -12,7 +12,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
  *
  * @author Roman Vottner
  */
-public interface Dispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public interface Dispatcher<V extends Serializable, A extends Serializable>
 {
     /**
      * Handles unique key check events

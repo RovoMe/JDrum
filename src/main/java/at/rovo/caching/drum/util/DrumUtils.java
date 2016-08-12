@@ -1,7 +1,6 @@
 package at.rovo.caching.drum.util;
 
 import at.rovo.caching.drum.DrumException;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.common.Pair;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -9,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
+import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -330,8 +330,8 @@ public class DrumUtils
      * @throws DrumException
      *         Thrown if the next entry from the data store could not be extracted
      */
-    public static <V extends ByteSerializer<V>> void printCacheContent(String name, List<Long> keys,
-                                                                       Class<V> valueClass)
+    public static <V extends Serializable> void printCacheContent(String name, List<Long> keys,
+                                                                  Class<V> valueClass)
             throws IOException, DrumException
     {
         LOG.info("Data contained in cache.db:");
@@ -385,8 +385,8 @@ public class DrumUtils
      *         from bytes to an actual object
      */
     @SuppressWarnings("unchecked")
-    public static <V extends ByteSerializer<V>> Pair<Long, V> getNextEntry(RandomAccessFile cacheFile,
-                                                                           Class<? super V> valueClass)
+    public static <V extends Serializable> Pair<Long, V> getNextEntry(RandomAccessFile cacheFile,
+                                                                      Class<? super V> valueClass)
             throws DrumException
     {
         // Retrieve the key from the file
@@ -405,32 +405,17 @@ public class DrumUtils
             {
                 byte[] byteValue = new byte[valueSize];
                 cacheFile.read(byteValue);
-                V value = null;
+                V value;
                 // as we have our own serialization mechanism, we have to ensure
                 // that these objects are serialized appropriately
-                if (ByteSerializer.class.isAssignableFrom(valueClass))
+                if (Serializable.class.isAssignableFrom(valueClass))
                 {
-                    try
-                    {
-                        value = ((V) valueClass.newInstance());
-                    }
-                    catch (IllegalAccessException | InstantiationException e)
-                    {
-                        e.printStackTrace();
-                    }
-                    if (value != null)
-                    {
-                        value = value.readBytes(byteValue);
-                    }
-                    else
-                    {
-                        throw new DrumException("Could not read next entry as value was null before reading its bytes");
-                    }
+                    value = (V)DrumUtils.deserialize(byteValue, valueClass);
                 }
                 // should not happen - but in case we refactor again leave it in
                 else
                 {
-                    value = (V)DrumUtils.deserialize(byteValue, valueClass);
+                    throw new DrumException("Could not read next entry as value was null before reading its bytes");
                 }
                 return new Pair<>(key, value);
             }
@@ -441,5 +426,4 @@ public class DrumUtils
             throw new DrumException("Error fetching next entry from cache", e);
         }
     }
-
 }

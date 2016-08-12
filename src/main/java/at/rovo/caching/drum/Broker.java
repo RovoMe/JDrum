@@ -1,9 +1,8 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.internal.DrumRuntimeListener;
 import at.rovo.caching.drum.internal.InMemoryData;
-import java.util.List;
+import java.io.Serializable;
 import java.util.Queue;
 
 /**
@@ -13,10 +12,14 @@ import java.util.Queue;
  *
  * @param <T>
  *         The type of the data stored by the broker
+ * @param <V>
+ *         The type of the data object the broker will manage
+ * @param <A>
+ *         The type of the auxiliary data object the broker will manage
  *
  * @author Roman Vottner
  */
-public interface Broker<T extends InMemoryData<V, A>, V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public interface Broker<T extends InMemoryData<V, A>, V extends Serializable, A extends Serializable>
         extends DrumRuntimeListener
 {
     /**
@@ -31,8 +34,6 @@ public interface Broker<T extends InMemoryData<V, A>, V extends ByteSerializer<V
      * Returns all data stored by the broker.
      *
      * @return The stored data of the broker instance
-     *
-     * @throws InterruptedException
      */
     Queue<T> takeAll() throws InterruptedException;
 }

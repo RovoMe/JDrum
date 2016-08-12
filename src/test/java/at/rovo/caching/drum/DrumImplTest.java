@@ -1,6 +1,5 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.StringSerializer;
 import at.rovo.caching.drum.event.DrumEvent;
 import at.rovo.caching.drum.testUtils.BaseCacheTest;
 import at.rovo.caching.drum.testUtils.CacheUtils;
@@ -73,7 +72,7 @@ public class DrumImplTest extends BaseCacheTest implements DrumListener
         {
             e1.printStackTrace();
         }
-        Drum<StringSerializer, StringSerializer> drum = null;
+        Drum<String, String> drum = null;
         List<Long> URLhashes = new ArrayList<>();
         try
         {
@@ -81,11 +80,11 @@ public class DrumImplTest extends BaseCacheTest implements DrumListener
             LOG.info("----------------------");
 
             LOG.info("Initializing Drum ... ");
-            Dispatcher<StringSerializer, StringSerializer> dispatcher = new ConsoleDispatcher<>();
+            Dispatcher<String, String> dispatcher = new ConsoleDispatcher<>();
             //					new LogFileDispatcher<>();
             try
             {
-                drum = new DrumBuilder<>("urlSeenTest", StringSerializer.class, StringSerializer.class).numBucket(4)
+                drum = new DrumBuilder<>("urlSeenTest", String.class, String.class).numBucket(4)
                         .bufferSize(64).dispatcher(dispatcher).listener(this).build();
             }
             catch (Exception e)
@@ -114,11 +113,11 @@ public class DrumImplTest extends BaseCacheTest implements DrumListener
             URLhashes.add(DrumUtils.hash(url6));
 
             LOG.info("checkUpdating urls ... ");
-            drum.checkUpdate(DrumUtils.hash(url1), null, new StringSerializer(url1));
-            drum.checkUpdate(DrumUtils.hash(url2), null, new StringSerializer(url2));
-            drum.checkUpdate(DrumUtils.hash(url3), null, new StringSerializer(url3));
-            drum.checkUpdate(DrumUtils.hash(url4), null, new StringSerializer(url4));
-            drum.checkUpdate(DrumUtils.hash(url5), null, new StringSerializer(url5));
+            drum.checkUpdate(DrumUtils.hash(url1), null, url1);
+            drum.checkUpdate(DrumUtils.hash(url2), null, url2);
+            drum.checkUpdate(DrumUtils.hash(url3), null, url3);
+            drum.checkUpdate(DrumUtils.hash(url4), null, url4);
+            drum.checkUpdate(DrumUtils.hash(url5), null, url5);
 
             // as new URLs are added to the DRUM instance very fast it may happen
             // that the main thread reaches the end of this block (or the synchronize
@@ -134,25 +133,23 @@ public class DrumImplTest extends BaseCacheTest implements DrumListener
                 e.printStackTrace();
             }
 
-            drum.checkUpdate(DrumUtils.hash(url6), null, new StringSerializer(url6));
+            drum.checkUpdate(DrumUtils.hash(url6), null, url6);
             LOG.info("done!");
 
             String url7 = "http://www.tuwien.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
             String url8 = "http://www.univie.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
-            String url9 =
-                    "http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a"; // produces 12 bytes in kvBucket and 92 bytes in auxBucket
+            String url9 = "http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a"; // produces 12 bytes in kvBucket and 92 bytes in auxBucket
 
             URLhashes.add(DrumUtils.hash(url7));
             URLhashes.add(DrumUtils.hash(url8));
             URLhashes.add(DrumUtils.hash(url9));
 
             LOG.info("Adding new urls ... ");
-            drum.checkUpdate(DrumUtils.hash(url7), null, new StringSerializer(url7));
-            drum.checkUpdate(DrumUtils.hash(url8), null, new StringSerializer(url8));
-            drum.checkUpdate(DrumUtils.hash(url9), null, new StringSerializer(url9));
+            drum.checkUpdate(DrumUtils.hash(url7), null, url7);
+            drum.checkUpdate(DrumUtils.hash(url8), null, url8);
+            drum.checkUpdate(DrumUtils.hash(url9), null, url9);
             // check+update on an already stored URL
-            drum.checkUpdate(DrumUtils.hash(url1), new StringSerializer("http://codeproject.com"),
-                             new StringSerializer(url1));
+            drum.checkUpdate(DrumUtils.hash(url1), "http://codeproject.com", url1);
             LOG.info("done!");
         }
         finally
@@ -177,10 +174,10 @@ public class DrumImplTest extends BaseCacheTest implements DrumListener
             List<Long> keys = new ArrayList<>();
             CacheUtils.printCacheContent("urlSeenTest", keys);
             Assert.assertNotNull(keys);
-            for (Long URLhash : URLhashes)
+            for (Long urlHash : URLhashes)
             {
-                Assert.assertTrue(URLhash + " not found in datastore!", keys.contains(URLhash));
-                keys.remove(URLhash);
+                Assert.assertTrue(urlHash + " not found in datastore!", keys.contains(urlHash));
+                keys.remove(urlHash);
             }
             Assert.assertTrue(keys.isEmpty());
         }

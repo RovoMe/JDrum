@@ -4,7 +4,6 @@ import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskFileMerger;
 import at.rovo.caching.drum.internal.InMemoryData;
@@ -19,6 +18,7 @@ import com.sleepycat.je.ExceptionEvent;
 import com.sleepycat.je.ExceptionListener;
 import com.sleepycat.je.OperationStatus;
 import java.io.File;
+import java.io.Serializable;
 import java.util.List;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -38,7 +38,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializable>
         extends DiskFileMerger<V, A> implements ExceptionListener
 {
     private final static Logger LOG = LogManager.getLogger(BerkeleyCacheFileMerger.class);
@@ -62,8 +62,6 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
      *         The available memory granted to the Berkeley DB
      *
      * @return The instance of the Berkeley DB object
-     *
-     * @throws DrumException
      */
     private Database createDatabase(int cacheSize) throws DrumException
     {
@@ -178,24 +176,20 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
 
                         if (DrumOperation.CHECK.equals(element.getOperation()) && dbValue.getData().length > 0)
                         {
-                            @SuppressWarnings("unchecked") V value =
-                                    ((V) this.valueClass.newInstance()).readBytes(dbValue.getData());
+                            V value = (V) DrumUtils.deserialize(dbValue.getData(), this.valueClass);
                             element.setValue(value);
                         }
                     }
                 }
 
-                // update the value of a certain key in case of UPDATE or
-                // CHECK_UPDATE operations
-                // within the bucket file
+                // update the value of a certain key in case of UPDATE or CHECK_UPDATE operations within the bucket file
                 if (DrumOperation.UPDATE.equals(op) || DrumOperation.CHECK_UPDATE.equals(op))
                 {
                     V value = element.getValue();
                     byte[] byteValue = DrumUtils.serialize(value);
                     DatabaseEntry dbValue = new DatabaseEntry(byteValue);
                     OperationStatus status =
-                            this.berkeleyDB.put(null, dbKey, dbValue); // forces overwrite if the key is already
-                    // present
+                            this.berkeleyDB.put(null, dbKey, dbValue); // forces overwrite if the key is already present
                     if (!OperationStatus.SUCCESS.equals(status))
                     {
                         throw new DrumException("Error merging with repository!");
@@ -208,8 +202,7 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
                     OperationStatus status = this.berkeleyDB.get(null, dbKey, dbValue, null);
                     if (OperationStatus.KEYEXIST.equals(status))
                     {
-                        V value = element.getValue();
-                        V storedVal = value.readBytes(dbValue.getData());
+                        V storedVal = (V) DrumUtils.deserialize(dbValue.getData(), this.valueClass);
                         element.appendValue(storedVal);
                     }
                     // now write it to the DB replacing the old value
@@ -225,8 +218,8 @@ public class BerkeleyCacheFileMerger<V extends ByteSerializer<V>, A extends Byte
                     }
                 }
 
-                LOG.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'", this.drumName,
-                         key, op, element.getResult());
+                LOG.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'",
+                         this.drumName, key, op, element.getResult());
 
                 // Persist modifications
                 this.berkeleyDB.sync();

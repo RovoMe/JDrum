@@ -7,13 +7,14 @@ import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
 import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.NotAppendableException;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.event.MergerState;
 import at.rovo.caching.drum.event.MergerStateUpdate;
 import at.rovo.caching.drum.event.StorageEvent;
+import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.KeyComparator;
 import java.io.RandomAccessFile;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,7 +35,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>> implements Merger<V, A>
+public abstract class DiskFileMerger<V extends Serializable, A extends Serializable> implements Merger<V, A>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(DiskFileMerger.class);
@@ -373,9 +374,7 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
                 {
                     byteValue = new byte[valueSize];
                     kvFile.read(byteValue);
-//                     V value = DrumUtils.deserialize(byteValue, this.valueClass);
-                    @SuppressWarnings("unchecked")
-                    V value = ((V) this.valueClass.newInstance()).readBytes(byteValue);
+                    V value = (V)DrumUtils.deserialize(byteValue, this.valueClass);
                     data.setValue(value);
                 }
                 LOG.debug("[{}] - [{}] - read from bucket file - " + "operation: '{}', key: '{}', value.length: '{}' " +
@@ -497,10 +496,8 @@ public abstract class DiskFileMerger<V extends ByteSerializer<V>, A extends Byte
                 auxFile.read(byteAux);
                 if (auxSize > 0)
                 {
-                    // transform the byte-array into a valid Java object of type
-                    // A
-                    // A aux = DrumUtil.deserialize(byteAux, this.auxClass);
-                    @SuppressWarnings("unchecked") A aux = ((A) this.auxClass.newInstance()).readBytes(byteAux);
+                    // transform the byte-array into a valid Java object of type A
+                     A aux = (A)DrumUtils.deserialize(byteAux, this.auxClass);
                     // ... and add it to the auxiliary object created before
                     data.setAuxiliary(aux);
                     LOG.debug("[{}] - [{}] - read aux data: {}", this.drumName, writer.getBucketId(), aux);

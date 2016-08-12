@@ -4,8 +4,9 @@ import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
 import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.data.AppendableData;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.util.DrumUtils;
+import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * <em>InMemoryData</em> is a bean which holds the data related to an object that either should be stored within the
@@ -24,7 +25,7 @@ import at.rovo.caching.drum.util.DrumUtils;
  *
  * @author Roman Vottner
  */
-public class InMemoryData<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public class InMemoryData<V extends Serializable, A extends Serializable>
 {
     /** The key of the statement **/
     private Long key;
@@ -201,7 +202,13 @@ public class InMemoryData<V extends ByteSerializer<V>, A extends ByteSerializer<
             return null;
         }
 
-        return this.value.toBytes();
+        byte[] bytes;
+        try {
+            bytes = DrumUtils.serialize(this.value);
+        } catch (IOException ioEx) {
+            bytes = new byte[0];
+        }
+        return bytes;
     }
 
     /**
@@ -216,7 +223,13 @@ public class InMemoryData<V extends ByteSerializer<V>, A extends ByteSerializer<
             return null;
         }
 
-        return this.aux.toBytes();
+        byte[] bytes;
+        try {
+            bytes = DrumUtils.serialize(this.aux);
+        } catch (IOException ioEx) {
+            bytes = new byte[0];
+        }
+        return bytes;
     }
 
     /**

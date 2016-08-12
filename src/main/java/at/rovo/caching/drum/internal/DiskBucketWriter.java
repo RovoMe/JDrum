@@ -5,7 +5,6 @@ import at.rovo.caching.drum.DiskWriter;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.Merger;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DiskWriterEvent;
 import at.rovo.caching.drum.event.DiskWriterState;
 import at.rovo.caching.drum.event.DiskWriterStateUpdate;
@@ -13,6 +12,7 @@ import at.rovo.caching.drum.event.DrumEventDispatcher;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.Semaphore;
@@ -38,7 +38,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSerializer<A>> implements DiskWriter<V, A>
+public class DiskBucketWriter<V extends Serializable, A extends Serializable> implements DiskWriter<V, A>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(DiskBucketWriter.class);
@@ -213,7 +213,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
         {
             this.merger.doMerge();
         }
-        this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId, DiskWriterState.FINISHED));
+        updateState(DiskWriterState.FINISHED);
         LOG.trace("[{}] - [{}] - stopped processing!", this.drumName, this.bucketId);
     }
 
@@ -284,13 +284,12 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
             for (InMemoryData<V, A> data : inMemoryData)
             {
-                LOG.info("[{}] - [{}] - feeding bucket with: {}; value: {}", this.drumName, this.bucketId,
-                         data.getKey(), data.getValue());
+                LOG.info("[{}] - [{}] - feeding bucket with: {}; value: {}",
+                         this.drumName, this.bucketId, data.getKey(), data.getValue());
                 long kvStartPos = this.kvFile.getFilePointer();
                 long auxStartPos = this.auxFile.getFilePointer();
 
-                // Write the following sequentially for the key/value bucket
-                // file:
+                // Write the following sequentially for the key/value bucket file:
                 // - operation; (1 byte)
                 // - key; (8 byte)
                 // - value length; (4 byte)
@@ -320,22 +319,19 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
                 long kvEndPos = this.kvFile.getFilePointer();
                 if (byteValue != null)
                 {
-                    LOG.info("[{}] - [{}] - wrote to kvBucket file - " +
-                             "operation: '{}' key: '{}', value.length: '{}' " +
-                             "byteValue: '{}' and value: '{}' - bytes written " + "in total: {}", this.drumName,
-                             this.bucketId, c, data.getKey(), byteValue.length, Arrays.toString(byteValue),
-                             data.getValue(), (kvEndPos - kvStartPos));
+                    LOG.info("[{}] - [{}] - wrote to kvBucket file - operation: '{}' key: '{}', value.length: '{}' " +
+                             "byteValue: '{}' and value: '{}' - bytes written " + "in total: {}",
+                             this.drumName, this.bucketId, c, data.getKey(), byteValue.length,
+                             Arrays.toString(byteValue), data.getValue(), (kvEndPos - kvStartPos));
                 }
                 else
                 {
-                    LOG.info("[{}] - [{}] - wrote to kvBucket file - " +
-                             "operation: '{}' key: '{}', value.length: '0' " +
-                             "byteValue: 'null' and value: '{}' - bytes written " + "in total: {}", this.drumName,
-                             this.bucketId, c, data.getKey(), data.getValue(), (kvEndPos - kvStartPos));
+                    LOG.info("[{}] - [{}] - wrote to kvBucket file - operation: '{}' key: '{}', value.length: '0' " +
+                             "byteValue: 'null' and value: '{}' - bytes written " + "in total: {}",
+                             this.drumName, this.bucketId, c, data.getKey(), data.getValue(), (kvEndPos - kvStartPos));
                 }
 
-                // Write the following sequentially for the auxiliary data
-                // bucket file:
+                // Write the following sequentially for the auxiliary data bucket file:
                 // - aux length; (4 byte)
                 // - aux. (variable byte)
 
@@ -353,15 +349,15 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
                 long auxEndPos = this.auxFile.getFilePointer();
                 if (byteAux != null)
                 {
-                    LOG.info("[{}] - [{}] - wrote to auxBucket file - " +
-                             "aux.length: '{}' byteAux: '{}' and aux: '{}' - " + "bytes written in total: {}",
+                    LOG.info("[{}] - [{}] - wrote to auxBucket file - aux.length: '{}' byteAux: '{}' and aux: '{}' - "
+                             + "bytes written in total: {}",
                              this.drumName, this.bucketId, byteAux.length, Arrays.toString(byteAux),
                              data.getAuxiliary(), (auxEndPos - auxStartPos));
                 }
                 else
                 {
-                    LOG.info("[{}] - [{}] - wrote to auxBucket file - " +
-                             "aux.length: '0' byteAux: 'null' and aux: '{}' - " + "bytes written in total: {}",
+                    LOG.info("[{}] - [{}] - wrote to auxBucket file - aux.length: '0' byteAux: 'null' and aux: '{}' - "
+                             + "bytes written in total: {}",
                              this.drumName, this.bucketId, data.getAuxiliary(), (auxEndPos - auxStartPos));
                 }
             }
@@ -371,10 +367,7 @@ public class DiskBucketWriter<V extends ByteSerializer<V>, A extends ByteSeriali
 
             updateState(this.kvBytesWritten, this.auxBytesWritten);
 
-            // is it merge time? If the feed was forced the merge will be done
-            // by the main-thread so do not set the merge flag therefore else
-            // two threads would try to merge the data which might result in
-            // a deadlock
+            // is it merge time?
             if (this.kvBytesWritten > this.bucketByteSize || this.auxBytesWritten > this.bucketByteSize)
             {
                 LOG.info("[{}] - [{}] - requesting merge", this.drumName, this.bucketId);

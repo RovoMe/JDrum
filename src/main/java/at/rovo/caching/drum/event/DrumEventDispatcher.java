@@ -53,7 +53,7 @@ public class DrumEventDispatcher implements Runnable, DrumEventListener
             }
             catch (InterruptedException e)
             {
-
+                // do nothing
             }
         }
     }

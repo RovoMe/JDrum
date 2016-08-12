@@ -1,6 +1,6 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
+import java.io.Serializable;
 
 /**
  * This interface contains the required methods for the "Disc Repository with Update Management" (DRUM) implementation
@@ -36,7 +36,7 @@ import at.rovo.caching.drum.data.ByteSerializer;
  * @version 0.1
  * @link http://irl.cs.tamu.edu/people/hsin-tsang/papers/www2008.pdf
  */
-public interface Drum<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public interface Drum<V extends Serializable, A extends Serializable>
 {
     /**
      * Informs the caching system to check for the availability of the provided key. There are only two options here:

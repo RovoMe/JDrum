@@ -1,13 +1,13 @@
 package at.rovo.caching.drum.internal;
 
 import at.rovo.caching.drum.Broker;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.event.InMemoryBufferEvent;
 import at.rovo.caching.drum.event.InMemoryBufferState;
 import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
 import at.rovo.caching.drum.util.lockfree.FlippableData;
 import at.rovo.caching.drum.util.lockfree.FlippableDataContainer;
+import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.util.Queue;
 import java.util.concurrent.locks.Condition;
@@ -39,7 +39,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Serializable, A extends Serializable>
         implements Broker<T, V, A>
 {
     /** The logger of this class **/
@@ -254,7 +254,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends ByteS
             LOG.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
             if (LOG.isTraceEnabled())
             {
-                queue.forEach(entry -> LOG.trace("Transmitted: ", entry));
+                queue.forEach(entry -> LOG.trace("Transmitted: {}", entry));
             }
 
             return queue;

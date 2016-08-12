@@ -5,12 +5,12 @@ import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
 import at.rovo.caching.drum.NotAppendableException;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskFileMerger;
 import at.rovo.caching.drum.internal.InMemoryData;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,7 +29,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends DiskFileMerger<V, A>
+public class CacheFileMerger<V extends Serializable, A extends Serializable> extends DiskFileMerger<V, A>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(CacheFileMerger.class);
@@ -44,8 +44,6 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
      *         The name of the DRUM instance this cache is used for
      * @param dispatcher
      *         The dispatching instance to send results to
-     *
-     * @throws DrumException
      */
     public CacheFileMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
                            Class<? super A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
@@ -137,7 +135,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
                         }
                     }
                 }
-                catch (IOException | InstantiationException | IllegalAccessException e)
+                catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e)
                 {
                     throw new DrumException("Error retrieving data object with key: " + key + "!", e);
                 }
@@ -151,8 +149,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
                     this.cacheFile.writeEntry(element, false);
                     this.numUniqueEntries = this.cacheFile.getNumberOfEntries();
                 }
-                catch (IOException | InstantiationException
-                        | IllegalAccessException e)
+                catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e)
                 {
                     throw new DrumException("Error writing data object with key: " + key + "!", e);
                 }
@@ -166,7 +163,7 @@ public class CacheFileMerger<V extends ByteSerializer<V>, A extends ByteSerializ
                     element.setValue(this.cacheFile.writeEntry(element, true).getValue());
                     this.numUniqueEntries = this.cacheFile.getNumberOfEntries();
                 }
-                catch (IOException | InstantiationException | IllegalAccessException e)
+                catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e)
                 {
                     throw new DrumException("Error writing data object with key: " + key + "!", e);
                 }

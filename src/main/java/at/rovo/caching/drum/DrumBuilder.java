@@ -1,7 +1,7 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
+import java.io.Serializable;
 
 /**
  * Implementation of the build pattern presented by Joshua Bloch in his book 'Effective Java - Second Edition' in 'Item
@@ -20,7 +20,7 @@ import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
  * @author Roman Vottner
  */
 @SuppressWarnings("unused")
-public class DrumBuilder<V extends ByteSerializer<V>, A extends ByteSerializer<A>> implements Builder<Drum<V, A>>
+public class DrumBuilder<V extends Serializable, A extends Serializable> implements Builder<Drum<V, A>>
 {
     // required parameters
     /** The name of the drum instance **/

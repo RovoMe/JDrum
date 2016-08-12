@@ -1,9 +1,9 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.internal.DrumRuntimeListener;
 import at.rovo.caching.drum.internal.InMemoryData;
 import java.io.RandomAccessFile;
+import java.io.Serializable;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -21,8 +21,7 @@ import java.util.concurrent.Semaphore;
  *
  * @author Roman Vottner
  */
-public interface DiskWriter<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
-        extends Runnable, DrumRuntimeListener
+public interface DiskWriter<V extends Serializable, A extends Serializable> extends Runnable, DrumRuntimeListener
 {
     /**
      * Returns the ID of the bucket the writer is responsible for.

@@ -2,9 +2,9 @@ package at.rovo.caching.drum.internal.backend.cacheFile;
 
 import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.event.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
+import java.io.Serializable;
 
 /**
  * <em>CacheFileStorageFactory</em> is an implementation of {@link DrumStorageFactory} and takes care of initializing a
@@ -18,7 +18,7 @@ import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
  *
  * @author Roman Vottner
  */
-public class CacheFileStorageFactory<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public class CacheFileStorageFactory<V extends Serializable, A extends Serializable>
         extends DrumStorageFactory<V, A>
 {
     /**

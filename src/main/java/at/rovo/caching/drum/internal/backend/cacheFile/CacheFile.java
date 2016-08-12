@@ -2,10 +2,11 @@ package at.rovo.caching.drum.internal.backend.cacheFile;
 
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.NotAppendableException;
-import at.rovo.caching.drum.data.ByteSerializer;
 import at.rovo.caching.drum.internal.InMemoryData;
+import at.rovo.caching.drum.util.DrumUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.logging.log4j.Level;
@@ -24,7 +25,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
+public class CacheFile<V extends Serializable, A extends Serializable>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(CacheFile.class);
@@ -54,8 +55,6 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         The name of the drum instance the cache file is used for
      * @param valueClass
      *         The class of the value object stored with the key
-     *
-     * @throws DrumException
      */
     public CacheFile(String name, String drum, Class<? super V> valueClass) throws DrumException
     {
@@ -76,8 +75,6 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      * Returns the length of the data store in bytes.
      *
      * @return The length of the data store in bytes
-     *
-     * @throws DrumException
      */
     public long length() throws DrumException
     {
@@ -156,12 +153,9 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *
      * @return The entry at the current cursor position or null if either the end of the file was reached without
      * finding an entry or if the cursor was placed in the middle of an entry.
-     *
-     * @throws IllegalAccessException
-     * @throws InstantiationException
      */
-    @SuppressWarnings("unchecked")
-    public InMemoryData<V, A> getNextEntry() throws IOException, InstantiationException, IllegalAccessException
+    public InMemoryData<V, A> getNextEntry()
+            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
     {
         if (this.file.getFilePointer() == this.file.length())
         {
@@ -179,7 +173,7 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
             byte[] byteValue = new byte[valueSize];
             this.file.read(byteValue);
             LOG.trace("byte value: {}", Arrays.toString(byteValue));
-            V value = ((V) this.valueClass.newInstance()).readBytes(byteValue);
+            V value = (V)DrumUtils.deserialize(byteValue, this.valueClass);
             return new InMemoryData<>(key, value, null, null);
         }
         return new InMemoryData<>(key, null, null, null);
@@ -195,15 +189,10 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         The data to write into the cache file
      *
      * @return The updated entry
-     *
-     * @throws IOException
-     * @throws InstantiationException
-     * @throws IllegalAccessException
-     * @throws NotAppendableException
-     * @throws DrumException
      */
     public InMemoryData<V, ?> writeEntry(InMemoryData<V, A> data)
-            throws IOException, InstantiationException, IllegalAccessException, NotAppendableException, DrumException
+            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException,
+                   NotAppendableException, DrumException
     {
         return this.writeEntry(data, false);
     }
@@ -220,48 +209,37 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         Specifies if the data to write should be appended to an already existing entry with the same key.
      *
      * @return The updated entry
-     *
-     * @throws IOException
-     * @throws InstantiationException
-     * @throws IllegalAccessException
-     * @throws NotAppendableException
-     * @throws DrumException
      */
     public InMemoryData<V, A> writeEntry(InMemoryData<V, A> data, boolean append)
-            throws IOException, InstantiationException, IllegalAccessException, NotAppendableException, DrumException
+            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException,
+                   NotAppendableException, DrumException
     {
         LOG.debug("[{}] - writing entry: {}; value: {}", this.drum, data.getKey(), data.getValue());
 
-		/*
+        /*
          * Source:
-		 * http://stackoverflow.com/questions/12677170/write-bytes-into-a
-		 * -file-without-erasing-existing-bytes?lq=1
-		 * 
-		 * The only way to do this is to move the bytes that are currently in
-		 * the way. Depending on how frequently you have to do this, and how
-		 * large the file is, it's often a better idea to create a new file,
-		 * copying the existing file and inserting the new bytes along the way.
-		 * 
-		 * If you need to update the file infrequently, or it's small (up to
-		 * maybe 100kb) you can use a RandomAccessFile:
-		 * 
-		 * Extend the file, using the setLength() method, adding the number of
-		 * bytes you'll be inserting to whatever is returned by the length()
-		 * method.
-		 * 
-		 * If you have enough memory, create a byte[] that will hold all the
-		 * bytes from the insertion point to the previous end of file.
-		 * 
-		 * Call seek() to position at the insertion point Call readFully() to
-		 * fill your temporary array Call seek() to position at the insertion
-		 * point + the number of bytes to insert Call write() to write your
-		 * buffer at that point Call seek() to reposition at the insertion point
-		 * Call `write() to write the new bytes
-		 * 
-		 * If you can't create a large-enough array in step #2, you'll have to
-		 * perform steps 3-6 in a loop with a smaller buffer. I would use at
-		 * least a 64k buffer for efficiency.
-		 */
+         * http://stackoverflow.com/questions/12677170/write-bytes-into-a-file-without-erasing-existing-bytes?lq=1
+         *
+         * The only way to do this is to move the bytes that are currently in the way. Depending on how frequently you
+         * have to do this, and how large the file is, it's often a better idea to create a new file, copying the
+         * existing file and inserting the new bytes along the way.
+         *
+         * If you need to update the file infrequently, or it's small (up to maybe 100kb) you can use a
+         * RandomAccessFile:
+         *
+         * Extend the file, using the setLength() method, adding the number of bytes you'll be inserting to whatever is
+         * returned by the length() method.
+         *
+         * If you have enough memory, create a byte[] that will hold all the bytes from the insertion point to the
+         * previous end of file.
+         *
+         * Call seek() to position at the insertion point Call readFully() to fill your temporary array Call seek() to
+         * position at the insertion point + the number of bytes to insert Call write() to write your buffer at that
+         * point Call seek() to reposition at the insertion point Call `write() to write the new bytes
+         *
+         * If you can't create a large-enough array in step #2, you'll have to perform steps 3-6 in a loop with a
+         * smaller buffer. I would use at least a 64k buffer for efficiency.
+         */
         try
         {
             long entryStartPosition = this.file.getFilePointer();
@@ -287,8 +265,7 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
             else
             {
                 LOG.trace("[{}] - writing entry in the middle of the file!", this.drum);
-                // get the old length of the entry and calculate the area to
-                // shift
+                // get the old length of the entry and calculate the area to shift
                 InMemoryData<V, A> entry;
                 long shiftBits = 0L;
                 do
@@ -310,10 +287,8 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
                     return this.lastElement;
                 }
 
-                // check if the new data should be integrated into the existing
-                // data entry
-                // this results in an append instead of an replacement of the
-                // data entry
+                // check if the new data should be integrated into the existing data entry this results in an append
+                // instead of an replacement of the data entry
                 if (append && data.getKey().equals(entry.getKey()))
                 {
                     LOG.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
@@ -328,14 +303,12 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
                 }
 
                 long restLength = this.file.length() - this.file.getFilePointer();
-                // read the data to shift and store it into a temporary memory
-                // list
+                // read the data to shift and store it into a temporary memory list
                 final int segmentSize = 65536; // 64k buffer size
                 // shift the content by the number of bytes to write
                 this.shiftContent(byte2write, segmentSize, restLength);
 
-                // set the cursor to the position where the new or updateable
-                // data should be written
+                // set the cursor to the position where the new or updateable data should be written
                 long pos = Math.max(entryStartPosition + shiftBits - entry.getByteLengthKV(), 0L);
                 this.file.seek(pos);
                 // write the new data
@@ -351,8 +324,8 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
                     this.writeDataEntry(entry, false);
                 }
 
-                // set the cursor back to the position we inserted the data
-                // in case multiple elements for the same key are in the list
+                // set the cursor back to the position we inserted the data in case multiple elements for the same key
+                // are in the list
                 this.file.seek(pos);
 
                 return this.lastElement;
@@ -367,7 +340,16 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
         }
     }
 
-    public InMemoryData<V, A> getEntry(Long key) throws IOException, InstantiationException, IllegalAccessException
+    /**
+     * Returns the entry which matches the given <em>key</em> value.
+     *
+     * @param key
+     *         The key value the entry should be retrieved for
+     *
+     * @return The data value which is stored under the given key or null if no data with the given key could be found
+     */
+    InMemoryData<V, A> getEntry(Long key)
+            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
     {
         LOG.debug("[{}] - Retrieving entry: {}", this.drum, key);
 
@@ -382,19 +364,15 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
             }
             while (data != null && data.getKey() < key);
 
-            // we haven't found a item till the end - so we can safely
-            // assume
-            // that the key must be greater than any key stored within the
-            // cache. The file pointer can therefore be left at the end of
-            // the file
+            // we haven't found a item till the end - so we can safely assume that the key must be greater than any key
+            // stored within the cache. The file pointer can therefore be left at the end of the file
             if (data == null)
             {
                 return null;
             }
-            // set the pointer back to the object before the last read
-            // item. We know that every further data item is greater and
-            // new queries for a key either deal the last object we've
-            // extracted or any object behind it - but not before
+            // set the pointer back to the object before the last read item. We know that every further data item is
+            // greater and new queries for a key either deal the last object we've extracted or any object behind it
+            // - but not before
             this.file.seek(Math.max(0, this.file.getFilePointer() - data.getByteLengthKV()));
             // check if the key equals
             if (data.getKey().equals(key))
@@ -425,8 +403,6 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         next entry
      *
      * @return The bytes actually written
-     *
-     * @throws IOException
      */
     private long writeDataEntry(InMemoryData<V, A> data, boolean cacheEntry) throws IOException
     {
@@ -465,8 +441,6 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         The size of a segment to read in case the total file length exceeds the segment size
      * @param restLength
      *         The total number of bytes remaining to shift
-     *
-     * @throws IOException
      */
     private void shiftContent(long byte2write, int segmentSize, long restLength) throws IOException
     {
@@ -601,20 +575,16 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
     }
 
     /**
-     * Updates the last entry in the data storage
+     * Updates the last entry in the data storage.
      *
      * @param data
      *         The object containing the data to write
      *
      * @return The number of bytes written
-     *
-     * @throws IOException
-     * @throws NotAppendableException
      */
     private long updateLastEntry(InMemoryData<V, A> data, boolean append) throws IOException, NotAppendableException
     {
-        // the key to update was written before so set the cursor
-        // back to the start of the last entry
+        // the key to update was written before so set the cursor back to the start of the last entry
         this.file.seek(this.file.getFilePointer() - this.entrySize);
 
         long byte2write;
@@ -631,8 +601,7 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
         }
         else
         {
-            // enlarge the file if the new entry is larger than the old
-            // one, or shrink the file size if it is less
+            // enlarge the file if the new entry is larger than the old one, or shrink the file size if it is less
             byte2write = data.getByteLengthKV();
             if (byte2write != this.entrySize)
             {
@@ -652,8 +621,6 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         The object containing the data to write
      *
      * @return The number of bytes written
-     *
-     * @throws IOException
      */
     private long addNewEntryAtTheEnd(InMemoryData<V, A> data) throws IOException
     {
@@ -668,8 +635,6 @@ public class CacheFile<V extends ByteSerializer<V>, A extends ByteSerializer<A>>
      *         A {@link List} which will contain the keys contained in the backing file after this call
      * @param values
      *         A {@link List} which will contain the values contained in the backing file after this call
-     *
-     * @throws DrumException
      */
     public void printCacheContent(List<Long> keys, List<V> values) throws DrumException
     {
