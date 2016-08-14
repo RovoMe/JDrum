@@ -6,6 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
+@SuppressWarnings("Duplicates")
 public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDTestData>
 {
     private long hash = 0;
@@ -133,7 +134,39 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
         }
     }
 
-    public synchronized byte[] toBytes()
+    private void writeObject(java.io.ObjectOutputStream stream) throws java.io.IOException
+    {
+        // 8 bytes long - hash
+        stream.writeLong(this.hash);
+        // 4 bytes int - length of indegreeNeighobrs
+        stream.writeInt(this.indegreeNeighbors.size());
+        for (Long neighbor : this.indegreeNeighbors)
+        {
+            // 8 bytes long - neighbor hash
+            stream.writeLong(neighbor);
+        }
+        // 4 bytes int - budget value
+        stream.writeInt(this.budget);
+    }
+
+    private void readObject(java.io.ObjectInputStream stream) throws java.io.IOException, ClassNotFoundException
+    {
+        this.indegreeNeighbors = new LinkedHashSet<>();
+
+        // read hash
+        this.hash = stream.readLong();
+        // read neighbors length
+        int neighborsLength = stream.readInt();
+        for (int i = 0; i < neighborsLength; i++)
+        {
+            long neighborHash = stream.readLong();
+            this.indegreeNeighbors.add(neighborHash);
+        }
+        this.budget = stream.readInt();
+    }
+
+    @Override
+    public byte[] toBytes()
     {
         int size = 12 + 8 * this.indegreeNeighbors.size() + 4;
         byte[] totalBytes = new byte[size];
@@ -154,7 +187,8 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
         return totalBytes;
     }
 
-    public synchronized PLDTestData readBytes(byte[] bytes)
+    @Override
+    public PLDTestData readBytes(byte[] bytes)
     {
         byte[] keyBytes = new byte[8];
         System.arraycopy(bytes, 0, keyBytes, 0, 8);

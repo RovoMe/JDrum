@@ -1,12 +1,12 @@
 package at.rovo.caching.drum.util;
 
+import at.rovo.caching.drum.data.ByteSerializable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
-import java.util.Arrays;
 
 /**
  * This utility class provides some basic methods to convert 32bit integer values to a byte-array and vice versa and to
@@ -151,7 +151,7 @@ public class DrumUtils
     }
 
     /**
-     * Serializes an object into a byte-array
+     * Serializes an object into a byte-array.
      *
      * @param obj
      *         The object to convert into a binary array
@@ -161,34 +161,32 @@ public class DrumUtils
      * @throws IOException
      *         If any error during the serialization occurs
      */
-    public synchronized static byte[] serialize(Object obj) throws IOException
+    public static byte[] serialize(Object obj) throws IOException
     {
         if (obj instanceof String)
         {
             return obj.toString().getBytes();
         }
-
-        // useful for Java objects - simple Integer objects create
-        // up to 81 bytes instead of only 4!
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
-        if (obj == null)
+        // objects implementing the ByteSerializable interface do their own homework on serializing/deserializing their
+        // state to/from bytes. This avoids returning unnecessary bytes
+        if (obj instanceof ByteSerializable)
         {
-            byte[] ret = new byte[0];
-            byte empty = 0;
-            Arrays.fill(ret, 0, 0, empty);
-            return ret;
+            return ((ByteSerializable)obj).toBytes();
         }
-        oos.writeObject(obj);
-        oos.flush();
-        byte[] bytes = baos.toByteArray();
+        // no custom serialization available, fall back to the default one although it is wasteful in relation to the
+        // number of actual bytes produced! Simple Integer objects create up to 81 bytes instead of only 4!
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ObjectOutputStream oos = new ObjectOutputStream(baos))
+        {
+            if (obj == null)
+            {
+                return new byte[0];
+            }
+            oos.writeObject(obj);
+            oos.flush();
 
-        oos.reset();
-
-        oos.close();
-        baos.close();
-
-        return bytes;
+            return baos.toByteArray();
+        }
     }
 
     /**
@@ -204,20 +202,29 @@ public class DrumUtils
     {
         V ret;
         // check if the byte array is a String (character array)
-        if (type.isAssignableFrom(String.class))
+        if (String.class.isAssignableFrom(type))
         {
             ret = type.cast(new String(bytes));
         }
+        else if (ByteSerializable.class.isAssignableFrom(type))
+        {
+            try
+            {
+                ret = type.cast(((ByteSerializable) type.newInstance()).readBytes(bytes));
+            }
+            catch(Exception ex)
+            {
+                throw new IOException(ex);
+            }
+        }
         else
         {
-            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-            ObjectInputStream ois = new ObjectInputStream(bais);
-
-            Object obj = ois.readObject();
-            ret = type.cast(obj);
-
-            ois.close();
-            bais.close();
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+                 ObjectInputStream ois = new ObjectInputStream(bais))
+            {
+                Object obj = ois.readObject();
+                ret = type.cast(obj);
+            }
         }
         return ret;
     }

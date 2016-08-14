@@ -10,7 +10,7 @@ import java.io.Serializable;
  *
  * @author Roman Vottner
  */
-public interface AppendableData<T extends Serializable> extends Serializable
+public interface AppendableData<T extends Serializable> extends ByteSerializable<T>
 {
     /**
      * Appends data to the value field of this object.

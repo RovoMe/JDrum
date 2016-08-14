@@ -306,6 +306,7 @@ public class DataStoreTest
             // parameters: (nodeId; number of linked elements; <each linked element>)
             LOG.debug("Creating original data - (1; 2; <3, 7>), (5; 2; <2, 19>), (76; 4; <5, 13, 22, 88)");
 
+            // key: 8 + op: 4 + value: (hash: 8 + neighbor-length: 4 + 2 * neighborHash: 8) + budges: 4) bytes = 44 ... 164 = 120 bytes diff :/
             DrumStoreEntry<PLDTestData> mem1 = createNewData(1L, DrumOperation.UPDATE, 7L, 3L);
             DrumStoreEntry<PLDTestData> mem2 = createNewData(5L, DrumOperation.UPDATE, 2L, 19L);
             DrumStoreEntry<PLDTestData> mem3 = createNewData(76L, DrumOperation.UPDATE, 5L, 13L, 22L, 88L);
@@ -314,6 +315,8 @@ public class DataStoreTest
             dataStore.writeEntry(mem1, false);
             dataStore.writeEntry(mem2, false);
             dataStore.writeEntry(mem3, false);
+
+            assertThat(dataStore.length(), is(equalTo(148L)));
 
             Map<Long, PLDTestData> dataStoreContent = DataStoreUtils.getContentAsMap("test", PLDTestData.class);
             DataStoreUtils.printCacheContent(dataStoreContent);
