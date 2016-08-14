@@ -1,12 +1,12 @@
 package at.rovo.caching.drum.internal.backend.berkeley;
 
+import at.rovo.caching.drum.DrumStoreEntry;
 import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
-import at.rovo.caching.drum.event.DrumEventDispatcher;
+import at.rovo.caching.drum.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskFileMerger;
-import at.rovo.caching.drum.internal.InMemoryData;
 import at.rovo.caching.drum.util.DrumUtils;
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
@@ -25,11 +25,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * <em>BerkeleyCacheFileMerger</em> uses a backing Berkeley DB to check keys for their uniqueness and merges data that
+ * <em>BerkeleyDBStoreMerger</em> uses a backing Berkeley DB to check keys for their uniqueness and merges data that
  * needs to be updated with the cache file.
  * <p>
  * On successfully extracting the unique or duplicate status of an entry, the result will be injected into the
- * data-object itself to avoid loosing data information.
+ * data-object itself to avoid losing data information.
  *
  * @param <V>
  *         The type of the value
@@ -38,17 +38,16 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializable>
+public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializable>
         extends DiskFileMerger<V, A> implements ExceptionListener
 {
-    private final static Logger LOG = LogManager.getLogger(BerkeleyCacheFileMerger.class);
+    private final static Logger LOG = LogManager.getLogger(BerkeleyDBStoreMerger.class);
 
     private Environment environment = null;
     private Database berkeleyDB;
 
-    public BerkeleyCacheFileMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher,
-                                   Class<? super V> valueClass, Class<? super A> auxClass,
-                                   DrumEventDispatcher eventDispatcher) throws DrumException
+    BerkeleyDBStoreMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
+                          Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
     {
         super(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
 
@@ -86,9 +85,8 @@ public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializa
                     LOG.warn("Could not create cache directory");
                 }
             }
-            // check if a sub-directory inside the cache sub-directory exists
-            // that has the
-            // name of this instance - if not create it
+            // check if a sub-directory inside the cache sub-directory exists that has the name of this instance
+            // - if not create it
             File file = new File(System.getProperty("user.dir") + "/cache/" + this.drumName);
             if (!file.exists())
             {
@@ -106,11 +104,9 @@ public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializa
             dbConfig.setAllowCreate(true);
             // Sets the comparator for the key
             dbConfig.setBtreeComparator(new BTreeCompare());
-            // writing to DB does not occur upon operation call - instead it is
-            // delayed as long as possible
-            // changes are only guaranteed to be durable after the
-            // Database.sync() method got called or the
-            // database is properly closed
+            // writing to DB does not occur upon operation call - instead it is delayed as long as possible changes are
+            // only guaranteed to be durable after the Database.sync() method got called or the database is properly
+            // closed
             dbConfig.setDeferredWrite(true);
 
             return this.environment.openDatabase(null, this.drumName + ".db", dbConfig);
@@ -146,24 +142,22 @@ public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializa
     }
 
     @Override
-    protected void compareDataWithDataStore(List<? extends InMemoryData<V, A>> data) throws DrumException
+    protected void compareDataWithDataStore(List<? extends DrumStoreEntry<V>> data) throws DrumException
     {
         try
         {
-            for (InMemoryData<V, A> element : data)
+            for (DrumStoreEntry<V> element : data)
             {
                 Long key = element.getKey();
 
                 DatabaseEntry dbKey = new DatabaseEntry(DrumUtils.long2bytes(key));
                 DrumOperation op = element.getOperation();
 
-                // set the result for CHECK and CHECK_UPDATE operations for a
-                // certain key
+                // set the result for CHECK and CHECK_UPDATE operations for a certain key
                 if (DrumOperation.CHECK.equals(op) || DrumOperation.CHECK_UPDATE.equals(op))
                 {
-                    // In Berkeley DB Java edition there is no method available
-                    // to check for existence only
-                    // so checking the key also retrieves the data
+                    // In Berkeley DB Java edition there is no method available to check for existence only so checking
+                    // the key also retrieves the data
                     DatabaseEntry dbValue = new DatabaseEntry();
                     OperationStatus status = this.berkeleyDB.get(null, dbKey, dbValue, null);
                     if (OperationStatus.NOTFOUND.equals(status))
@@ -176,7 +170,7 @@ public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializa
 
                         if (DrumOperation.CHECK.equals(element.getOperation()) && dbValue.getData().length > 0)
                         {
-                            V value = (V) DrumUtils.deserialize(dbValue.getData(), this.valueClass);
+                            V value = DrumUtils.deserialize(dbValue.getData(), this.valueClass);
                             element.setValue(value);
                         }
                     }
@@ -188,8 +182,8 @@ public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializa
                     V value = element.getValue();
                     byte[] byteValue = DrumUtils.serialize(value);
                     DatabaseEntry dbValue = new DatabaseEntry(byteValue);
-                    OperationStatus status =
-                            this.berkeleyDB.put(null, dbKey, dbValue); // forces overwrite if the key is already present
+                    // forces overwrite if the key is already present
+                    OperationStatus status = this.berkeleyDB.put(null, dbKey, dbValue);
                     if (!OperationStatus.SUCCESS.equals(status))
                     {
                         throw new DrumException("Error merging with repository!");
@@ -202,7 +196,7 @@ public class BerkeleyCacheFileMerger<V extends Serializable, A extends Serializa
                     OperationStatus status = this.berkeleyDB.get(null, dbKey, dbValue, null);
                     if (OperationStatus.KEYEXIST.equals(status))
                     {
-                        V storedVal = (V) DrumUtils.deserialize(dbValue.getData(), this.valueClass);
+                        V storedVal = DrumUtils.deserialize(dbValue.getData(), this.valueClass);
                         element.appendValue(storedVal);
                     }
                     // now write it to the DB replacing the old value

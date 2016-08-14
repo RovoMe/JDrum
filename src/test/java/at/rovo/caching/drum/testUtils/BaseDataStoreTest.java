@@ -10,10 +10,12 @@ import org.junit.After;
 import org.junit.Before;
 
 /**
- * Base class for all cache based unit tests. This abstract class does take responsibility of the creation and deletion
- * of the actual cache files and the initialization of the logger instance.
+ * Base class for all data store based unit tests. This abstract class does take responsibility of the creation and
+ * deletion of the actual data store files and the initialization of the logger instance.
+ *
+ * @author Roman Vottner
  */
-public abstract class BaseCacheTest
+public abstract class BaseDataStoreTest
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());

@@ -2,13 +2,13 @@ package at.rovo.caching.drum.internal;
 
 import at.rovo.caching.drum.Broker;
 import at.rovo.caching.drum.DiskWriter;
+import at.rovo.caching.drum.DrumEventDispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.event.DiskWriterEvent;
 import at.rovo.caching.drum.event.DiskWriterState;
 import at.rovo.caching.drum.event.DiskWriterStateUpdate;
-import at.rovo.caching.drum.event.DrumEventDispatcher;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -38,7 +38,7 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class DiskBucketWriter<V extends Serializable, A extends Serializable> implements DiskWriter<V, A>
+public class DiskBucketWriter<V extends Serializable, A extends Serializable> implements DiskWriter
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(DiskBucketWriter.class);
@@ -50,10 +50,10 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     /** The size of a bucket before a merge action is invoked **/
     private int bucketByteSize = 0;
     /** The broker we get data to write from **/
-    private Broker<InMemoryData<V, A>, V, A> broker = null;
+    private Broker<InMemoryEntry<V, A>, V> broker = null;
     /** The merger who takes care of merging disk files with the backing data store. It needs to be informed if it should
      * merge, which happens if the bytes written to the disk file exceeds certain limits **/
-    private Merger<V, A> merger = null;
+    private Merger merger = null;
     /** The object responsible for updating listeners on state or statistic changes **/
     private DrumEventDispatcher eventDispatcher = null;
     /** The name of the disk file this instance will write key/value data to **/
@@ -90,8 +90,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      * @param broker
      *         The broker who administers the in memory data
      */
-    public DiskBucketWriter(String drumName, int bucketId, int bucketByteSize, Broker<InMemoryData<V, A>, V, A> broker,
-                            Merger<V, A> merger, DrumEventDispatcher eventDispatcher) throws DrumException
+    public DiskBucketWriter(String drumName, int bucketId, int bucketByteSize, Broker<InMemoryEntry<V, A>, V> broker,
+                            Merger merger, DrumEventDispatcher eventDispatcher) throws DrumException
     {
         this.drumName = drumName;
         this.bucketId = bucketId;
@@ -119,9 +119,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 throw new DrumException("No cache directory found and could not initialize one!");
             }
         }
-        // check if a sub-directory inside the cache sub-directory exists that
-        // has the
-        // name of this instance - if not create it
+        // check if a sub-directory inside the cache sub-directory exists that has the name of this instance - if not
+        // create it
         File file = new File(System.getProperty("user.dir") + "/cache/" + this.drumName);
         if (!file.exists())
         {
@@ -167,10 +166,9 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
 
                 // use a blocking call to retrieve the elements to persist
                 // takeAll() waits on the broker instance to retrieve data
-                Queue<InMemoryData<V, A>> elementsToPersist = this.broker.takeAll();
+                Queue<InMemoryEntry<V, A>> elementsToPersist = this.broker.takeAll();
 
-                // in case a flush was invoked but there aren't any data
-                // available
+                // in case a flush was invoked but there aren't any data available
                 if (elementsToPersist == null || elementsToPersist.size() == 0)
                 {
                     continue;
@@ -179,8 +177,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 this.lastState = null;
                 updateState(DiskWriterState.DATA_RECEIVED);
 
-                LOG.debug("[{}] - [{}] - received {} data elements", this.drumName, this.bucketId,
-                          elementsToPersist.size());
+                LOG.debug("[{}] - [{}] - received {} data elements",
+                          this.drumName, this.bucketId, elementsToPersist.size());
                 this.feedBucket(elementsToPersist);
 
                 if (this.mergeRequired)
@@ -197,6 +195,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                     LOG.error("[{}] - [{}] - got interrupted!", this.drumName, this.bucketId);
                     this.lastState = updateState(DiskWriterState.FINISHED);
                 }
+                iE.printStackTrace();
                 Thread.currentThread().interrupt();
             }
             catch (Exception e)
@@ -204,11 +203,11 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 LOG.error("[{}] - [{}] - caught exception: {}", this.drumName, this.bucketId, e.getLocalizedMessage());
                 LOG.catching(Level.ERROR, e);
                 updateState(DiskWriterState.FINISHED_WITH_ERROR);
+                e.printStackTrace();
                 Thread.currentThread().interrupt();
             }
         }
-        // push the latest data which has not yet been written to the data store
-        // to be written
+        // push the latest data which has not yet been written to the data store to be written
         if (this.kvBytesWritten > 0)
         {
             this.merger.doMerge();
@@ -226,8 +225,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      * @return The new state of this instance
      */
     private DiskWriterState updateState(DiskWriterState newState) {
-        this.eventDispatcher
-                .update(new DiskWriterStateUpdate(this.drumName, this.bucketId, newState));
+        this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId, newState));
         return newState;
     }
 
@@ -271,7 +269,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      * @param inMemoryData
      *         The buffer which contains the data to persist to disk
      */
-    private void feedBucket(Queue<InMemoryData<V, A>> inMemoryData) throws DrumException
+    private void feedBucket(Queue<InMemoryEntry<V, A>> inMemoryData) throws DrumException
     {
         try
         {
@@ -282,7 +280,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
             long kvStart = this.kvFile.getFilePointer();
             long auxStart = this.auxFile.getFilePointer();
 
-            for (InMemoryData<V, A> data : inMemoryData)
+            for (InMemoryEntry<V, A> data : inMemoryData)
             {
                 LOG.info("[{}] - [{}] - feeding bucket with: {}; value: {}",
                          this.drumName, this.bucketId, data.getKey(), data.getValue());

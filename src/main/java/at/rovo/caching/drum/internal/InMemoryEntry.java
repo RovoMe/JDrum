@@ -2,11 +2,15 @@ package at.rovo.caching.drum.internal;
 
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
+import at.rovo.caching.drum.DrumStoreEntry;
 import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.data.AppendableData;
 import at.rovo.caching.drum.util.DrumUtils;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * <em>InMemoryData</em> is a bean which holds the data related to an object that either should be stored within the
@@ -25,8 +29,11 @@ import java.io.Serializable;
  *
  * @author Roman Vottner
  */
-public class InMemoryData<V extends Serializable, A extends Serializable>
+public class InMemoryEntry<V extends Serializable, A extends Serializable> implements DrumStoreEntry<V>
 {
+    /** The logger of this class **/
+    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+
     /** The key of the statement **/
     private Long key;
     /** The value belonging to the key **/
@@ -48,7 +55,7 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
     /**
      * Creates a new instance of this class without instantiating any field.
      */
-    public InMemoryData()
+    public InMemoryEntry()
     {
 
     }
@@ -65,7 +72,7 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
      * @param operation
      *         The DRUM operation to execute for this data object
      */
-    public InMemoryData(Long key, V value, A aux, DrumOperation operation)
+    public InMemoryEntry(Long key, V value, A aux, DrumOperation operation)
     {
         this.key = key;
         this.value = value;
@@ -73,43 +80,25 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
         this.operation = operation;
     }
 
-    /**
-     * Returns the key of the current data object.
-     *
-     * @return The key of the data object
-     */
+    @Override
     public Long getKey()
     {
         return this.key;
     }
 
-    /**
-     * Sets the key of the current data object
-     *
-     * @param key
-     *         The new key of the data object
-     */
+    @Override
     public void setKey(Long key)
     {
         this.key = key;
     }
 
-    /**
-     * Returns the value of the current data object.
-     *
-     * @return The value object related to the key of this data object
-     */
+    @Override
     public V getValue()
     {
         return this.value;
     }
 
-    /**
-     * Sets the value of the current data object.
-     *
-     * @param value
-     *         The new value of the data object
-     */
+    @Override
     public void setValue(V value)
     {
         this.value = value;
@@ -136,11 +125,7 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
         this.aux = aux;
     }
 
-    /**
-     * Returns the DRUM operation to be used on this data object.
-     *
-     * @return The DRUM operation to be used
-     */
+    @Override
     public DrumOperation getOperation()
     {
         return this.operation;
@@ -157,44 +142,42 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
         this.operation = operation;
     }
 
-    /**
-     * Appends the value of the provided data object to the value of this data object.
-     *
-     * @param data
-     *         The data object containing the value to append to the value of this data object
-     *
-     * @throws NotAppendableException
-     *         Thrown if the data object to append is not an instance of {@link AppendableData}
-     */
     @SuppressWarnings("unchecked")
+    @Override
     public void appendValue(V data) throws NotAppendableException
     {
-        if (this.value != null && this.value instanceof AppendableData)
+        if (data == null)
         {
-            ((AppendableData<V>) this.value).append(data);
+            throw new IllegalArgumentException("Cannot append null value");
+        }
+
+        if (null != this.value)
+        {
+            if(this.value instanceof AppendableData)
+            {
+                ((AppendableData<V>) this.value).append(data);
+            }
+            else
+            {
+                throw new NotAppendableException(
+                        "Value data does not implement at.rovo.caching.drum.AppendableData interface!");
+            }
         }
         else
         {
-            throw new NotAppendableException(
-                    "Value data does not implement " + "at.rovo.caching.drum.AppendableData interface!");
+            // in case the value was null before and data should be appended, the current value of this instance should
+            // contain the appended value
+            this.value = data;
         }
     }
 
-    /**
-     * Returns the key of this data object as an 8 byte long array in big-endian order.
-     *
-     * @return The key of this data object as byte-array
-     */
+    @Override
     public byte[] getKeyAsBytes()
     {
         return DrumUtils.long2bytes(key);
     }
 
-    /**
-     * Returns the value of this data object as a byte-array in big endian order.
-     *
-     * @return The value of this data object as byte-array
-     */
+    @Override
     public byte[] getValueAsBytes()
     {
         if (this.value == null)
@@ -203,9 +186,13 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
         }
 
         byte[] bytes;
-        try {
+        try
+        {
             bytes = DrumUtils.serialize(this.value);
-        } catch (IOException ioEx) {
+        }
+        catch (IOException ioEx)
+        {
+            LOG.warn("Could not turn value {} into a byte array for entry with key {}", this.value, this.key);
             bytes = new byte[0];
         }
         return bytes;
@@ -224,9 +211,14 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
         }
 
         byte[] bytes;
-        try {
+        try
+        {
             bytes = DrumUtils.serialize(this.aux);
-        } catch (IOException ioEx) {
+        }
+        catch (IOException ioEx)
+        {
+            LOG.warn("Could not turn auxiliary data entry {} into a byte array for entry with key {}",
+                     this.aux, this.key);
             bytes = new byte[0];
         }
         return bytes;
@@ -239,7 +231,7 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
      * @param position
      *         The original position for this data object before sorting
      */
-    public void setPosition(int position)
+    void setPosition(int position)
     {
         this.position = position;
     }
@@ -250,41 +242,28 @@ public class InMemoryData<V extends Serializable, A extends Serializable>
      *
      * @return The original position of this data object
      */
-    public int getPosition()
+    int getPosition()
     {
         return this.position;
     }
 
-    /**
-     * Sets the result for the defined DRUM operation based on the data of this object.
-     *
-     * @param result
-     *         The result for this data object
-     */
+    @Override
     public void setResult(DrumResult result)
     {
         this.result = result;
     }
 
-    /**
-     * Returns the result gathered by DRUM based on the provided data object.
-     *
-     * @return The result for this data object
-     */
+    @Override
     public DrumResult getResult()
     {
         return this.result;
     }
 
-    /**
-     * Returns the length of the key and the value in the byte-array.
-     *
-     * @return The length of the key and value in the byte-array
-     */
+    @Override
     public long getByteLengthKV()
     {
-        // the 8 byte long key and the 4 byte long integer value representing
-        // the length of bytes the value field does take
+        // the 8 byte long key and the 4 byte long integer value representing the length of bytes the value field does
+        // take
         long bytes = 12;
         if (this.value != null)
         {

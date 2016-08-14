@@ -7,6 +7,11 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
+/**
+ * Custom visitor implementation which removes all files in subdirectories.
+ *
+ * @author Roman Vottner
+ */
 public class CacheFileDeleter extends SimpleFileVisitor<Path>
 {
     @Override
@@ -19,8 +24,7 @@ public class CacheFileDeleter extends SimpleFileVisitor<Path>
     @Override
     public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException
     {
-        // try to delete the file anyway, even if its attributes
-        // could not be read, since delete-only access is
+        // try to delete the file anyway, even if its attributes could not be read, since delete-only access is
         // theoretically possible
         Files.delete(file);
         return FileVisitResult.CONTINUE;

@@ -58,12 +58,12 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
 
     <loggers>
         <!-- Data storage -->
-        <logger name="at.rovo.caching.drum.internal.backend.cacheFile.CacheFile" level="trace" additivity="false">
+        <logger name="at.rovo.caching.drum.internal.backend.dataStore.DataStoreImpl" level="trace" additivity="false">
             <appender-ref ref="CacheFile"/>
         </logger>
 
         <!-- DRUM classes -->
-        <logger name="at.rovo.caching.drum.DrumImpl" level="trace" additivity="false">
+        <logger name="at.rovo.caching.drum.internal.DrumImpl" level="trace" additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
         <logger name="at.rovo.caching.drum.internal.InMemoryMessageBroker" level="trace" additivity="false">
@@ -75,10 +75,10 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         <logger name="at.rovo.caching.drum.internal.DiskFileMerger" level="trace" additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
-        <logger name="at.rovo.caching.drum.internal.backend.cacheFile.CacheFileMerger" level="trace" additivity="false">
+        <logger name="at.rovo.caching.drum.internal.backend.dataStore.DataStoreMerger" level="trace" additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
-        <logger name="at.rovo.caching.drum.internal.backend.berkeley.BerkeleyCacheFileMerger" level="debug"
+        <logger name="at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStoreMerger" level="debug"
                 additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
@@ -88,7 +88,7 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         </logger>
 
         <!-- Test classes -->
-        <logger name="at.rovo.caching.drum.testUtils.BaseCacheTest" level="debug" additivity="false">
+        <logger name="at.rovo.caching.drum.testUtils.BaseDataStoreTest" level="debug" additivity="false">
             <appender-ref ref="TestFile"/>
         </logger>
         <logger name="at.rovo.caching.drum.DrumImplTest" level="debug" additivity="false">
@@ -97,8 +97,8 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         <logger name="at.rovo.caching.drum.testUtils.LogFileDispatcher" level="debug" additivity="false">
             <appender-ref ref="TestFile"/>
         </logger>
-        <logger name="at.rovo.caching.drum.internal.backend.cacheFile.CacheFileTest" level="debug" additivity="false">
-            <appender-ref ref="TestFile"/>
+        <logger name="at.rovo.caching.drum.internal.backend.dataStore.DataStoreTest" level="debug" additivity="false">
+            <appender-ref ref="Console"/>
         </logger>
 
         <!-- General output -->

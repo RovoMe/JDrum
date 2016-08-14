@@ -1,27 +1,20 @@
 package at.rovo.caching.drum;
 
 import at.rovo.caching.drum.internal.DrumRuntimeListener;
-import at.rovo.caching.drum.internal.InMemoryData;
 import java.io.RandomAccessFile;
-import java.io.Serializable;
 import java.util.concurrent.Semaphore;
 
 /**
- * Defines method needed to store and retrieve {@link InMemoryData} to or from a disk bucket file which caches the data
- * object until it is merged into a backing data storage using an {@link Merger} implementation.
+ * Defines method needed to store and retrieve {@link DrumStoreEntry entries} to or from a disk bucket file which caches
+ * the data object until it is merged into a backing data storage using an {@link Merger} implementation.
  * <p>
  * Note that the disk bucket files should be merged with the backing data store once a disk bucket file exceeds a
  * certain threshold. The merging of the disk bucket files occur sequentially from 0 to n, where n is the number of
  * defined disk bucket files.
  *
- * @param <V>
- *         The type of the value object
- * @param <A>
- *         The type of the auxiliary data object
- *
  * @author Roman Vottner
  */
-public interface DiskWriter<V extends Serializable, A extends Serializable> extends Runnable, DrumRuntimeListener
+public interface DiskWriter extends Runnable, DrumRuntimeListener
 {
     /**
      * Returns the ID of the bucket the writer is responsible for.

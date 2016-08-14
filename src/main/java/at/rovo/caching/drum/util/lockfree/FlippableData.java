@@ -1,6 +1,6 @@
 package at.rovo.caching.drum.util.lockfree;
 
-import at.rovo.caching.drum.internal.InMemoryData;
+import at.rovo.caching.drum.internal.InMemoryEntry;
 import java.util.Queue;
 
 /**
@@ -8,8 +8,10 @@ import java.util.Queue;
  *
  * @param <T>
  *         The type of the entry the internal {@link Queue} can hold
+ *
+ * @author Roman Vottner
  */
-public class FlippableData<T extends InMemoryData>
+public class FlippableData<T extends InMemoryEntry>
 {
     private final Queue<T> queue;
     private final int keyLength;
@@ -39,7 +41,7 @@ public class FlippableData<T extends InMemoryData>
     /**
      * Returns a reference to the backing {@link Queue}.
      *
-     * @return The backing queue holding the added {@link InMemoryData} entries
+     * @return The backing queue holding the added {@link InMemoryEntry} entries
      */
     Queue<T> getQueue()
     {
@@ -47,7 +49,7 @@ public class FlippableData<T extends InMemoryData>
     }
 
     /**
-     * Returns the total byte length of all {@link InMemoryData} keys stored in the backing {@link Queue}.
+     * Returns the total byte length of all {@link InMemoryEntry} keys stored in the backing {@link Queue}.
      *
      * @return The total byte length of all stored keys
      */
@@ -57,7 +59,7 @@ public class FlippableData<T extends InMemoryData>
     }
 
     /**
-     * Returns the total byte length off all {@link InMemoryData} values stored in the backing {@link Queue}.
+     * Returns the total byte length off all {@link InMemoryEntry} values stored in the backing {@link Queue}.
      *
      * @return The total byte length of all stored values
      */
@@ -67,7 +69,7 @@ public class FlippableData<T extends InMemoryData>
     }
 
     /**
-     * Returns the total byte length of all {@link InMemoryData} auxiliary data bytes stored in the backing
+     * Returns the total byte length of all {@link InMemoryEntry} auxiliary data bytes stored in the backing
      * {@link Queue}.
      *
      * @return The total byte length of all stored auxiliary data bytes

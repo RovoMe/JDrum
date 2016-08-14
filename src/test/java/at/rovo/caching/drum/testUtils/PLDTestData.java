@@ -1,4 +1,4 @@
-package at.rovo.crawler.bean;
+package at.rovo.caching.drum.testUtils;
 
 import at.rovo.caching.drum.data.AppendableData;
 import at.rovo.caching.drum.util.DrumUtils;
@@ -6,19 +6,19 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class PLDData implements AppendableData<PLDData>, Comparable<PLDData>
+public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDTestData>
 {
     private long hash = 0;
     private int budget = 0;
     private Set<Long> indegreeNeighbors = null;
     private transient String pld = null;
 
-    public PLDData()
+    public PLDTestData()
     {
         this.indegreeNeighbors = new LinkedHashSet<>();
     }
 
-    public PLDData(long hash, int budget, Set<Long> indegreeNeighbors)
+    public PLDTestData(long hash, int budget, Set<Long> indegreeNeighbors)
     {
         this.hash = hash;
         this.budget = budget;
@@ -78,9 +78,9 @@ public class PLDData implements AppendableData<PLDData>, Comparable<PLDData>
     @Override
     public boolean equals(Object obj)
     {
-        if (obj instanceof PLDData)
+        if (obj instanceof PLDTestData)
         {
-            PLDData data = (PLDData) obj;
+            PLDTestData data = (PLDTestData) obj;
             if (data.getHash() == this.hash)
             {
                 return true;
@@ -121,7 +121,7 @@ public class PLDData implements AppendableData<PLDData>, Comparable<PLDData>
     }
 
     @Override
-    public void append(PLDData data)
+    public void append(PLDTestData data)
     {
         if (this.indegreeNeighbors == null)
         {
@@ -154,7 +154,7 @@ public class PLDData implements AppendableData<PLDData>, Comparable<PLDData>
         return totalBytes;
     }
 
-    public synchronized PLDData readBytes(byte[] bytes)
+    public synchronized PLDTestData readBytes(byte[] bytes)
     {
         byte[] keyBytes = new byte[8];
         System.arraycopy(bytes, 0, keyBytes, 0, 8);
@@ -179,7 +179,7 @@ public class PLDData implements AppendableData<PLDData>, Comparable<PLDData>
         System.arraycopy(bytes, pos, budgetBytes, 0, 4);
         int budget = DrumUtils.bytes2int(budgetBytes);
 
-        PLDData data = new PLDData();
+        PLDTestData data = new PLDTestData();
         data.setHash(hash);
         data.setIndegreeNeighbors(indegreeNeighbors);
         data.setBudget(budget);
@@ -188,7 +188,7 @@ public class PLDData implements AppendableData<PLDData>, Comparable<PLDData>
     }
 
     @Override
-    public int compareTo(PLDData o)
+    public int compareTo(PLDTestData o)
     {
         if (this.getHash() < o.getHash())
         {

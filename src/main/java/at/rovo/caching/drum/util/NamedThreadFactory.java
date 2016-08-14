@@ -9,7 +9,6 @@ import java.util.concurrent.ThreadFactory;
  *
  * @author Roman Vottner
  */
-@SuppressWarnings({"unused", "NullableProblems"})
 public class NamedThreadFactory implements ThreadFactory
 {
     /** The name of the thread to store in a thread pool **/
@@ -18,8 +17,6 @@ public class NamedThreadFactory implements ThreadFactory
     private int number = 0;
     /** The handler to execute if any uncaught exceptions occur **/
     private UncaughtExceptionHandler exceptionHandler = null;
-    /** Flag that indicates if the priority should be increased **/
-    private boolean increasePriority = false;
 
     /**
      * Sets the new name of the thread.
@@ -38,30 +35,15 @@ public class NamedThreadFactory implements ThreadFactory
      * @param exceptionHandler
      *         The handler taking care of any uncaught exceptions thrown by threads in the thread pool
      */
-    public void setUncaughtExceptionHanlder(UncaughtExceptionHandler exceptionHandler)
+    public void setUncaughtExceptionHandler(UncaughtExceptionHandler exceptionHandler)
     {
         this.exceptionHandler = exceptionHandler;
-    }
-
-    /**
-     * Increases the priority of the thread to create by 1.
-     *
-     * @param increase
-     *         True defines that the priority should be increased by 1, false omits the priority increase
-     */
-    public void increasePriority(boolean increase)
-    {
-        this.increasePriority = increase;
     }
 
     @Override
     public Thread newThread(Runnable r)
     {
-        Thread thread = new Thread(r, this.name + "-" + this.number++);
-        if (this.increasePriority)
-        {
-            thread.setPriority(Math.min(10, thread.getPriority() + 1));
-        }
+        Thread thread = new Thread(r, this.name + (this.name.contains("Writer") ? "-" + this.number++ : ""));
         if (this.exceptionHandler != null)
         {
             thread.setUncaughtExceptionHandler(this.exceptionHandler);

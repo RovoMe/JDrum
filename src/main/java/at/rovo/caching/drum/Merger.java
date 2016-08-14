@@ -1,7 +1,6 @@
 package at.rovo.caching.drum;
 
 import at.rovo.caching.drum.internal.DrumRuntimeListener;
-import java.io.Serializable;
 
 /**
  * <code>IMerger</code> iterates through all registered {@link DiskWriter} instances and uses their bucket disk files to
@@ -13,7 +12,7 @@ import java.io.Serializable;
  *
  * @author Roman Vottner
  */
-public interface Merger<V extends Serializable, A extends Serializable> extends Runnable, DrumRuntimeListener
+public interface Merger extends Runnable, DrumRuntimeListener
 {
     /**
      * Adds a disk writer object to the merger instance, which is used to share a lock on the disk file both objects try
@@ -23,7 +22,7 @@ public interface Merger<V extends Serializable, A extends Serializable> extends 
      * @param writer
      *         The responsible class for writing the actual data to disk
      */
-    void addDiskFileWriter(DiskWriter<V, A> writer);
+    void addDiskFileWriter(DiskWriter writer);
 
     /**
      * Signals the merging implementation to start the merging process. <p> Note that execution of the merge happens in

@@ -1,20 +1,20 @@
-package at.rovo.caching.drum.internal.backend.cacheFile;
+package at.rovo.caching.drum.internal.backend.dataStore;
 
+import at.rovo.caching.drum.DrumStoreEntry;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.NotAppendableException;
-import at.rovo.caching.drum.internal.InMemoryData;
+import at.rovo.caching.drum.internal.InMemoryEntry;
 import at.rovo.caching.drum.util.DrumUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * <em>CacheFile</em> is a key/value storage which enables updates of existing key/value pairs.
+ * Implementation of {@link DataStore} which is a key/value storage which supports updates of existing key/value pairs.
  * <p>
  * This key/value store is tailored for the Disk Repository with Update Management structure in that it enables a
  * one-through pass processing of the actual stored data. Therefore entries written to the store have to be provided in
@@ -25,24 +25,22 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class CacheFile<V extends Serializable, A extends Serializable>
+public class DataStoreImpl<V extends Serializable> implements DataStore<V>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(CacheFile.class);
+    private final static Logger LOG = LogManager.getLogger(DataStoreImpl.class);
     /** The backing caching file to store data to and read it from **/
     private RandomAccessFile file = null;
-    /** The name of the cache file **/
-    private String name = null;
     /** The last key written to the data storage **/
     private Long lastKey = null;
     /** The size of the last entry **/
     private long entrySize = 0L;
     /** The last stored element **/
-    private InMemoryData<V, A> lastElement = null;
+    private DrumStoreEntry<V> lastElement = null;
     /** The name of the drum instance **/
     private String drum = null;
     /** The class-element of the value object **/
-    private Class<? super V> valueClass = null;
+    private Class<V> valueClass = null;
     /** The number of entries in the cache file **/
     private long numEntries = 0L;
 
@@ -56,13 +54,12 @@ public class CacheFile<V extends Serializable, A extends Serializable>
      * @param valueClass
      *         The class of the value object stored with the key
      */
-    public CacheFile(String name, String drum, Class<? super V> valueClass) throws DrumException
+    DataStoreImpl(String name, String drum, Class<V> valueClass) throws DrumException
     {
         try
         {
-            this.name = name;
             this.drum = drum;
-            this.file = new RandomAccessFile(this.name, "rw");
+            this.file = new RandomAccessFile(name, "rw");
             this.valueClass = valueClass;
         }
         catch (Exception e)
@@ -71,11 +68,7 @@ public class CacheFile<V extends Serializable, A extends Serializable>
         }
     }
 
-    /**
-     * Returns the length of the data store in bytes.
-     *
-     * @return The length of the data store in bytes
-     */
+    @Override
     public long length() throws DrumException
     {
         if (this.file != null)
@@ -93,19 +86,13 @@ public class CacheFile<V extends Serializable, A extends Serializable>
         return 0L;
     }
 
-    /**
-     * Returns the number of entries in the cache file.
-     *
-     * @return The number of entries in the cache file
-     */
+    @Override
     public long getNumberOfEntries()
     {
         return this.numEntries;
     }
 
-    /**
-     * Closes the cache file.
-     */
+    @Override
     public void close()
     {
         if (this.file != null)
@@ -122,9 +109,7 @@ public class CacheFile<V extends Serializable, A extends Serializable>
         }
     }
 
-    /**
-     * Resets the internal file pointer to the start of the file and clears cached data to simulate a new run-through.
-     */
+    @Override
     public void reset()
     {
         this.lastKey = null;
@@ -146,15 +131,8 @@ public class CacheFile<V extends Serializable, A extends Serializable>
         }
     }
 
-    /**
-     * Returns the entry starting at the current cursor position. If the cursor is in the middle of an entry it will not
-     * find any useful results! So make sure to set the cursor to the beginning of an entry first before invoking this
-     * method!
-     *
-     * @return The entry at the current cursor position or null if either the end of the file was reached without
-     * finding an entry or if the cursor was placed in the middle of an entry.
-     */
-    public InMemoryData<V, A> getNextEntry()
+    @Override
+    public DrumStoreEntry<V> getNextEntry()
             throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
     {
         if (this.file.getFilePointer() == this.file.length())
@@ -173,44 +151,22 @@ public class CacheFile<V extends Serializable, A extends Serializable>
             byte[] byteValue = new byte[valueSize];
             this.file.read(byteValue);
             LOG.trace("byte value: {}", Arrays.toString(byteValue));
-            V value = (V)DrumUtils.deserialize(byteValue, this.valueClass);
-            return new InMemoryData<>(key, value, null, null);
+            V value = DrumUtils.deserialize(byteValue, this.valueClass);
+            return new InMemoryEntry<>(key, value, null, null);
         }
-        return new InMemoryData<>(key, null, null, null);
+        return new InMemoryEntry<>(key, null, null, null);
     }
 
-    /**
-     * Writes a new pair of key and value data into the cache file in a sorted order depending on the value of the key.
-     * <p>
-     * If a key with the same value exists, it will be overwritten to update the new value for this key. Existing
-     * entries located after the data to write will be moved further backwards.
-     *
-     * @param data
-     *         The data to write into the cache file
-     *
-     * @return The updated entry
-     */
-    public InMemoryData<V, ?> writeEntry(InMemoryData<V, A> data)
+    @Override
+    public DrumStoreEntry<V> writeEntry(DrumStoreEntry<V> data)
             throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException,
                    NotAppendableException, DrumException
     {
         return this.writeEntry(data, false);
     }
 
-    /**
-     * Writes a new pair of key and value data into the cache file in a sorted order depending on the value of the key.
-     * <p>
-     * If a key with the same value exists, it will be overwritten to update the new value for this key. Existing
-     * entries located after the data to write will be moved further backwards.
-     *
-     * @param data
-     *         The data to write into the cache file
-     * @param append
-     *         Specifies if the data to write should be appended to an already existing entry with the same key.
-     *
-     * @return The updated entry
-     */
-    public InMemoryData<V, A> writeEntry(InMemoryData<V, A> data, boolean append)
+    @Override
+    public DrumStoreEntry<V> writeEntry(DrumStoreEntry<V> data, boolean append)
             throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException,
                    NotAppendableException, DrumException
     {
@@ -240,115 +196,98 @@ public class CacheFile<V extends Serializable, A extends Serializable>
          * If you can't create a large-enough array in step #2, you'll have to perform steps 3-6 in a loop with a
          * smaller buffer. I would use at least a 64k buffer for efficiency.
          */
-        try
+        long entryStartPosition = this.file.getFilePointer();
+
+        // entry should be added to the end of the file
+        if (entryStartPosition == this.file.length())
         {
-            long entryStartPosition = this.file.getFilePointer();
-
-            // entry should be added to the end of the file
-            if (entryStartPosition == this.file.length())
+            if ((this.lastKey != null && this.lastKey.equals(data.getKey())))
             {
-                if ((this.lastKey != null && this.lastKey.equals(data.getKey())))
-                {
-                    LOG.trace("[{}] - updating last entry with '{}'!", this.drum, data);
-                    this.updateLastEntry(data, append);
-                }
-                else
-                {
-                    LOG.trace("[{}] - adding to the end of the file: '{}'", this.drum, data);
-                    this.addNewEntryAtTheEnd(data);
-                    this.numEntries++;
-                }
-
-                return this.lastElement;
+                LOG.trace("[{}] - updating last entry with '{}'!", this.drum, data);
+                this.updateLastEntry(data, append);
             }
-            // insert in the middle of the file
             else
             {
-                LOG.trace("[{}] - writing entry in the middle of the file!", this.drum);
-                // get the old length of the entry and calculate the area to shift
-                InMemoryData<V, A> entry;
-                long shiftBits = 0L;
-                do
+                LOG.trace("[{}] - adding to the end of the file: '{}'", this.drum, data);
+                this.addNewEntryAtTheEnd(data);
+                this.numEntries++;
+            }
+
+            return this.lastElement;
+        }
+        // insert in the middle of the file
+        else
+        {
+            LOG.trace("[{}] - writing entry in the middle of the file!", this.drum);
+            // get the old length of the entry and calculate the area to shift
+            DrumStoreEntry<V> entry;
+            long shiftBits = 0L;
+            do
+            {
+                entry = this.getNextEntry();
+                if (entry != null)
                 {
-                    entry = this.getNextEntry();
-                    if (entry != null)
-                    {
-                        shiftBits += entry.getByteLengthKV();
-                    }
+                    shiftBits += entry.getByteLengthKV();
                 }
-                while ((entry != null && entry.getKey() < data.getKey()));
+            }
+            while ((entry != null && entry.getKey() < data.getKey()));
 
-                // entry was not found so it is a new entry
-                if (entry == null)
-                {
-                    LOG.trace("[{}] - adding new entry for '{}'!", this.drum, data);
-                    this.numEntries++;
-                    this.writeDataEntry(data, true);
-                    return this.lastElement;
-                }
-
-                // check if the new data should be integrated into the existing data entry this results in an append
-                // instead of an replacement of the data entry
-                if (append && data.getKey().equals(entry.getKey()))
-                {
-                    LOG.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
-                    data.appendValue(entry.getValue());
-                }
-
-                // calculate the bytes to extend the file
-                long byte2write = data.getByteLengthKV();
-                if (data.getKey().equals(entry.getKey()))
-                {
-                    byte2write -= entry.getByteLengthKV();
-                }
-
-                long restLength = this.file.length() - this.file.getFilePointer();
-                // read the data to shift and store it into a temporary memory list
-                final int segmentSize = 65536; // 64k buffer size
-                // shift the content by the number of bytes to write
-                this.shiftContent(byte2write, segmentSize, restLength);
-
-                // set the cursor to the position where the new or updateable data should be written
-                long pos = Math.max(entryStartPosition + shiftBits - entry.getByteLengthKV(), 0L);
-                this.file.seek(pos);
-                // write the new data
-                LOG.trace("[{}] - writing data '{}'", this.drum, data);
+            // entry was not found so it is a new entry
+            if (entry == null)
+            {
+                LOG.trace("[{}] - adding new entry for '{}'!", this.drum, data);
+                this.numEntries++;
                 this.writeDataEntry(data, true);
-
-                // check if the entry is an update or an insert
-                if (!data.getKey().equals(entry.getKey()))
-                {
-                    this.numEntries++;
-                    // insert - add the old data after the new data
-                    LOG.trace("[{}] - re-adding entry '{}'", this.drum, entry);
-                    this.writeDataEntry(entry, false);
-                }
-
-                // set the cursor back to the position we inserted the data in case multiple elements for the same key
-                // are in the list
-                this.file.seek(pos);
-
                 return this.lastElement;
             }
-        }
-        finally
-        {
-            if (LOG.isDebugEnabled())
+
+            // check if the new data should be integrated into the existing data entry this results in an append
+            // instead of an replacement of the data entry
+            if (append && data.getKey().equals(entry.getKey()))
             {
-                this.printCacheContent(null, null);
+                LOG.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
+                data.appendValue(entry.getValue());
             }
+
+            // calculate the bytes to extend the file
+            long byte2write = data.getByteLengthKV();
+            if (data.getKey().equals(entry.getKey()))
+            {
+                byte2write -= entry.getByteLengthKV();
+            }
+
+            long restLength = this.file.length() - this.file.getFilePointer();
+            // read the data to shift and store it into a temporary memory list
+            final int segmentSize = 65536; // 64k buffer size
+            // shift the content by the number of bytes to write
+            this.shiftContent(byte2write, segmentSize, restLength);
+
+            // set the cursor to the position where the new or updateable data should be written
+            long pos = Math.max(entryStartPosition + shiftBits - entry.getByteLengthKV(), 0L);
+            this.file.seek(pos);
+            // write the new data
+            LOG.trace("[{}] - writing data '{}'", this.drum, data);
+            this.writeDataEntry(data, true);
+
+            // check if the entry is an update or an insert
+            if (!data.getKey().equals(entry.getKey()))
+            {
+                this.numEntries++;
+                // insert - add the old data after the new data
+                LOG.trace("[{}] - re-adding entry '{}'", this.drum, entry);
+                this.writeDataEntry(entry, false);
+            }
+
+            // set the cursor back to the position we inserted the data in case multiple elements for the same key
+            // are in the list
+            this.file.seek(pos);
+
+            return this.lastElement;
         }
     }
 
-    /**
-     * Returns the entry which matches the given <em>key</em> value.
-     *
-     * @param key
-     *         The key value the entry should be retrieved for
-     *
-     * @return The data value which is stored under the given key or null if no data with the given key could be found
-     */
-    InMemoryData<V, A> getEntry(Long key)
+    @Override
+    public DrumStoreEntry<V> getEntry(Long key)
             throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
     {
         LOG.debug("[{}] - Retrieving entry: {}", this.drum, key);
@@ -357,7 +296,7 @@ public class CacheFile<V extends Serializable, A extends Serializable>
 
         if (pos < this.file.length())
         {
-            InMemoryData<V, A> data;
+            DrumStoreEntry<V> data;
             do
             {
                 data = this.getNextEntry();
@@ -404,7 +343,7 @@ public class CacheFile<V extends Serializable, A extends Serializable>
      *
      * @return The bytes actually written
      */
-    private long writeDataEntry(InMemoryData<V, A> data, boolean cacheEntry) throws IOException
+    private long writeDataEntry(DrumStoreEntry<V> data, boolean cacheEntry) throws IOException
     {
         long byte2write = data.getByteLengthKV();
         this.file.write(data.getKeyAsBytes());
@@ -582,7 +521,7 @@ public class CacheFile<V extends Serializable, A extends Serializable>
      *
      * @return The number of bytes written
      */
-    private long updateLastEntry(InMemoryData<V, A> data, boolean append) throws IOException, NotAppendableException
+    private long updateLastEntry(DrumStoreEntry<V> data, boolean append) throws IOException, NotAppendableException
     {
         // the key to update was written before so set the cursor back to the start of the last entry
         this.file.seek(this.file.getFilePointer() - this.entrySize);
@@ -622,68 +561,9 @@ public class CacheFile<V extends Serializable, A extends Serializable>
      *
      * @return The number of bytes written
      */
-    private long addNewEntryAtTheEnd(InMemoryData<V, A> data) throws IOException
+    private long addNewEntryAtTheEnd(DrumStoreEntry<V> data) throws IOException
     {
         this.file.setLength(this.file.length() + data.getByteLengthKV());
         return this.writeDataEntry(data, true);
-    }
-
-    /**
-     * Feeds a provided {@link List} with keys currently contained in the cache file.
-     *
-     * @param keys
-     *         A {@link List} which will contain the keys contained in the backing file after this call
-     * @param values
-     *         A {@link List} which will contain the values contained in the backing file after this call
-     */
-    public void printCacheContent(List<Long> keys, List<V> values) throws DrumException
-    {
-        LOG.info("[{}] - Data contained in backing cache:", this.drum);
-
-        // save current position
-        try
-        {
-            long currentPosition = this.file.getFilePointer();
-            this.file.seek(0);
-
-            InMemoryData<V, ?> data;
-            do
-            {
-                data = this.getNextEntry();
-                if (data != null)
-                {
-                    if (keys != null)
-                    {
-                        keys.add(data.getKey());
-                    }
-                    V value = data.getValue();
-                    if (value != null)
-                    {
-                        if (values != null)
-                        {
-                            values.add(value);
-                        }
-                        LOG.info("[{}] - Key: {}, Value: {}", this.drum, data.getKey(), value);
-                    }
-                    else
-                    {
-                        if (values != null)
-                        {
-                            values.add(null);
-                        }
-                        LOG.info("[{}] - Key: {}, Value: {}", this.drum, data.getKey(), null);
-                    }
-                }
-            }
-            while (data != null);
-
-            // set the cursor back to its old position
-            this.file.seek(currentPosition);
-        }
-        catch (Exception e)
-        {
-            throw new DrumException(
-                    "Error while printing content of " + this.name + "! Reason: " + e.getLocalizedMessage());
-        }
     }
 }

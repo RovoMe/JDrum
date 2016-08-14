@@ -1,5 +1,7 @@
 package at.rovo.caching.drum.data;
 
+import java.io.Serializable;
+
 /**
  * Marks an implementing class as being able to append data to its value field.
  *
@@ -8,7 +10,7 @@ package at.rovo.caching.drum.data;
  *
  * @author Roman Vottner
  */
-public interface AppendableData<T>
+public interface AppendableData<T extends Serializable> extends Serializable
 {
     /**
      * Appends data to the value field of this object.

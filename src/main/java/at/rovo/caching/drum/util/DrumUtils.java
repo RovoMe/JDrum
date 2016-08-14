@@ -1,20 +1,12 @@
 package at.rovo.caching.drum.util;
 
-import at.rovo.caching.drum.DrumException;
-import at.rovo.common.Pair;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.RandomAccessFile;
-import java.io.Serializable;
-import java.lang.invoke.MethodHandles;
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.List;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This utility class provides some basic methods to convert 32bit integer values to a byte-array and vice versa and to
@@ -26,14 +18,10 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-@SuppressWarnings("unused")
 public class DrumUtils
 {
-    /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
-
     /**
-     * Calculates a 8-byte (64bit) hash from a {@link String}
+     * Calculates a 8-byte (64bit) hash from a provided input {@link String}.
      *
      * @param string
      *         The string object to generate the 64bit hash value for
@@ -77,8 +65,11 @@ public class DrumUtils
      *         The total number of available buckets. This should be a power of two (e.g. 2, 4, 8, 16, 32, ...)
      *
      * @return The bucket index the key should be in
+     *
+     * @throws IllegalArgumentException
+     *         If the provided input parameter is not a power of 2
      */
-    public static int getBucketForKey(long key, final int numBuckets)
+    public static int getBucketForKey(long key, int numBuckets)
     {
         // test if numBuckets is a power of 2
         int exponent = Math.getExponent(numBuckets);
@@ -101,9 +92,11 @@ public class DrumUtils
      *
      * @return The bucket the key should be in
      *
+     * @throws IllegalArgumentException
+     *         If the provided input parameter is not a power of 2
      * @link http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
      */
-    public static long getBucketOfKey(final long key, final int numBuckets)
+    public static long getBucketOfKey(long key, int numBuckets)
     {
         // test if numBuckets is a power of 2
         int exponent = Math.getExponent(numBuckets);
@@ -115,14 +108,7 @@ public class DrumUtils
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 64; i++)
         {
-            if (i < exponent)
-            {
-                builder.append("1");
-            }
-            else
-            {
-                builder.append("0");
-            }
+            builder.append(i < exponent ? "1" : "0");
         }
         long mask = new BigInteger(builder.toString(), 2).longValue();
         long bucket = mask & key;
@@ -141,9 +127,11 @@ public class DrumUtils
      *
      * @return The bucket the key should be in
      *
+     * @throws IllegalArgumentException
+     *         If the provided input parameter is not a power of 2
      * @link http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
      */
-    public static int getBucketOfKey(final int key, final int numBuckets)
+    public static int getBucketOfKey(int key, int numBuckets)
     {
         // test if numBuckets is a power of 2
         int exponent = Math.getExponent(numBuckets);
@@ -155,14 +143,7 @@ public class DrumUtils
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 32; i++)
         {
-            if (i < exponent)
-            {
-                builder.append("1");
-            }
-            else
-            {
-                builder.append("0");
-            }
+            builder.append(i < exponent ? "1" : "0");
         }
         int mask = new BigInteger(builder.toString(), 2).intValue();
         int bucket = mask & key;
@@ -218,34 +199,24 @@ public class DrumUtils
      *
      * @return The object deserialized from the array of bytes provided
      */
-    @SuppressWarnings("unchecked")
-    public static <V> V deserialize(byte[] bytes, Class<? super V> type)
+    public static <V> V deserialize(byte[] bytes, Class<? extends V> type)
             throws IOException, ClassNotFoundException
     {
         V ret;
         // check if the byte array is a String (character array)
         if (type.isAssignableFrom(String.class))
         {
-            ret = ((V) type.cast(new String(bytes)));
+            ret = type.cast(new String(bytes));
         }
         else
         {
             ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
             ObjectInputStream ois = new ObjectInputStream(bais);
-            // ois.mark(0);
+
             Object obj = ois.readObject();
-            ret = ((V) type.cast(obj));
+            ret = type.cast(obj);
 
-            if (ois.markSupported())
-            {
-                ois.reset();
-            }
             ois.close();
-
-            if (bais.markSupported())
-            {
-                bais.reset();
-            }
             bais.close();
         }
         return ret;
@@ -313,117 +284,5 @@ public class DrumUtils
     public static long byte2long(byte[] b)
     {
         return new BigInteger(b).longValue();
-    }
-
-    /**
-     * Prints the content of the backing data store to the log file.
-     *
-     * @param name
-     *         The name of the backing data store
-     * @param keys
-     *         The keys of the objects to print to the log file
-     * @param valueClass
-     *         The data type of the value object associated to the key
-     *
-     * @throws IOException
-     *         If any error during reading the data store occurs
-     * @throws DrumException
-     *         Thrown if the next entry from the data store could not be extracted
-     */
-    public static <V extends Serializable> void printCacheContent(String name, List<Long> keys,
-                                                                  Class<V> valueClass)
-            throws IOException, DrumException
-    {
-        LOG.info("Data contained in cache.db:");
-
-        RandomAccessFile cacheFile = DrumUtils.openDataStore(name);
-        cacheFile.seek(0);
-
-        Pair<Long, V> data = DrumUtils.getNextEntry(cacheFile, valueClass);
-        for (; data != null; data = DrumUtils.getNextEntry(cacheFile, valueClass))
-        {
-            keys.add(data.getFirst());
-            V hostData = data.getLast();
-            if (hostData != null)
-            {
-                LOG.info("Key: {}, Value: {}", data.getFirst(), hostData);
-            }
-            else
-            {
-                LOG.info("Key: {}, Value: {}", data.getFirst(), null);
-            }
-        }
-        cacheFile.close();
-    }
-
-    /**
-     * Opens the backing data store and returns a {@link RandomAccessFile} reference to the opened file.
-     *
-     * @param name The name of the DRUM instance the data store should be opened for
-     * @return A reference to the random access file
-     * @throws IOException If the file could not be accessed
-     */
-    public static RandomAccessFile openDataStore(String name) throws IOException
-    {
-        String userDir = System.getProperty("user.dir");
-        String cacheName = userDir + "/cache/" + name + "/cache.db";
-        return new RandomAccessFile(cacheName, "r");
-    }
-
-    /**
-     * Returns the next key/value pair from the backing data store.
-     *
-     * @param cacheFile
-     *         The name of the backing data store
-     * @param valueClass
-     *         The data type of the value object associated to the key
-     *
-     * @return A key/value tuple
-     *
-     * @throws DrumException
-     *         Thrown if either an IOException occurs during fetching the next Entry or the data can't be deserialized
-     *         from bytes to an actual object
-     */
-    @SuppressWarnings("unchecked")
-    public static <V extends Serializable> Pair<Long, V> getNextEntry(RandomAccessFile cacheFile,
-                                                                      Class<? super V> valueClass)
-            throws DrumException
-    {
-        // Retrieve the key from the file
-        try
-        {
-            if (cacheFile.getFilePointer() >= cacheFile.length())
-            {
-                return null;
-            }
-
-            Long key = cacheFile.readLong();
-
-            // Retrieve the value from the file
-            int valueSize = cacheFile.readInt();
-            if (valueSize > 0)
-            {
-                byte[] byteValue = new byte[valueSize];
-                cacheFile.read(byteValue);
-                V value;
-                // as we have our own serialization mechanism, we have to ensure
-                // that these objects are serialized appropriately
-                if (Serializable.class.isAssignableFrom(valueClass))
-                {
-                    value = (V)DrumUtils.deserialize(byteValue, valueClass);
-                }
-                // should not happen - but in case we refactor again leave it in
-                else
-                {
-                    throw new DrumException("Could not read next entry as value was null before reading its bytes");
-                }
-                return new Pair<>(key, value);
-            }
-            return new Pair<>(key, null);
-        }
-        catch (IOException | ClassNotFoundException e)
-        {
-            throw new DrumException("Error fetching next entry from cache", e);
-        }
     }
 }

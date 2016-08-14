@@ -11,6 +11,11 @@ import org.junit.runner.RunWith;
 
 import static org.hamcrest.CoreMatchers.is;
 
+/**
+ * Tests the serialization and deserialization of objects through the {@link DrumUtils} helper class.
+ *
+ * @author Roman Vottner
+ */
 @RunWith(ParallelRunner.class)
 @Category(UnitTest.class)
 public class SerializationTest

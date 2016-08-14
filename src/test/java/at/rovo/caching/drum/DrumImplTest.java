@@ -1,20 +1,27 @@
 package at.rovo.caching.drum;
 
 import at.rovo.caching.drum.event.DrumEvent;
-import at.rovo.caching.drum.testUtils.BaseCacheTest;
-import at.rovo.caching.drum.testUtils.CacheUtils;
+import at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStoreMergerFactory;
+import at.rovo.caching.drum.testUtils.BaseDataStoreTest;
 import at.rovo.caching.drum.testUtils.ConsoleDispatcher;
+import at.rovo.caching.drum.testUtils.BerkeleyDBUtils;
+import at.rovo.caching.drum.testUtils.DataStoreUtils;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.common.IntegrationTest;
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests the functionality of DRUM through adding a couple of URLs which get first stored in memory. If a certain
@@ -32,7 +39,7 @@ import org.junit.experimental.categories.Category;
  * @author Roman Vottner
  */
 @Category(IntegrationTest.class)
-public class DrumImplTest extends BaseCacheTest implements DrumListener
+public class DrumImplTest extends BaseDataStoreTest implements DrumListener
 {
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -60,133 +67,115 @@ public class DrumImplTest extends BaseCacheTest implements DrumListener
      * Key: -408508820557862601; value: null
      * Key:  8763289732749923908; value: null
      */
-
     @Test
-    public void URLseenDrumTest()
+    public void testDrumWithDefaultDataStore() throws Exception
     {
-        try
-        {
-            Thread.sleep(5000);
-        }
-        catch (InterruptedException e1)
-        {
-            e1.printStackTrace();
-        }
+        String drumName = "urlSeenTest";
         Drum<String, String> drum = null;
-        List<Long> URLhashes = new ArrayList<>();
+        List<Long> urlHashes = new ArrayList<>();
         try
         {
-            LOG.info("Example of Drum usage:");
-            LOG.info("----------------------");
+            Dispatcher<String, String> dispatcher = new ConsoleDispatcher<>(); // new LogFileDispatcher<>();
+            drum = new DrumBuilder<>(drumName, String.class, String.class).numBucket(4).bufferSize(64)
+                    .dispatcher(dispatcher).listener(this).build();
 
-            LOG.info("Initializing Drum ... ");
-            Dispatcher<String, String> dispatcher = new ConsoleDispatcher<>();
-            //					new LogFileDispatcher<>();
-            try
-            {
-                drum = new DrumBuilder<>("urlSeenTest", String.class, String.class).numBucket(4)
-                        .bufferSize(64).dispatcher(dispatcher).listener(this).build();
-            }
-            catch (Exception e)
-            {
-                Assert.fail("Could not create DRUM instance. Caught error: " + e.getLocalizedMessage());
-                LOG.error("Could not create DRUM instance. Caught error: " + e.getLocalizedMessage(), e);
-                return;
-            }
-            LOG.info("done!");
-
-            String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
-            String url2 =
-                    "http://www.oracle.com/technology/products/berkeley-db/index.html"; // produces 12 bytes in kvBucket and 64 bytes in auxBucket
-            String url3 = "http://www.boost.org"; // produces 12 bytes in kvBucket and 20 bytes in auxBucket
-            String url4 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
-            String url5 = "http://www.java.com"; // produces 12 bytes in kvBucket and 19 bytes in auxBucket
-            String url6 =
-                    "http://glinden.blogspot.co.at/2008/05/crawling-is-harder-than-it-looks.html"; // produces 12 bytes in kvBucket and 75 bytes in auxBucket
-
-            URLhashes.add(DrumUtils.hash(url1));
-            URLhashes.add(DrumUtils.hash(url2));
-            URLhashes.add(DrumUtils.hash(url3));
-            // URL is a duplicate one!
-            // URLhashes.add(DrumUtil.hash(url4));
-            URLhashes.add(DrumUtils.hash(url5));
-            URLhashes.add(DrumUtils.hash(url6));
-
-            LOG.info("checkUpdating urls ... ");
-            drum.checkUpdate(DrumUtils.hash(url1), null, url1);
-            drum.checkUpdate(DrumUtils.hash(url2), null, url2);
-            drum.checkUpdate(DrumUtils.hash(url3), null, url3);
-            drum.checkUpdate(DrumUtils.hash(url4), null, url4);
-            drum.checkUpdate(DrumUtils.hash(url5), null, url5);
-
-            // as new URLs are added to the DRUM instance very fast it may happen
-            // that the main thread reaches the end of this block (or the synchronize
-            // method below) without giving its threads a chance to perform their
-            // tasks - buffers are examined every 10 ms so the wait should be a bit
-            // longer than those 10 ms
-            try
-            {
-                Thread.sleep(50L);
-            }
-            catch (InterruptedException e)
-            {
-                e.printStackTrace();
-            }
-
-            drum.checkUpdate(DrumUtils.hash(url6), null, url6);
-            LOG.info("done!");
-
-            String url7 = "http://www.tuwien.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
-            String url8 = "http://www.univie.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
-            String url9 = "http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a"; // produces 12 bytes in kvBucket and 92 bytes in auxBucket
-
-            URLhashes.add(DrumUtils.hash(url7));
-            URLhashes.add(DrumUtils.hash(url8));
-            URLhashes.add(DrumUtils.hash(url9));
-
-            LOG.info("Adding new urls ... ");
-            drum.checkUpdate(DrumUtils.hash(url7), null, url7);
-            drum.checkUpdate(DrumUtils.hash(url8), null, url8);
-            drum.checkUpdate(DrumUtils.hash(url9), null, url9);
-            // check+update on an already stored URL
-            drum.checkUpdate(DrumUtils.hash(url1), "http://codeproject.com", url1);
-            LOG.info("done!");
+            runTest(drum, urlHashes);
         }
         finally
         {
             // dispose synchronizes DRUM before closing all files
-            try
+            if (drum != null)
             {
-                if (drum != null)
-                {
-                    drum.dispose();
-                }
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-                LOG.catching(e);
+                drum.dispose();
             }
         }
 
+        List<Long> keys = DataStoreUtils.getStoredKeys(drumName, String.class);
+        Assert.assertNotNull(keys);
+        for (Long urlHash : urlHashes)
+        {
+            assertTrue(urlHash + " not found in data store!", keys.remove(urlHash));
+        }
+        assertTrue(keys.isEmpty());
+    }
+
+    @Test
+    public void testDrumWithCustomDataStore() throws Exception
+    {
+        String drumName = "urlSeenTest";
+        Drum<String, String> drum = null;
+        List<Long> urlHashes = new ArrayList<>();
         try
         {
-            List<Long> keys = new ArrayList<>();
-            CacheUtils.printCacheContent("urlSeenTest", keys);
-            Assert.assertNotNull(keys);
-            for (Long urlHash : URLhashes)
-            {
-                Assert.assertTrue(urlHash + " not found in datastore!", keys.contains(urlHash));
-                keys.remove(urlHash);
-            }
-            Assert.assertTrue(keys.isEmpty());
+            Dispatcher<String, String> dispatcher = new ConsoleDispatcher<>();
+            drum = new DrumBuilder<>(drumName, String.class, String.class).numBucket(4).bufferSize(64)
+                    .dispatcher(dispatcher).listener(this).factory(BerkeleyDBStoreMergerFactory.class).build();
+
+            runTest(drum, urlHashes);
         }
-        catch (IOException e)
+        finally
         {
-            LOG.error("Noticed error: {}", e.getMessage(), e);
-            LOG.catching(e);
-            Assert.fail();
+            if (drum != null)
+            {
+                drum.dispose();
+            }
         }
+
+        Map<Long, String> dbContent = BerkeleyDBUtils.getEntries(drumName, String.class);
+        for (Long urlHash : urlHashes)
+        {
+            assertTrue(urlHash + " not found in data store!", dbContent.remove(urlHash) != null);
+        }
+        assertTrue(dbContent.isEmpty());
+    }
+
+    private void runTest(Drum<String, String> drum, List<Long> urlHashes) throws Exception
+    {
+        String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
+        String url2 = "http://www.oracle.com/technology/products/berkeley-db/index.html"; // produces 12 bytes in kvBucket and 64 bytes in auxBucket
+        String url3 = "http://www.boost.org"; // produces 12 bytes in kvBucket and 20 bytes in auxBucket
+        String url4 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
+        String url5 = "http://www.java.com"; // produces 12 bytes in kvBucket and 19 bytes in auxBucket
+        String url6 = "http://glinden.blogspot.co.at/2008/05/crawling-is-harder-than-it-looks.html"; // produces 12 bytes in kvBucket and 75 bytes in auxBucket
+
+        urlHashes.add(DrumUtils.hash(url1));
+        urlHashes.add(DrumUtils.hash(url2));
+        urlHashes.add(DrumUtils.hash(url3));
+        // URL is a duplicate one!
+        // urlHashes.add(DrumUtil.hash(url4));
+        urlHashes.add(DrumUtils.hash(url5));
+        urlHashes.add(DrumUtils.hash(url6));
+
+        LOG.info("checkUpdating urls ... ");
+        drum.checkUpdate(DrumUtils.hash(url1), null, url1);
+        drum.checkUpdate(DrumUtils.hash(url2), null, url2);
+        drum.checkUpdate(DrumUtils.hash(url3), null, url3);
+        drum.checkUpdate(DrumUtils.hash(url4), null, url4);
+        drum.checkUpdate(DrumUtils.hash(url5), null, url5);
+
+        // as new URLs are added to the DRUM instance very fast it may happen that the main thread reaches the end
+        // of this block (or the synchronize method below) without giving its threads a chance to perform their
+        // tasks - buffers are examined every 10 ms so the wait should be a bit longer than those 10 ms
+        Thread.sleep(50L);
+
+        drum.checkUpdate(DrumUtils.hash(url6), null, url6);
+        LOG.info("done!");
+
+        String url7 = "http://www.tuwien.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
+        String url8 = "http://www.univie.ac.at"; // produces 12 bytes in kvBucket and 30 bytes in auxBucket
+        String url9 = "http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a"; // produces 12 bytes in kvBucket and 92 bytes in auxBucket
+
+        urlHashes.add(DrumUtils.hash(url7));
+        urlHashes.add(DrumUtils.hash(url8));
+        urlHashes.add(DrumUtils.hash(url9));
+
+        LOG.info("Adding new urls ... ");
+        drum.checkUpdate(DrumUtils.hash(url7), null, url7);
+        drum.checkUpdate(DrumUtils.hash(url8), null, url8);
+        drum.checkUpdate(DrumUtils.hash(url9), null, url9);
+        // check+update on an already stored URL
+        drum.checkUpdate(DrumUtils.hash(url1), "http://codeproject.com", url1);
+        LOG.info("done!");
     }
 
     @Override

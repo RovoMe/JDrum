@@ -1,13 +1,13 @@
-package at.rovo.caching.drum.internal.backend.cacheFile;
+package at.rovo.caching.drum.internal.backend.dataStore;
 
+import at.rovo.caching.drum.DrumStoreEntry;
 import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
 import at.rovo.caching.drum.NotAppendableException;
-import at.rovo.caching.drum.event.DrumEventDispatcher;
+import at.rovo.caching.drum.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.DiskFileMerger;
-import at.rovo.caching.drum.internal.InMemoryData;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -16,11 +16,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * <em>CacheFileMerger</em> uses {@link CacheFile} to check keys for their uniqueness and merges data that needs to be
- * updated with the cache file.
+ * <em>DataStoreMerger</em> uses {@link DataStoreImpl} to check keys for their uniqueness and merges data that needs to
+ * be updated with the cache file.
  * <p>
  * On successfully extracting the unique or duplicate status of an entry, the result will be injected into the
- * data-object itself to avoid loosing data informations.
+ * data-object itself to avoid loosing data information.
  *
  * @param <V>
  *         The type of the value
@@ -29,13 +29,13 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class CacheFileMerger<V extends Serializable, A extends Serializable> extends DiskFileMerger<V, A>
+public class DataStoreMerger<V extends Serializable, A extends Serializable> extends DiskFileMerger<V, A>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(CacheFileMerger.class);
+    private final static Logger LOG = LogManager.getLogger(DataStoreMerger.class);
 
-    /** A reference to the actual cache file **/
-    private CacheFile<V, A> cacheFile = null;
+    /** A reference to the actual data store **/
+    private DataStore<V> dataStore = null;
 
     /**
      * Creates a new instance and initializes required instance fields.
@@ -45,8 +45,8 @@ public class CacheFileMerger<V extends Serializable, A extends Serializable> ext
      * @param dispatcher
      *         The dispatching instance to send results to
      */
-    public CacheFileMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
-                           Class<? super A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
+    DataStoreMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
+                    Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
     {
         super(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
 
@@ -100,25 +100,24 @@ public class CacheFileMerger<V extends Serializable, A extends Serializable> ext
                 throw new DrumException("Error while creating data store cache.db! Reason: " + e.getLocalizedMessage());
             }
         }
-        this.cacheFile = new CacheFile<>(drumDir + "/cache.db", this.drumName, this.valueClass);
+        this.dataStore = new DataStoreImpl<>(drumDir + "/cache.db", this.drumName, this.valueClass);
     }
 
     @Override
-    protected void compareDataWithDataStore(List<? extends InMemoryData<V, A>> data)
+    protected void compareDataWithDataStore(List<? extends DrumStoreEntry<V>> data)
             throws DrumException, NotAppendableException
     {
-        for (InMemoryData<V, A> element : data)
+        for (DrumStoreEntry<V> element : data)
         {
             Long key = element.getKey();
             DrumOperation op = element.getOperation();
 
-            // set the result for CHECK and CHECK_UPDATE operations for a
-            // certain key
+            // set the result for CHECK and CHECK_UPDATE operations for a certain key
             if (DrumOperation.CHECK.equals(op) || DrumOperation.CHECK_UPDATE.equals(op))
             {
                 try
                 {
-                    InMemoryData<V, A> entry = this.cacheFile.getEntry(key);
+                    DrumStoreEntry<V> entry = this.dataStore.getEntry(key);
                     if (entry == null)
                     {
                         element.setResult(DrumResult.UNIQUE_KEY);
@@ -146,8 +145,8 @@ public class CacheFileMerger<V extends Serializable, A extends Serializable> ext
             {
                 try
                 {
-                    this.cacheFile.writeEntry(element, false);
-                    this.numUniqueEntries = this.cacheFile.getNumberOfEntries();
+                    this.dataStore.writeEntry(element, false);
+                    this.numUniqueEntries = this.dataStore.getNumberOfEntries();
                 }
                 catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e)
                 {
@@ -160,8 +159,8 @@ public class CacheFileMerger<V extends Serializable, A extends Serializable> ext
             {
                 try
                 {
-                    element.setValue(this.cacheFile.writeEntry(element, true).getValue());
-                    this.numUniqueEntries = this.cacheFile.getNumberOfEntries();
+                    element.setValue(this.dataStore.writeEntry(element, true).getValue());
+                    this.numUniqueEntries = this.dataStore.getNumberOfEntries();
                 }
                 catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e)
                 {
@@ -177,25 +176,15 @@ public class CacheFileMerger<V extends Serializable, A extends Serializable> ext
     @Override
     public void reset()
     {
-        this.cacheFile.reset();
+        this.dataStore.reset();
     }
 
     @Override
-    public void close() throws DrumException
+    public void close() throws Exception
     {
-        if (this.cacheFile != null)
+        if (this.dataStore != null)
         {
-            this.cacheFile.close();
+            this.dataStore.close();
         }
-    }
-
-    /**
-     * Returns a reference to the cache file used to store the data.
-     *
-     * @return A reference to the cache file
-     */
-    public CacheFile<V, A> getCacheFile()
-    {
-        return this.cacheFile;
     }
 }

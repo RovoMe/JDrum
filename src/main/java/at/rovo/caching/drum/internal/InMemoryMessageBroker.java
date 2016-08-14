@@ -1,7 +1,8 @@
 package at.rovo.caching.drum.internal;
 
 import at.rovo.caching.drum.Broker;
-import at.rovo.caching.drum.event.DrumEventDispatcher;
+import at.rovo.caching.drum.DrumEventDispatcher;
+import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.event.InMemoryBufferEvent;
 import at.rovo.caching.drum.event.InMemoryBufferState;
 import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
@@ -18,13 +19,13 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * <em>InMemoryMessageBroker</em> is a {@link at.rovo.caching.drum.Broker} implementation which manages {@link
- * InMemoryData} objects. If will store new data objects in a lock free {@link FlippableDataContainer} on invoking
- * {@link #put(InMemoryData)} and return all currently buffered data objects through invoking {@link #takeAll()}. This
+ * InMemoryEntry} objects. If will store new data objects in a lock free {@link FlippableDataContainer} on invoking
+ * {@link #put(InMemoryEntry)} and return all currently buffered data objects through invoking {@link #takeAll()}. This
  * implementation will block consumer threads if no buffered data are currently available.
  * <p>
  * On invoking {@link #takeAll()} the backing {@link FlippableDataContainer} will be flipped which results in the buffer
  * holding the buffered data from being returned while a new {@link Queue} is set to store new received {@link
- * InMemoryData} objects. The flip will be executed atomically guaranteeing that no data is lost while processing the
+ * InMemoryEntry} objects. The flip will be executed atomically guaranteeing that no data is lost while processing the
  * flip operation.
  * <p>
  * A value representing the admissible byte size can be provided which sends an event if the bytes stored in the active
@@ -39,8 +40,8 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
-public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Serializable, A extends Serializable>
-        implements Broker<T, V, A>
+public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Serializable, A extends Serializable>
+        implements Broker<T, V>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
@@ -102,11 +103,11 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Seria
         LOG.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
         this.stopRequested = true;
 
-        // if a consumer thread is waiting for data and we need to shutdown, we invoke the currently blocked
-        // consumer thread in order to shut down the broker correctly.
-        this.signalNotEmpty();
+        updateState(InMemoryBufferState.STOPPED);
 
-        updateState(InMemoryBufferState.STOPED);
+        // if a consumer thread is waiting for data and we need to shutdown, we invoke the currently blocked consumer
+        // thread in order to shut down the broker correctly.
+        this.signalNotEmpty();
     }
 
     /**
@@ -119,8 +120,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Seria
      */
     private InMemoryBufferState updateState(InMemoryBufferState newState)
     {
-        this.eventDispatcher
-                .update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, newState));
+        this.eventDispatcher.update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, newState));
         return newState;
     }
 
@@ -135,8 +135,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Seria
      */
     private void updateState(int byteLengthKV, int byteLengthAux)
     {
-        this.eventDispatcher
-                .update(new InMemoryBufferEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
+        this.eventDispatcher.update(new InMemoryBufferEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +143,12 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Seria
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void put(T data)
+    public void put(T data) throws DrumException
     {
+        if (stopRequested)
+        {
+            throw new DrumException("Could not accept further data entries as a stop was already requested");
+        }
         if (null == data)
         {
             return;
@@ -244,7 +247,7 @@ public class InMemoryMessageBroker<T extends InMemoryData<V, A>, V extends Seria
             }
             catch (InterruptedException ie)
             {
-                // propagate to a non-interrupted thread
+                LOG.warn("[{}] - [{}] - Interrupted while waiting on in-memory data", this.drumName, this.bucketId);
                 this.dataAvailable.signal();
                 throw ie;
             }

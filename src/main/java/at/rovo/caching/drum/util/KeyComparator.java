@@ -1,6 +1,7 @@
 package at.rovo.caching.drum.util;
 
-import at.rovo.caching.drum.internal.InMemoryData;
+import at.rovo.caching.drum.DrumStoreEntry;
+import at.rovo.caching.drum.internal.InMemoryEntry;
 import java.util.Comparator;
 
 /**
@@ -16,7 +17,7 @@ import java.util.Comparator;
  *
  * @author Roman Vottner
  */
-public class KeyComparator<T extends InMemoryData<?, ?>> implements Comparator<T>
+public class KeyComparator<T extends DrumStoreEntry<?>> implements Comparator<T>
 {
     @Override
     public int compare(T o1, T o2)

@@ -2,6 +2,11 @@ package at.rovo.caching.drum.testUtils;
 
 import java.io.Serializable;
 
+/**
+ * Simple test class used to test de/serialization.
+ *
+ * @author Roman Vottner
+ */
 public class TestClass implements Serializable
 {
     private static final long serialVersionUID = -1887112715340505635L;

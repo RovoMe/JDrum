@@ -1,22 +1,24 @@
 package at.rovo.caching.drum.util.lockfree;
 
-import at.rovo.caching.drum.internal.InMemoryData;
+import at.rovo.caching.drum.internal.InMemoryEntry;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class implements a lock-free flippable data container. Internally a {@link FlippableData} object is maintained
- * through utilizing an {@link AtomicReference}. New {@link InMemoryData} entries can be added via {@link
- * #put(InMemoryData)} which will be added to a {@link Queue} which is hold by the {@link FlippableData} object. On
+ * through utilizing an {@link AtomicReference}. New {@link InMemoryEntry} entries can be added via {@link
+ * #put(InMemoryEntry)} which will be added to a {@link Queue} which is hold by the {@link FlippableData} object. On
  * invoking {@link #flip()}) the current {@link FlippableData} object is retrieved and a new empty {@link FlippableData}
  * object is stored within the hold reference.
  *
  * @param <E>
  *         The type of the element the queue stored inside the data object can hold. The actual type has to extend
- *         {@link InMemoryData}
+ *         {@link InMemoryEntry}
+ *
+ * @author Roman Vottner
  */
-public class FlippableDataContainer<E extends InMemoryData>
+public class FlippableDataContainer<E extends InMemoryEntry>
 {
     private final AtomicReference<FlippableData<E>> dataObj = new AtomicReference<>();
 

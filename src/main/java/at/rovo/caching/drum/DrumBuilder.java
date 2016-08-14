@@ -1,7 +1,12 @@
 package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.internal.backend.DrumStorageFactory;
+import at.rovo.caching.drum.internal.DrumEventDispatcherImpl;
+import at.rovo.caching.drum.internal.DrumImpl;
+import at.rovo.caching.drum.internal.DrumSettings;
+import at.rovo.caching.drum.internal.backend.DrumStoreFactory;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * Implementation of the build pattern presented by Joshua Bloch in his book 'Effective Java - Second Edition' in 'Item
@@ -19,16 +24,15 @@ import java.io.Serializable;
  *
  * @author Roman Vottner
  */
-@SuppressWarnings("unused")
 public class DrumBuilder<V extends Serializable, A extends Serializable> implements Builder<Drum<V, A>>
 {
     // required parameters
     /** The name of the drum instance **/
     private final String drumName;
     /** The type of the value managed by DRUM **/
-    private final Class<? super V> valueClass;
+    private final Class<V> valueClass;
     /** The type of the auxiliary data managed by DRUM **/
-    private final Class<? super A> auxClass;
+    private final Class<A> auxClass;
 
     /** The number of buckets managed by this DRUM instance **/
     private int numBuckets = 512;
@@ -39,11 +43,15 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
     /** A listener class which needs to be informed of state changes **/
     private DrumListener listener = null;
     /** The factory which creates the backing storage service **/
-    private DrumStorageFactory<V, A> factory = null;
+    private DrumStoreFactory<V, A> factory = null;
+    /** The object that takes care of dispatching internal state changes to registered listeners **/
+    private DrumEventDispatcher eventDispatcher = new DrumEventDispatcherImpl();
+    /** The DRUM store factory class to initialize **/
+    private Class<? extends DrumStoreFactory> storeFactoryClass = null;
 
     /**
      * Creates a new builder object with the minimum number of required data to instantiate a new {@link
-     * at.rovo.caching.drum.DrumImpl DrumImpl} instance on invoking {@link #build()}.
+     * DrumImpl DrumImpl} instance on invoking {@link #build()}.
      *
      * @param drumName
      *         The name of the DRUM instance
@@ -52,7 +60,7 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param auxClass
      *         The type of the auxiliary data this instance will manage
      */
-    public DrumBuilder(String drumName, Class<? super V> valueClass, Class<? super A> auxClass)
+    public DrumBuilder(String drumName, Class<V> valueClass, Class<A> auxClass)
     {
         this.drumName = drumName;
         this.valueClass = valueClass;
@@ -143,9 +151,37 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      *
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> factory(DrumStorageFactory<V, A> factory)
+    public DrumBuilder<V, A> factory(DrumStoreFactory<V, A> factory)
     {
         this.factory = factory;
+        return this;
+    }
+
+    /**
+     * Assigns the builder to create a Drum instance with a custom data store managed by the provided class.
+     *
+     * @param factoryClass
+     *         A child class of {@link DrumStoreFactory} which should be used for initialization the drum storage
+     *
+     * @return The builder responsible for creating a new instance of DRUM
+     */
+    public DrumBuilder<V,A> factory(Class<? extends DrumStoreFactory> factoryClass)
+    {
+        this.storeFactoryClass = factoryClass;
+        return this;
+    }
+
+    /**
+     * Assigns the builder to create a Drum instance with a custom event dispatcher object.
+     *
+     * @param eventDispatcher
+     *         A reference to the object which should take care of shipping internal state events to registered listeners
+     *
+     * @return The builder responsible for creating a new instance of DRUM
+     */
+    public DrumBuilder<V, A> eventDispatcher(DrumEventDispatcher eventDispatcher)
+    {
+        this.eventDispatcher = eventDispatcher;
         return this;
     }
 
@@ -159,87 +195,42 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      */
     public Drum<V, A> build() throws Exception
     {
-        return new DrumImpl<>(this);
-    }
+        DrumStoreFactory<V,A> factory;
+        if (this.factory != null)
+        {
+            factory = this.factory;
+        }
+        else if (this.storeFactoryClass != null)
+        {
+            try
+            {
+                Constructor consturctor =
+                        this.storeFactoryClass.getConstructor(String.class, int.class, Dispatcher.class,
+                                                              Class.class, Class.class, DrumEventDispatcher.class);
+                //noinspection unchecked
+                factory = (DrumStoreFactory<V, A>)
+                        consturctor.newInstance(this.drumName, this.numBuckets, this.dispatcher,
+                                                this.valueClass, this.auxClass, this.eventDispatcher);
+                this.factory = factory;
+            }
+            catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException ex)
+            {
+                throw new DrumException("Could not initialize drum storage based on provided factory class");
+            }
+        }
+        // If neither a factory class nor a factory object were provided, initialize the default drum store
+        else
+        {
+            factory = DrumStoreFactory.getDefaultStorageFactory(this.drumName, this.numBuckets, this.dispatcher,
+                                                                this.valueClass, this.auxClass, this.eventDispatcher);
+        }
 
-    /**
-     * Returns the name of the DRUM instance to create.
-     *
-     * @return The name of the DRUM instance
-     */
-    String getDrumName()
-    {
-        return this.drumName;
-    }
 
-    /**
-     * Returns the class type of the value assigned to the DRUM instance to build.
-     *
-     * @return The class type of the value elements
-     */
-    Class<? super V> getValueClass()
-    {
-        return this.valueClass;
-    }
-
-    /**
-     * Returns the class type of the auxiliary data assigned to the DRUM instance to build.
-     *
-     * @return The class type of the auxiliary data elements
-     */
-    Class<? super A> getAuxClass()
-    {
-        return this.auxClass;
-    }
-
-    /**
-     * Returns the number of buckets to use for the DRUM instance to build.
-     *
-     * @return The number of buckets to use for DRUM
-     */
-    int getNumBuckets()
-    {
-        return this.numBuckets;
-    }
-
-    /**
-     * Returns the byte size of the buffer at which a merge between the bucket files an the backing data store occurs
-     * for the DRUM instance to create.
-     *
-     * @return The size of the buffer at which a merge will occur.
-     */
-    int getBufferSize()
-    {
-        return this.bufferSize;
-    }
-
-    /**
-     * Returns the assigned dispatcher for the DRUM instance to create.
-     *
-     * @return The assigned dispatcher for the DRUM instance
-     */
-    Dispatcher<V, A> getDispatcher()
-    {
-        return this.dispatcher;
-    }
-
-    /**
-     * Returns the specified listener for the DRUM instance.
-     *
-     * @return The specified listener to use with the DRUM instance to create
-     */
-    DrumListener getListener()
-    {
-        return this.listener;
-    }
-
-    /**
-     * Returns the factory which creates the backing storage service for the DRUM instance to create.
-     *
-     * @return The factory for the backing storage service assigned to DRUM
-     */
-    DrumStorageFactory<V, A> getFactory()
-    {
-        return this.factory;
+        // in order to keep the interface for the builder clean, the builder is creating a settings object which is
+        // only visible within the same package and initializes a new DRUM instance with the settings parameter object
+        DrumSettings<V,A> settings = new DrumSettings<>(this.drumName, this.numBuckets, this.bufferSize,
+                                                        this.valueClass, this.auxClass, this.dispatcher, this.listener,
+                                                        this.eventDispatcher, factory);
+        return new DrumImpl<>(settings);
     }
 }

@@ -3,9 +3,10 @@ package at.rovo.caching.drum.internal.backend;
 import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.Merger;
-import at.rovo.caching.drum.event.DrumEventDispatcher;
-import at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStorageFactory;
-import at.rovo.caching.drum.internal.backend.cacheFile.CacheFileStorageFactory;
+import at.rovo.caching.drum.internal.DrumEventDispatcherImpl;
+import at.rovo.caching.drum.DrumEventDispatcher;
+import at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStoreMergerFactory;
+import at.rovo.caching.drum.internal.backend.dataStore.DataStoreMergerFactory;
 import java.io.Serializable;
 
 /**
@@ -21,13 +22,13 @@ import java.io.Serializable;
  *         The type of the auxiliary data attached to a key
  *
  * @author Roman Vottner
- * @see BerkeleyDBStorageFactory
- * @see CacheFileStorageFactory
+ * @see BerkeleyDBStoreMergerFactory
+ * @see DataStoreMergerFactory
  */
-public abstract class DrumStorageFactory<V extends Serializable, A extends Serializable>
+public abstract class DrumStoreFactory<V extends Serializable, A extends Serializable>
 {
     /** The created merger implementation **/
-    protected Merger<V, A> merger = null;
+    protected Merger merger = null;
 
     /**
      * On creating a new instance of this class, it will trigger {@link #create(String, int, Dispatcher, Class, Class,
@@ -44,14 +45,14 @@ public abstract class DrumStorageFactory<V extends Serializable, A extends Seria
      * @param auxClass
      *         The class of the auxiliary data type
      * @param eventDispatcher
-     *         A reference to the {@link DrumEventDispatcher} that will forward certain DRUM events like merge status
+     *         A reference to the {@link DrumEventDispatcherImpl} that will forward certain DRUM events like merge status
      *         changed or disk writer events
      *
      * @throws DrumException
      *         If the backing data store could not be created
      */
-    public DrumStorageFactory(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
-                              Class<? super A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
+    public DrumStoreFactory(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
+                            Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
     {
         this.create(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
     }
@@ -70,22 +71,21 @@ public abstract class DrumStorageFactory<V extends Serializable, A extends Seria
      * @param auxClass
      *         The class of the auxiliary data type
      * @param eventDispatcher
-     *         A reference to the {@link DrumEventDispatcher} that will forward certain DRUM events like merge status
+     *         A reference to the {@link DrumEventDispatcherImpl} that will forward certain DRUM events like merge status
      *         changed or disk writer events
      *
      * @throws DrumException
      *         If the backing data store could not be created
      */
-    protected abstract void create(String drumName, int numBuckets, Dispatcher<V, A> dispatcher,
-                                   Class<? super V> valueClass, Class<? super A> auxClass,
-                                   DrumEventDispatcher eventDispatcher) throws DrumException;
+    protected abstract void create(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
+                                   Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException;
 
     /**
      * Returns the generated data storage.
      *
      * @return The generated data storage
      */
-    public Merger<V, A> getStorage()
+    public Merger getStorage()
     {
         return this.merger;
     }
@@ -104,7 +104,7 @@ public abstract class DrumStorageFactory<V extends Serializable, A extends Seria
      * @param auxClass
      *         The class of the auxiliary data type
      * @param eventDispatcher
-     *         A reference to the {@link DrumEventDispatcher} that will forward certain DRUM events like merge status
+     *         A reference to the {@link DrumEventDispatcherImpl} that will forward certain DRUM events like merge status
      *         changed or disk writer events
      *
      * @return A reference to the default backing data storage, which is the CacheFile data store
@@ -112,10 +112,10 @@ public abstract class DrumStorageFactory<V extends Serializable, A extends Seria
      * @throws DrumException
      *         If the backing data store could not be created
      */
-    public static <V extends Serializable, A extends Serializable> DrumStorageFactory<V, A> getDefaultStorageFactory(
-            String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<? super V> valueClass,
-            Class<? super A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
+    public static <V extends Serializable, A extends Serializable> DrumStoreFactory<V, A> getDefaultStorageFactory(
+            String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass, Class<A> auxClass,
+            DrumEventDispatcher eventDispatcher) throws DrumException
     {
-        return new CacheFileStorageFactory<>(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
+        return new DataStoreMergerFactory<>(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
     }
 }
