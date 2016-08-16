@@ -3,7 +3,6 @@ package at.rovo.caching.drum;
 import at.rovo.caching.drum.internal.DrumEventDispatcherImpl;
 import at.rovo.caching.drum.internal.DrumImpl;
 import at.rovo.caching.drum.internal.DrumSettings;
-import at.rovo.caching.drum.internal.backend.DrumStoreFactory;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

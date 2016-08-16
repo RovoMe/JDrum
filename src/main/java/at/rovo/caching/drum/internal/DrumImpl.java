@@ -8,7 +8,6 @@ import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumListener;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.Merger;
-import at.rovo.caching.drum.internal.backend.DrumStoreFactory;
 import at.rovo.caching.drum.util.DrumExceptionHandler;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.NamedThreadFactory;
@@ -49,23 +48,22 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     /** The name of the DRUM instance **/
-    protected String drumName = null;
+    protected final String drumName;
     /** The number of buffers and buckets used **/
-    protected int numBuckets = 0;
+    protected final int numBuckets;
 
     /** The broker list which holds elements in memory until they get written to the disk file **/
-    private List<Broker<InMemoryEntry<V, A>, V>> inMemoryBuffer = null;
-    /**
-     * The set of writer objects that listens to notifications of a broker and write content from the broker to a disk
-     * file
-     **/
-    private List<DiskWriter> diskWriters = null;
-
+    private final List<Broker<InMemoryEntry<V, A>, V>> inMemoryBuffer;
+    /** The set of writer objects that listens to notifications of a broker and write content from the broker to a disk
+     * file **/
+    private final List<DiskWriter> diskWriters;
+    /** The merger which takes care of synchronizing the data stored in bucket disk files with a backing data store **/
+    private final Merger merger;
     /** The instance which takes care of informing registered listeners about internal state changes **/
-    private DrumEventDispatcher eventDispatcher = null;
+    private final DrumEventDispatcher eventDispatcher;
 
     /** The execution service which hosts our writer, merger and event dispatcher threads **/
-    private ExecutorService executors = null;
+    private final ExecutorService executors;
 
     /**
      * Creates a new instance and assigns initial values contained within the builder object to the corresponding
@@ -79,40 +77,15 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      */
     public DrumImpl(DrumSettings<V, A> settings) throws DrumException
     {
-        this.init(settings.getDrumName(), settings.getNumBuckets(), settings.getBufferSize(), settings.getFactory(),
-                  settings.getEventDispatcher());
-
-        if (settings.getListener() != null)
-        {
-            this.addDrumListener(settings.getListener());
-        }
-    }
-
-    /**
-     * Initializes the DRUM instance with required data and starts the worker threads.
-     *
-     * @param drumName
-     *         The name of the DRUM instance
-     * @param numBuckets
-     *         The number of buckets to be used
-     * @param bufferSize
-     *         The size of a single buffer in bytes
-     * @param factory
-     *         The factory object which defines where data should be stored in. Note that factory must return an
-     *         implementation of IMerger
-     */
-    private void init(String drumName, int numBuckets, int bufferSize, DrumStoreFactory<V, A> factory, DrumEventDispatcher eventDispatcher)
-            throws DrumException
-    {
-        this.drumName = drumName;
-        this.numBuckets = numBuckets;
-        this.eventDispatcher = eventDispatcher;
+        this.drumName = settings.getDrumName();
+        this.numBuckets = settings.getNumBuckets();
+        this.eventDispatcher = settings.getEventDispatcher();
         DrumExceptionHandler exceptionHandler = new DrumExceptionHandler();
 
         // create the broker and the consumer listening to the broker
         this.inMemoryBuffer = new ArrayList<>(numBuckets);
         this.diskWriters = new ArrayList<>(numBuckets);
-        Merger merger = factory.getStorage();
+        this.merger = settings.getFactory().getStorage();
 
         // Bucket-writer-threads
         NamedThreadFactory namedFactory = new NamedThreadFactory();
@@ -123,9 +96,9 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         for (int i = 0; i < numBuckets; i++)
         {
             Broker<InMemoryEntry<V, A>, V> broker =
-                    new InMemoryMessageBroker<>(drumName, i, bufferSize, eventDispatcher);
+                    new InMemoryMessageBroker<>(drumName, i, settings.getBufferSize(), eventDispatcher);
             DiskWriter consumer =
-                    new DiskBucketWriter<>(drumName, i, bufferSize, broker, merger, eventDispatcher);
+                    new DiskBucketWriter<>(drumName, i, settings.getBufferSize(), broker, merger, eventDispatcher);
 
             this.inMemoryBuffer.add(broker);
             this.diskWriters.add(consumer);
@@ -135,15 +108,23 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
             // add a reference of the disk writer to the merger, so it can use the semaphore to lock the file it is
             // currently reading from to merge the data into the backing data store. While reading from a file, a
             // further access to the file (which should result in a write access) is therefore refused.
-            merger.addDiskFileWriter(consumer);
+            this.merger.addDiskFileWriter(consumer);
         }
         // Merger-thread
         namedFactory.setName(this.drumName + "-Merger");
-        this.executors.submit(merger);
+        this.executors.submit(this.merger);
 
         // Dispatcher-thread
         namedFactory.setName(this.drumName + "-EventDispatcher");
-        this.executors.submit(eventDispatcher);
+        this.executors.submit(this.eventDispatcher);
+
+        if (settings.getListener() != null)
+        {
+            this.addDrumListener(settings.getListener());
+        }
+
+        // do not allow any more threads to be added to the thread-pool
+        this.executors.shutdown();
     }
 
     @Override
@@ -200,18 +181,22 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         Exception caught = null;
 
         LOG.debug("[{}] - Disposal initiated", this.drumName);
+        // give the threads a chance to finish their work without being interrupted
         // flip the buffers which sends the writers the latest data
         this.inMemoryBuffer.forEach(Broker::stop);
-
-        // give the threads a chance to finish their work without being interrupted
+        sleep(20);
+        // write the last data collected to the bucket files
         this.diskWriters.forEach(DiskWriter::stop);
-
-        this.executors.shutdown();
+        sleep(20);
+        // merge the content of the bucket files with the data store and send the last unique/duplicate key results
+        this.merger.stop();
+        // send the remaining internal state updates to listeners
+        this.eventDispatcher.stop();
 
         // wait for the threads to finish
         try
         {
-            this.executors.awaitTermination(30, TimeUnit.SECONDS);
+            this.executors.awaitTermination(10, TimeUnit.SECONDS);
         }
         catch (InterruptedException e)
         {
@@ -227,6 +212,18 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         if (caught != null)
         {
             throw new DrumException(caught.getLocalizedMessage(), caught);
+        }
+    }
+
+    private void sleep(long time)
+    {
+        try
+        {
+            TimeUnit.MILLISECONDS.sleep(time);
+        }
+        catch (InterruptedException e)
+        {
+            LOG.warn("Got interrupted while waiting for time to pass");
         }
     }
 

@@ -11,19 +11,19 @@ import at.rovo.caching.drum.Merger;
 public enum MergerState
 {
     /**
-     * Signals that the merger is waiting on a {@link DiskWriter} to signal a merge due to exceeding its disk bucket
+     * Signals that the merger is waiting for a {@link DiskWriter} to signal a merge due to exceeding its disk bucket
      * file size threshold
      **/
-    WAITING_ON_MERGE_REQUEST,
+    WAITING_FOR_MERGE_REQUEST,
     /**
      * Signals that a {@link DiskWriter} requested a merge due to exceeding the file size limit
      **/
     MERGE_REQUESTED,
     /**
-     * Signals that the {@link Merger} is waiting on a {@link DiskWriter} to finish writing to its disk bucket file and
+     * Signals that the {@link Merger} is waiting for a {@link DiskWriter} to finish writing to its disk bucket file and
      * releasing the lock
      **/
-    WAITING_ON_LOCK,
+    WAITING_FOR_LOCK,
     /**
      * Signals that the {@link Merger} acquired the lock of the disk bucket file and is merging the data from the disk
      * bucket file into its backing data store

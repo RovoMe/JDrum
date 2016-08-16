@@ -9,6 +9,9 @@ import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.event.DiskWriterEvent;
 import at.rovo.caching.drum.event.DiskWriterState;
 import at.rovo.caching.drum.event.DiskWriterStateUpdate;
+import at.rovo.caching.drum.util.DiskFileHandle;
+import at.rovo.common.annotations.GuardedBy;
+import at.rovo.common.annotations.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -38,44 +41,46 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
+@ThreadSafe
 public class DiskBucketWriter<V extends Serializable, A extends Serializable> implements DiskWriter
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(DiskBucketWriter.class);
 
+    // immutable fields
     /** The name of the DRUM instance **/
-    private String drumName = null;
+    private final String drumName ;
     /** The bucket ID this instance reads from and writes to **/
-    private int bucketId = 0;
+    private final int bucketId;
     /** The size of a bucket before a merge action is invoked **/
-    private int bucketByteSize = 0;
+    private final int bucketByteSize;
     /** The broker we get data to write from **/
-    private Broker<InMemoryEntry<V, A>, V> broker = null;
+    private final Broker<InMemoryEntry<V, A>, V> broker;
     /** The merger who takes care of merging disk files with the backing data store. It needs to be informed if it should
      * merge, which happens if the bytes written to the disk file exceeds certain limits **/
-    private Merger merger = null;
+    private final Merger merger;
     /** The object responsible for updating listeners on state or statistic changes **/
-    private DrumEventDispatcher eventDispatcher = null;
-    /** The name of the disk file this instance will write key/value data to **/
-    private String kvFileName = null;
-    /** The name of the disk file this instance will write auxiliary data to **/
-    private String auxFileName = null;
+    private final DrumEventDispatcher eventDispatcher;
+    /** As semaphores can be used from different threads use it here as a lock for getting access to the disk bucket
+     * file **/
+    private final Semaphore lock = new Semaphore(1);
     /** The reference to the key/value file **/
-    private RandomAccessFile kvFile = null;
+    @GuardedBy("lock")
+    private final DiskFileHandle kvFile;
     /** The reference to the auxiliary data file attached to a key **/
-    private RandomAccessFile auxFile = null;
+    @GuardedBy("lock")
+    private final DiskFileHandle auxFile;
+
+    // mutable fields
     /** The number of bytes written into the key/value file **/
     private long kvBytesWritten = 0L;
     /** The number of bytes written into the auxiliary data file **/
     private long auxBytesWritten = 0L;
     /** flag if merging is required **/
     private boolean mergeRequired = false;
-    /** As semaphores can be used from different threads use it here as a lock for getting access to the disk bucket
-     * file **/
-    private Semaphore lock = new Semaphore(1);
     /** Indicates if the thread the runnable part is running in should stop its work **/
     private volatile boolean stopRequested = false;
-    /** Used to reduce multiple WAITING_ON_MERGE_REQUEST event updates to a single update **/
+    /** Used to reduce multiple WAITING_FOR_MERGE_REQUEST event updates to a single update **/
     private DiskWriterState lastState = null;
 
     /**
@@ -100,16 +105,6 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         this.merger = merger;
         this.eventDispatcher = eventDispatcher;
 
-        this.initDiskFile();
-    }
-
-    /**
-     * Creates the bucket files for key/value and auxiliary data.
-     */
-    private void initDiskFile() throws DrumException
-    {
-        String userDir = System.getProperty("user.dir");
-
         // check if the cache sub-directory exists - if not create one
         File cacheDir = new File(System.getProperty("user.dir") + "/cache");
         if (!cacheDir.exists())
@@ -132,11 +127,11 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
 
         try
         {
-            this.kvFileName = userDir + "/cache/" + this.drumName + "/bucket" + bucketId + ".kv";
-            this.kvFile = new RandomAccessFile(this.kvFileName, "rw");
-
-            this.auxFileName = userDir + "/cache/" + this.drumName + "/bucket" + bucketId + ".aux";
-            this.auxFile = new RandomAccessFile(this.auxFileName, "rw");
+            String fileName = "bucket" + bucketId;
+            this.kvFile = new DiskFileHandle(fileName + ".kv",
+                                             new RandomAccessFile(new File(cacheDir, "/" + fileName + ".kv"), "rw"));
+            this.auxFile = new DiskFileHandle(fileName + ".aux",
+                                              new RandomAccessFile(new File(cacheDir, "/" + fileName + ".aux"), "rw"));
         }
         catch (Exception e)
         {
@@ -157,60 +152,47 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         {
             try
             {
-                if (this.lastState == null)
+                if (this.lastState != DiskWriterState.WAITING_FOR_DATA)
                 {
                     LOG.debug("[{}] - [{}] - waiting for data", this.drumName, this.bucketId);
-
-                    this.lastState = updateState(DiskWriterState.WAITING_ON_DATA);
+                    this.lastState = updateState(DiskWriterState.WAITING_FOR_DATA);
                 }
 
-                // use a blocking call to retrieve the elements to persist
-                // takeAll() waits on the broker instance to retrieve data
+                // takeAll() waits on the broker instance to retrieve data or throw an interrupted exception
                 Queue<InMemoryEntry<V, A>> elementsToPersist = this.broker.takeAll();
 
-                // in case a flush was invoked but there aren't any data available
+                // skip further processing if no data was available
                 if (elementsToPersist == null || elementsToPersist.size() == 0)
                 {
                     continue;
                 }
 
-                this.lastState = null;
-                updateState(DiskWriterState.DATA_RECEIVED);
+                this.lastState = updateState(DiskWriterState.DATA_RECEIVED);
 
                 LOG.debug("[{}] - [{}] - received {} data elements",
                           this.drumName, this.bucketId, elementsToPersist.size());
+                // write data to the disk bucket files
                 this.feedBucket(elementsToPersist);
-
+                // check if a merged is required due to exceeding the bucket byte size; if so signal a merge request!
                 if (this.mergeRequired)
                 {
-                    this.merger.doMerge();
+                    this.merger.requestMerge();
                 }
 
                 this.mergeRequired = false;
-            }
-            catch (InterruptedException iE)
-            {
-                if (!DiskWriterState.FINISHED.equals(this.lastState))
-                {
-                    LOG.error("[{}] - [{}] - got interrupted!", this.drumName, this.bucketId);
-                    this.lastState = updateState(DiskWriterState.FINISHED);
-                }
-                iE.printStackTrace();
-                Thread.currentThread().interrupt();
             }
             catch (Exception e)
             {
                 LOG.error("[{}] - [{}] - caught exception: {}", this.drumName, this.bucketId, e.getLocalizedMessage());
                 LOG.catching(Level.ERROR, e);
                 updateState(DiskWriterState.FINISHED_WITH_ERROR);
-                e.printStackTrace();
                 Thread.currentThread().interrupt();
             }
         }
         // push the latest data which has not yet been written to the data store to be written
         if (this.kvBytesWritten > 0)
         {
-            this.merger.doMerge();
+            this.merger.requestMerge();
         }
         updateState(DiskWriterState.FINISHED);
         LOG.trace("[{}] - [{}] - stopped processing!", this.drumName, this.bucketId);
@@ -271,21 +253,34 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      */
     private void feedBucket(Queue<InMemoryEntry<V, A>> inMemoryData) throws DrumException
     {
+        boolean lockAquired = false;
         try
         {
-            updateState(DiskWriterState.WAITING_ON_LOCK);
-            this.lock.acquire();
-            updateState(DiskWriterState.WRITING);
+            if (inMemoryData.isEmpty())
+            {
+                // no data to write
+                updateState(DiskWriterState.EMPTY);
+                return;
+            }
 
-            long kvStart = this.kvFile.getFilePointer();
-            long auxStart = this.auxFile.getFilePointer();
+            updateState(DiskWriterState.WAITING_FOR_LOCK);
+            // do not interrupt the file access as otherwise data might get lost!
+            this.lock.acquireUninterruptibly();
+            LOG.trace("[{}] - [{}] - Acquired lock of disk bucket file", this.drumName, this.bucketId);
+            lockAquired = true;
+            updateState(DiskWriterState.WRITING);
+            final RandomAccessFile kvFile = this.kvFile.getFile();
+            final RandomAccessFile auxFile = this.auxFile.getFile();
+
+            long kvStart = kvFile.getFilePointer();
+            long auxStart = auxFile.getFilePointer();
 
             for (InMemoryEntry<V, A> data : inMemoryData)
             {
                 LOG.info("[{}] - [{}] - feeding bucket with: {}; value: {}",
                          this.drumName, this.bucketId, data.getKey(), data.getValue());
-                long kvStartPos = this.kvFile.getFilePointer();
-                long auxStartPos = this.auxFile.getFilePointer();
+                long kvStartPos = kvFile.getFilePointer();
+                long auxStartPos = auxFile.getFilePointer();
 
                 // Write the following sequentially for the key/value bucket file:
                 // - operation; (1 byte)
@@ -297,24 +292,24 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
 
                 DrumOperation op = data.getOperation();
                 char c = op.getTokenForOperation();
-                this.kvFile.write(c);
+                kvFile.write(c);
 
                 // write the key
-                this.kvFile.writeLong(data.getKey());
+                kvFile.writeLong(data.getKey());
 
                 // write the value
                 byte[] byteValue = data.getValueAsBytes();
                 if (byteValue != null)
                 {
-                    this.kvFile.writeInt(byteValue.length);
-                    this.kvFile.write(byteValue);
+                    kvFile.writeInt(byteValue.length);
+                    kvFile.write(byteValue);
                 }
                 else
                 {
-                    this.kvFile.writeInt(0);
+                    kvFile.writeInt(0);
                 }
 
-                long kvEndPos = this.kvFile.getFilePointer();
+                long kvEndPos = kvFile.getFilePointer();
                 if (byteValue != null)
                 {
                     LOG.info("[{}] - [{}] - wrote to kvBucket file - operation: '{}' key: '{}', value.length: '{}' " +
@@ -336,15 +331,15 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 byte[] byteAux = data.getAuxiliaryAsBytes();
                 if (byteAux != null)
                 {
-                    this.auxFile.writeInt(byteAux.length);
-                    this.auxFile.write(byteAux);
+                    auxFile.writeInt(byteAux.length);
+                    auxFile.write(byteAux);
                 }
                 else
                 {
-                    this.auxFile.writeInt(0);
+                    auxFile.writeInt(0);
                 }
 
-                long auxEndPos = this.auxFile.getFilePointer();
+                long auxEndPos = auxFile.getFilePointer();
                 if (byteAux != null)
                 {
                     LOG.info("[{}] - [{}] - wrote to auxBucket file - aux.length: '{}' byteAux: '{}' and aux: '{}' - "
@@ -360,8 +355,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 }
             }
 
-            this.kvBytesWritten += (this.kvFile.getFilePointer() - kvStart);
-            this.auxBytesWritten += (this.auxFile.getFilePointer() - auxStart);
+            this.kvBytesWritten += (kvFile.getFilePointer() - kvStart);
+            this.auxBytesWritten += (auxFile.getFilePointer() - auxStart);
 
             updateState(this.kvBytesWritten, this.auxBytesWritten);
 
@@ -378,7 +373,11 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         }
         finally
         {
-            this.lock.release();
+            if (lockAquired)
+            {
+                LOG.trace("[{}] - [{}] - Releasing lock of disk bucket file", this.drumName, this.bucketId);
+                this.lock.release();
+            }
         }
     }
 
@@ -388,24 +387,12 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         return this.lock;
     }
 
-    @Override
-    public String getKVFileName()
-    {
-        return this.kvFileName;
-    }
-
-    @Override
-    public String getAuxFileName()
-    {
-        return this.auxFileName;
-    }
-
-    public RandomAccessFile getKVFile()
+    public DiskFileHandle getKVFile()
     {
         return this.kvFile;
     }
 
-    public RandomAccessFile getAuxFile()
+    public DiskFileHandle getAuxFile()
     {
         return this.auxFile;
     }
@@ -432,8 +419,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         // set the file pointer to the start of the file
         try
         {
-            this.kvFile.seek(0);
-            this.auxFile.seek(0);
+            this.kvFile.getFile().seek(0);
+            this.auxFile.getFile().seek(0);
         }
         catch (IOException e)
         {
@@ -457,8 +444,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     {
         try
         {
-            this.closeFile(this.kvFile);
-            this.closeFile(this.auxFile);
+            this.closeFile(this.kvFile.getFile());
+            this.closeFile(this.auxFile.getFile());
         }
         catch (DrumException e)
         {

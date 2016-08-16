@@ -1,25 +1,31 @@
 package at.rovo.caching.drum.internal;
 
-import at.rovo.caching.drum.DrumStoreEntry;
 import at.rovo.caching.drum.DiskWriter;
 import at.rovo.caching.drum.Dispatcher;
+import at.rovo.caching.drum.DrumEventDispatcher;
 import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.DrumResult;
+import at.rovo.caching.drum.DrumStoreEntry;
 import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.NotAppendableException;
-import at.rovo.caching.drum.DrumEventDispatcher;
 import at.rovo.caching.drum.event.MergerState;
 import at.rovo.caching.drum.event.MergerStateUpdate;
 import at.rovo.caching.drum.event.StorageEvent;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.KeyComparator;
+import at.rovo.common.annotations.GuardedBy;
+import at.rovo.common.annotations.ThreadSafe;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,43 +38,57 @@ import org.apache.logging.log4j.Logger;
  * Billion Pages and Beyond' to achieve merging in a single one pass through disk strategy.
  * <p>
  * The execution of the merge happens, by default, in the {@link Thread} this instance was started with. The execution
- * was requested by {@link #doMerge()}.
+ * was requested by {@link #requestMerge()}.
  *
  * @author Roman Vottner
  */
+@ThreadSafe
 public abstract class DiskFileMerger<V extends Serializable, A extends Serializable> implements Merger
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(DiskFileMerger.class);
-    /**
-     * The object responsible for updating listeners on state or statistic changes
-     **/
-    private DrumEventDispatcher eventDispatcher = null;
+
+    // immutable members
     /** The name of the DRUM instance this file merger is linked to **/
-    protected String drumName = null;
+    protected final String drumName ;
+    /** The class object of the value type. Necessary to safely cast the generic type to a concrete type **/
+    protected final Class<V> valueClass;
+    /** The class object of the auxiliary type. Necessary to safely cast the generic type to a concrete type. As child
+     * implementation should not store auxiliary data this field is kept private. **/
+    private final Class<A> auxClass;
     /** Dispatcher used to send results to for further processing **/
-    protected Dispatcher<V, A> dispatcher = null;
+    protected final Dispatcher<V, A> dispatcher;
+    /** The object responsible for updating listeners on state or statistic changes **/
+    private final DrumEventDispatcher eventDispatcher;
     /** A reference to the disk writers to synchronize access to the disk files both objects need access to **/
-    private List<DiskWriter> diskWriters = null;
+    @GuardedBy("DiskWriter.accessDiskFile()")
+    private final List<DiskWriter> diskWriters;
+    /** The merge lock is needed in order to let the merger thread wait for incoming merge signals by disk writer who
+     * exceeded the file limit on a previous <code>feedBucket()</code> **/
+    private final Lock mergeLock = new ReentrantLock();
+    /** The lock condition who will perform the {@link Condition#await()} and {@link Condition#signal()} on the merging
+     * thread **/
+    private final Condition mergeRequest = mergeLock.newCondition();
+
+    // mutable members
+    /** Specifies if a merge was requested by one of the disk writers **/
+    @GuardedBy("mergeLock")
+    private volatile boolean isMergeRequested = false;
+
     /** Used during merge with disk **/
     private List<InMemoryEntry<V, A>> sortedMergeBuffer = null;
     /** Original positions of elements in buckets **/
     private List<Integer> unsortingHelper = null;
-    /** Indicates which disk writer needs a merge **/
-    private List<Boolean> mergeList = null;
-    /** The class object of the value type. Necessary to safely cast the generic type to a concrete type **/
-    protected Class<V> valueClass = null;
-    /**
-     * The class object of the auxiliary type. Necessary to safely cast the generic type to a concrete type. As child
-     * implementation should not store auxiliary data this field is kept private.
-     **/
-    private Class<A> auxClass = null;
+
     /** Indicates if the thread the runnable part is running in should stop its work **/
     private volatile boolean stopRequested = false;
-    /** Used to reduce multiple WAITING_ON_MERGE_REQUEST event updates to a single update **/
+    /** Used to reduce multiple WAITING_FOR_MERGE_REQUEST event updates to a single update **/
     private MergerState lastState = null;
     /** The number of unique entries stored in the data store **/
     protected long numUniqueEntries = 0L;
+    /** A reference of the thread which executes the merging logic. This reference is used in order to interrupt a
+     * blocking thread and proceed with the execution **/
+    private Thread mergerThread = null;
 
     /**
      * Creates a new instance.
@@ -78,14 +98,8 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
     {
         this.drumName = drumName;
         this.eventDispatcher = eventDispatcher;
-        this.diskWriters = new ArrayList<>();
+        this.diskWriters = new ArrayList<>(numBuckets);
         this.sortedMergeBuffer = new ArrayList<>();
-
-        this.mergeList = new ArrayList<>(numBuckets);
-        for (int i = 0; i < numBuckets; i++)
-        {
-            this.mergeList.add(Boolean.FALSE);
-        }
 
         this.dispatcher = dispatcher;
         this.valueClass = valueClass;
@@ -107,52 +121,52 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
     @Override
     public void run()
     {
+        this.mergerThread = Thread.currentThread();
         while (!this.stopRequested)
         {
+            // check if the state was set in the previous run - this should reduce the number of state updates to a
+            // single one for a WAITING_FOR_MERGE_REQUEST
+            if (this.lastState != MergerState.WAITING_FOR_MERGE_REQUEST)
+            {
+                this.lastState = updateState(MergerState.WAITING_FOR_MERGE_REQUEST);
+            }
+
+            boolean lockAcquired = false;
             try
             {
-                // check if the state was set in the previous run - this should reduce the number of state updates to a
-                // single one for a WAITING_ON_MERGE_REQUEST
-                if (this.lastState == null)
+                this.mergeLock.lockInterruptibly();
+                LOG.trace("[{}] - Acquired lock of disk file merger", this.drumName);
+                lockAcquired = true;
+                // check if a merge was requested
+                while (!this.isMergeRequested)
                 {
-                    this.lastState = updateState(MergerState.WAITING_ON_MERGE_REQUEST);
+                    // block till we get notified
+                    this.mergeRequest.await();
                 }
-
-                if (this.mergeList.contains(Boolean.TRUE))
-                {
-                    this.lastState = null;
-                    updateState(MergerState.MERGE_REQUESTED);
-
-                    LOG.debug("[{}] - Notify received! Merging data", this.drumName);
-
-                    // we have been notified by a writer that its disk file reached a certain limit - so merge all the
-                    // data in a single one-pass-through strategy
-                    this.merge();
-                }
-                else
-                {
-                    try
-                    {
-                        Thread.sleep(10);
-                    }
-                    catch (InterruptedException e)
-                    {
-                        LOG.error("[" + this.drumName + "] - Merger was interrupted", e);
-                    }
-                }
+                this.isMergeRequested = false;
             }
-            catch (Exception e)
+            catch (InterruptedException iEx)
             {
-                LOG.error("[" + this.drumName + "] - got interrupted", e);
-                updateState(MergerState.FINISHED_WITH_ERRORS);
+                LOG.debug("[{}] - Merger was interrupted", this.drumName);
                 break;
             }
-        }
-        // a last run-through to catch data that was written between the last merge and the stop-request
-        if (this.mergeList.contains(Boolean.TRUE))
-        {
+            finally
+            {
+                if (lockAcquired)
+                {
+                    LOG.trace("[{}] - Releasing lock of disk file merger", this.drumName);
+                    this.mergeLock.unlock();
+                }
+            }
+
+            LOG.debug("[{}] - Notify received! Merging data", this.drumName);
+            this.lastState = updateState(MergerState.MERGE_REQUESTED);
+            // we have been notified by a writer that its disk file reached a certain limit - so merge all the data
+            // in a single one-pass-through strategy
             this.merge();
         }
+        // a last run-through to catch data that was written between the last merge and the stop-request
+        this.merge();
 
         try
         {
@@ -161,6 +175,7 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
         catch (Exception e)
         {
             LOG.error("[" + this.drumName + "] Caught exception while closing the writer ", e);
+            updateState(MergerState.FINISHED_WITH_ERRORS);
         }
         updateState(MergerState.FINISHED);
         LOG.trace("[{}] - stopped processing!", this.drumName);
@@ -204,22 +219,46 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
     @Override
     public void stop()
     {
-        this.stopRequested = true;
         LOG.trace("stop requested!");
+        this.stopRequested = true;
+        if (this.mergerThread != null)
+        {
+            this.mergerThread.interrupt();
+        }
     }
 
     /**
      * Closes resources held by the instance.
      */
-    protected abstract void close() throws Exception;
+    @Override
+    public abstract void close() throws Exception;
 
     @Override
-    public void doMerge()
+    public void requestMerge()
     {
         String threadName = Thread.currentThread().getName();
         String sBucketId = threadName.substring(threadName.indexOf("-Writer-") + "-Writer-".length());
         int bucketId = Integer.parseInt(sBucketId);
-        this.mergeList.set(bucketId, Boolean.TRUE);
+        LOG.debug("[{}] - Disk bucket {} requested merge", this.drumName, bucketId);
+
+        this.signalMerge();
+    }
+
+    /**
+     * Signals the blocked merger thread that a merge should be performed.
+     */
+    private void signalMerge()
+    {
+        this.mergeLock.lock();
+        try
+        {
+            this.isMergeRequested = true;
+            this.mergeRequest.signal();
+        }
+        finally
+        {
+            this.mergeLock.unlock();
+        }
     }
 
     /**
@@ -233,17 +272,19 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
         LOG.debug("[{}] - merging disk files", this.drumName);
         for (DiskWriter writer : this.diskWriters)
         {
+            boolean lockAcquired = false;
             // try to lock the disk file so that the current disk writer can't write to the disk file while we are
             // reading from it. If the writer is currently writing to disk let him finish his task first
             try
             {
-                updateStateForBucket(writer.getBucketId(), MergerState.WAITING_ON_LOCK);
+                updateStateForBucket(writer.getBucketId(), MergerState.WAITING_FOR_LOCK);
                 LOG.debug("[{}] - [{}] - available permits for diskWriter: {}",
                           this.drumName, writer.getBucketId(), writer.accessDiskFile().availablePermits());
-                writer.accessDiskFile().acquire();
-
+                // do not interrupt the file access as otherwise data might get lost!
+                writer.accessDiskFile().acquireUninterruptibly();
+                lockAcquired = true;
                 updateStateForBucket(writer.getBucketId(), MergerState.MERGING);
-                LOG.debug("[{}] - [{}] - got lock of disk writer", this.drumName, writer.getBucketId());
+                LOG.debug("[{}] - [{}] - Acquired lock of disk bucket file", this.drumName, writer.getBucketId());
                 // writer has finished his work and we have the lock to the disk file
 
                 // Here the 4 steps of merging the bucket files into the backing data store are managed:
@@ -278,13 +319,30 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
             }
             catch (Exception e)
             {
-                e.printStackTrace();
-                LOG.error("[{}] - [{}] - Error merging disk bucket files with data storage! Reason: {}", this.drumName,
-                          writer.getKVFileName(), e.getLocalizedMessage());
+                long kvLengt = 0;
+                long auxLength = 0;
+                try
+                {
+                    kvLengt = writer.getKVFile().getFile().length();
+                    auxLength = writer.getAuxFile().getFile().length();
+                }
+                catch (IOException ioEx)
+                {
+                    LOG.warn("[{}] - [{}] - Could not read bucket file due to " + ioEx.getLocalizedMessage(),
+                             this.drumName, writer.getBucketId());
+                }
+
+                LOG.error("[{}] - [{}] - Error merging disk bucket files with data storage! Could not process {} key/value bytes and {} auxiliary data bytes. Reason: {}",
+                          this.drumName, writer.getKVFile(), kvLengt, auxLength, e.getLocalizedMessage());
                 LOG.catching(Level.ERROR, e);
             }
             finally
             {
+                if (lockAcquired)
+                {
+                    LOG.trace("[{}] - [{}] - Releasing lock of disk bucket file", this.drumName, writer.getBucketId());
+                    writer.accessDiskFile().release();
+                }
                 if (this.unsortingHelper != null)
                 {
                     this.unsortingHelper.clear();
@@ -293,9 +351,6 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
                 {
                     this.sortedMergeBuffer.clear();
                 }
-
-                this.mergeList.set(writer.getBucketId(), Boolean.FALSE);
-                writer.accessDiskFile().release();
             }
         }
 
@@ -311,17 +366,17 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
      *
      * @return Returns true if data could be read from the disk bucket file, false otherwise
      */
-    private boolean readDataFromDiskFile(DiskWriter writer) throws InterruptedException, DrumException
+    private boolean readDataFromDiskFile(DiskWriter writer) throws DrumException
     {
         if (writer.getKVFileBytesWritten() == 0)
         {
             return false;
         }
 
-        LOG.debug("[{}] - Reading data from disk file", this.drumName);
+        LOG.debug("[{}] - Reading data from disk file {}", this.drumName, writer.getKVFile().getFile());
         try
         {
-            RandomAccessFile kvFile = writer.getKVFile();
+            RandomAccessFile kvFile = writer.getKVFile().getFile();
             if (kvFile == null)
             {
                 return false;
@@ -447,9 +502,9 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
         try
         {
             LOG.debug("[{}] - [{}] - reading auxiliary bucket '{}' for dispatching", this.drumName,
-                      writer.getBucketId(), writer.getAuxFileName());
+                      writer.getBucketId(), writer.getAuxFile().getFile());
             int i = 0;
-            RandomAccessFile auxFile = writer.getAuxFile();
+            RandomAccessFile auxFile = writer.getAuxFile().getFile();
             if (auxFile == null)
             {
                 return;

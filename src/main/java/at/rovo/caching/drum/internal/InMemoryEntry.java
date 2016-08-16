@@ -237,7 +237,7 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable> imple
     }
 
     /**
-     * Returns the original position of this data object before the sorting happened in the <em>doMerge()</em> method of
+     * Returns the original position of this data object before the sorting happened in the <em>requestMerge()</em> method of
      * {@link DiskFileMerger}.
      *
      * @return The original position of this data object

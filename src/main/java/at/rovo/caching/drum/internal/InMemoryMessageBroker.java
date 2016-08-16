@@ -8,9 +8,12 @@ import at.rovo.caching.drum.event.InMemoryBufferState;
 import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
 import at.rovo.caching.drum.util.lockfree.FlippableData;
 import at.rovo.caching.drum.util.lockfree.FlippableDataContainer;
+import at.rovo.common.annotations.GuardedBy;
+import at.rovo.common.annotations.ThreadSafe;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -18,10 +21,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * <em>InMemoryMessageBroker</em> is a {@link at.rovo.caching.drum.Broker} implementation which manages {@link
- * InMemoryEntry} objects. If will store new data objects in a lock free {@link FlippableDataContainer} on invoking
- * {@link #put(InMemoryEntry)} and return all currently buffered data objects through invoking {@link #takeAll()}. This
- * implementation will block consumer threads if no buffered data are currently available.
+ * <em>InMemoryMessageBroker</em> is a {@link Broker} implementation which manages {@link InMemoryEntry} objects. If
+ * will store new data objects in a lock free {@link FlippableDataContainer} on invoking {@link #put(InMemoryEntry)} and
+ * return all currently buffered data objects through invoking {@link #takeAll()}. This implementation will block
+ * consumer threads if no buffered data are currently available.
  * <p>
  * On invoking {@link #takeAll()} the backing {@link FlippableDataContainer} will be flipped which results in the buffer
  * holding the buffered data from being returned while a new {@link Queue} is set to store new received {@link
@@ -40,38 +43,47 @@ import org.apache.logging.log4j.Logger;
  *
  * @author Roman Vottner
  */
+@ThreadSafe
 public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Serializable, A extends Serializable>
         implements Broker<T, V>
 {
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
+    // final state
     /** The name of the DRUM instance **/
-    private String drumName = null;
+    private final String drumName;
     /** The object responsible for updating listeners on state or statistic changes **/
-    private DrumEventDispatcher eventDispatcher = null;
+    private final DrumEventDispatcher eventDispatcher;
     /** The ID of the buffer **/
-    private int bucketId = 0;
-    /** The flippable lock-free buffer to add in memory data to **/
-    private FlippableDataContainer<T> buffer = new FlippableDataContainer<>();
+    private final int bucketId;
     /** The size of the buffer before the two buffers get exchanged and the results being available through
      * <code>takeAll</code> **/
-    private int byteSizePerBuffer = 0;
-    /** The old state of the crawler. Used to minimize state updates if the state remained the same as the old state **/
-    private InMemoryBufferState oldState = null;
+    private final int byteSizePerBuffer;
 
     /** The lock object is needed to let consumers wait on invoking {@link #takeAll()} if no data is available **/
-    private Lock lock = new ReentrantLock();
+    private final Lock lock = new ReentrantLock();
     /** Informs a waiting thread, which invoked await() previously, that data is available for writing to disk bucket
      * through invoking signal() **/
-    private Condition dataAvailable = lock.newCondition();
-    /** Flag to indicate that the data is available **/
-    private volatile boolean isDataAvailable = false;
+    private final Condition dataAvailable = lock.newCondition();
 
+    // modifiable state
+    /** The old state of the crawler. Used to minimize state updates if the state remained the same as the old state **/
+    private InMemoryBufferState oldState = null;
     /** Indicates if the thread the runnable part is running in should stop its work **/
     private volatile boolean stopRequested = false;
     /** To avoid logging of multiple stopped sending data messages **/
     private boolean stopAlreadyLogged = false;
+    /** A reference to the thread which executes the <code>takeAll()</code> logic in order to interrupt a blocking wait
+     * for further data on application shutdown **/
+    private Thread consumerThread = null;
+
+    /** Flag to indicate that the data is available **/
+    @GuardedBy("lock")
+    private volatile boolean isDataAvailable = false;
+    /** The flippable lock-free buffer to add in memory data to **/
+    @GuardedBy("lock")
+    private FlippableDataContainer<T> buffer = new FlippableDataContainer<>();
 
     /**
      * Creates a new instance and initializes necessary fields.
@@ -105,9 +117,10 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
 
         updateState(InMemoryBufferState.STOPPED);
 
-        // if a consumer thread is waiting for data and we need to shutdown, we invoke the currently blocked consumer
-        // thread in order to shut down the broker correctly.
-        this.signalNotEmpty();
+        if (null != this.consumerThread)
+        {
+            this.consumerThread.interrupt();
+        }
     }
 
     /**
@@ -155,7 +168,6 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
         }
 
         FlippableData<T> _data = this.buffer.put(data);
-        this.isDataAvailable = true;
 
         LOG.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
                  this.bucketId, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
@@ -209,6 +221,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
         this.lock.lock();
         try
         {
+            this.isDataAvailable =  true;
             this.dataAvailable.signal();
         }
         finally
@@ -222,8 +235,9 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public Queue<T> takeAll() throws InterruptedException
+    public Queue<T> takeAll()
     {
+
         if (!this.isDataAvailable && this.stopRequested)
         {
             if (!this.stopAlreadyLogged)
@@ -233,38 +247,46 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
             }
             return null;
         }
+        // safe the reference to the current thread in order to interrupt the blocking await in case of an application
+        // shutdown
+        this.consumerThread = Thread.currentThread();
 
-        this.lock.lockInterruptibly();
+        boolean lockAcquired = false;
         try
         {
-            try
+            this.lock.lockInterruptibly();
+            LOG.trace("[{}] - [{}] - Acquired lock of buffer", this.drumName, this.bucketId);
+            lockAcquired = true;
+            while (!this.isDataAvailable && !Thread.currentThread().isInterrupted())
             {
-                while (!this.isDataAvailable)
-                {
-                    // wait till data is available
-                    this.dataAvailable.await();
-                }
+                // wait till data is available
+                this.dataAvailable.await();
             }
-            catch (InterruptedException ie)
-            {
-                LOG.warn("[{}] - [{}] - Interrupted while waiting on in-memory data", this.drumName, this.bucketId);
-                this.dataAvailable.signal();
-                throw ie;
-            }
-
-            Queue<T> queue = this.buffer.flip();
-            this.isDataAvailable = false;
-            LOG.debug("[{}] - [{}] - transmitting data objects", this.drumName, this.bucketId);
-            if (LOG.isTraceEnabled())
-            {
-                queue.forEach(entry -> LOG.trace("Transmitted: {}", entry));
-            }
-
-            return queue;
+        }
+        catch (InterruptedException ie)
+        {
+            LOG.debug("[{}] - [{}] - Interrupted while waiting on in-memory data", this.drumName, this.bucketId);
         }
         finally
         {
-            this.lock.unlock();
+            if (lockAcquired)
+            {
+                LOG.trace("[{}] - [{}] - Releasing lock of buffer", this.drumName, this.bucketId);
+                this.lock.unlock();
+            }
         }
+
+        final Queue<T> queue = this.buffer.flip();
+        this.isDataAvailable = false;
+        LOG.debug("[{}] - [{}] - Flipped buffers. Transmitting {} data objects",
+                  this.drumName, this.bucketId, queue.size());
+
+        if (LOG.isTraceEnabled())
+        {
+            Queue<T> copy = new ConcurrentLinkedQueue<>(queue);
+            copy.forEach(entry -> LOG.trace("[{}] - [{}] - Transmitted: {}", this.drumName, this.bucketId, entry));
+        }
+
+        return queue;
     }
 }

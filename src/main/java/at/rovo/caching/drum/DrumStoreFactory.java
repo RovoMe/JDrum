@@ -1,10 +1,6 @@
-package at.rovo.caching.drum.internal.backend;
+package at.rovo.caching.drum;
 
-import at.rovo.caching.drum.Dispatcher;
-import at.rovo.caching.drum.DrumException;
-import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.internal.DrumEventDispatcherImpl;
-import at.rovo.caching.drum.DrumEventDispatcher;
 import at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStoreMergerFactory;
 import at.rovo.caching.drum.internal.backend.dataStore.DataStoreMergerFactory;
 import java.io.Serializable;
@@ -13,8 +9,8 @@ import java.io.Serializable;
  * A basic Factory class for creating a DRUM backing data storage.
  * <p>
  * Currently only a Berkeley DB and a self written CacheFile storage are available. By default the CacheFile storage can
- * be created through invoking {@link #getDefaultStorageFactory(String, int, at.rovo.caching.drum.Dispatcher, Class,
- * Class, DrumEventDispatcher)}
+ * be created through invoking {@link #getDefaultStorageFactory(String, int, Dispatcher, Class, Class,
+ * DrumEventDispatcher)}
  *
  * @param <V>
  *         The type of the value

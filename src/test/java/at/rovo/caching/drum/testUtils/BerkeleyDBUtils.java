@@ -92,18 +92,29 @@ public final class BerkeleyDBUtils
     {
         Map<Long, V> entries = new LinkedHashMap<>();
 
-        try (BerkeleyDB berkeleyDB = new BerkeleyDB(drumName, 0);
-             Cursor cursor = berkeleyDB.db.openCursor(null, null))
+        try (BerkeleyDB berkeleyDB = new BerkeleyDB(drumName, 0))
         {
-            DatabaseEntry foundKey = new DatabaseEntry();
-            DatabaseEntry foundData = new DatabaseEntry();
-
-            while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) == OperationStatus.SUCCESS)
+            Cursor cursor = null;
+            try
             {
-                Long key = DrumUtils.byte2long(foundKey.getData());
-                V data = DrumUtils.deserialize(foundData.getData(), valueClass);
-                entries.put(key, data);
-                System.out.println("Key: " + key + " Data: " + data);
+                cursor = berkeleyDB.db.openCursor(null, null);
+                DatabaseEntry foundKey = new DatabaseEntry();
+                DatabaseEntry foundData = new DatabaseEntry();
+
+                while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) == OperationStatus.SUCCESS)
+                {
+                    Long key = DrumUtils.byte2long(foundKey.getData());
+                    V data = DrumUtils.deserialize(foundData.getData(), valueClass);
+                    entries.put(key, data);
+                    System.out.println("Key: " + key + " Data: " + data);
+                }
+            }
+            finally
+            {
+                if (cursor != null)
+                {
+                    cursor.close();
+                }
             }
         }
         catch (DatabaseException | IOException | ClassNotFoundException ex)

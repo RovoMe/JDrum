@@ -63,6 +63,9 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         </logger>
 
         <!-- DRUM classes -->
+        <logger name="at.rovo.caching.drum.internal" level="debug" additivity="false">
+            <appender-ref ref="DrumFile"/>
+        </logger>
         <logger name="at.rovo.caching.drum.internal.DrumImpl" level="trace" additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
@@ -80,6 +83,9 @@ http://logging.apache.org/log4j/2.x/manual/layouts.html
         </logger>
         <logger name="at.rovo.caching.drum.internal.backend.berkeley.BerkeleyDBStoreMerger" level="debug"
                 additivity="false">
+            <appender-ref ref="DrumFile"/>
+        </logger>
+        <logger name="at.rovo.caching.drum.internal.DrumEventDispatcherImpl" level="debug" additivity="false">
             <appender-ref ref="DrumFile"/>
         </logger>
 

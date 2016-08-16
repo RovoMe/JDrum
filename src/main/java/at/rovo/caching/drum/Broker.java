@@ -34,5 +34,5 @@ public interface Broker<T extends DrumStoreEntry<V>, V extends Serializable> ext
      *
      * @return The stored data of the broker instance
      */
-    Queue<T> takeAll() throws InterruptedException;
+    Queue<T> takeAll();
 }

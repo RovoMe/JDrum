@@ -37,7 +37,7 @@ public class NullEventDispatcher implements DrumEventDispatcher
     }
 
     @Override
-    public void close() throws IOException
+    public void stop()
     {
         // do nothing
     }

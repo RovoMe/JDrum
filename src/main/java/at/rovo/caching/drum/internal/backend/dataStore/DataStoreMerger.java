@@ -35,36 +35,32 @@ public class DataStoreMerger<V extends Serializable, A extends Serializable> ext
     private final static Logger LOG = LogManager.getLogger(DataStoreMerger.class);
 
     /** A reference to the actual data store **/
-    private DataStore<V> dataStore = null;
+    private final DataStore<V> dataStore;
 
     /**
      * Creates a new instance and initializes required instance fields.
      *
      * @param drumName
-     *         The name of the DRUM instance this cache is used for
+     *         The name of the DRUM instance to merge data for
+     * @param numBuckets
+     *         The number of bucket files used by the DRUM instance
      * @param dispatcher
-     *         The dispatching instance to send results to
+     *         The dispatcher object to send unique or duplicate responses with
+     * @param valueClass
+     *         The actual type of a value entry
+     * @param auxClass
+     *         The actual type of an auxiliary data element
+     * @param eventDispatcher
+     *         The dispatcher object to send internal state updates to
+     *
+     * @throws DrumException
+     *         Thrown if the data store could not get initialized
      */
     DataStoreMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
                     Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException
     {
         super(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
 
-        this.initCacheFile();
-    }
-
-    /**
-     * Initializes and creates if necessary the directories and files for the cache file.
-     * <p>
-     * Note that the cache file will be placed inside a cache directory of the applications root-path in a further
-     * directory which is named after the DRUM instance it is created for. The actual cache file is named <code>
-     * cache.db</code>.
-     *
-     * @throws DrumException
-     *         If the cache file could not be created
-     */
-    private void initCacheFile() throws DrumException
-    {
         String appDir = System.getProperty("user.dir");
         File cacheDir = new File(appDir + "/cache");
         if (!cacheDir.exists())

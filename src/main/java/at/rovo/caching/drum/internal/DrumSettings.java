@@ -4,7 +4,7 @@ import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.Drum;
 import at.rovo.caching.drum.DrumListener;
 import at.rovo.caching.drum.DrumEventDispatcher;
-import at.rovo.caching.drum.internal.backend.DrumStoreFactory;
+import at.rovo.caching.drum.DrumStoreFactory;
 import java.io.Serializable;
 
 /**

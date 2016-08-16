@@ -2,16 +2,16 @@ package at.rovo.caching.drum.internal.backend.berkeley;
 
 import at.rovo.caching.drum.Dispatcher;
 import at.rovo.caching.drum.DrumException;
+import at.rovo.caching.drum.Merger;
 import at.rovo.caching.drum.internal.DrumEventDispatcherImpl;
 import at.rovo.caching.drum.DrumEventDispatcher;
-import at.rovo.caching.drum.internal.backend.DrumStoreFactory;
+import at.rovo.caching.drum.DrumStoreFactory;
 import java.io.Serializable;
 
 /**
  * <em>BerkeleyDBStoreFactory</em> is an implementation of {@link DrumStoreFactory} and takes care of initializing a
- * proper instance of a Berkeley DB storage merger. This returned {@link at.rovo.caching.drum.Merger} instance can
- * then be used to store and/or compare the data currently cached in bucket files with the data stored in a backing
- * Berkeley DB.
+ * proper instance of a Berkeley DB storage merger. This returned {@link Merger} instance can then be used to store
+ * and/or compare the data currently cached in bucket files with the data stored in a backing Berkeley DB.
  *
  * @param <V>
  *         The type of the value

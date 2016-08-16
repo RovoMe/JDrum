@@ -8,7 +8,7 @@ import java.io.Closeable;
  *
  * @author Roman Vottner
  */
-public interface DrumEventDispatcher extends Runnable, Closeable
+public interface DrumEventDispatcher extends Runnable
 {
     /**
      * Registers a new listener instance with the dispatcher. Any registered listeners want to be informed on internal
@@ -36,4 +36,9 @@ public interface DrumEventDispatcher extends Runnable, Closeable
      *         The internal event which should be distributed to the listener instances
      */
     void update(DrumEvent<? extends DrumEvent<?>> event);
+
+    /**
+     * Requests to stop the event dispatcher.
+     */
+    void stop();
 }

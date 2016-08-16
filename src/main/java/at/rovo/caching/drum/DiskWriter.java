@@ -1,7 +1,7 @@
 package at.rovo.caching.drum;
 
 import at.rovo.caching.drum.internal.DrumRuntimeListener;
-import java.io.RandomAccessFile;
+import at.rovo.caching.drum.util.DiskFileHandle;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -31,32 +31,18 @@ public interface DiskWriter extends Runnable, DrumRuntimeListener
     Semaphore accessDiskFile();
 
     /**
-     * Returns the name of the managed key/value disk file.
-     *
-     * @return The name of the managed key/value disk file
-     */
-    String getKVFileName();
-
-    /**
-     * Returns the name of the managed auxiliary data disk file.
-     *
-     * @return The name of the managed auxiliary data disk file
-     */
-    String getAuxFileName();
-
-    /**
-     * Returns a reference to the bucket file which stores key/value data.
+     * Returns a handle of the bucket file which stores key/value data.
      *
      * @return The reference to the key/value bucket file
      */
-    RandomAccessFile getKVFile();
+    DiskFileHandle getKVFile();
 
     /**
-     * Returns a reference to the bucket file which stores the auxiliary data that is attached to a key
+     * Returns a handle of the bucket file which stores the auxiliary data that is attached to a key
      *
      * @return The reference to the auxiliary bucket file
      */
-    RandomAccessFile getAuxFile();
+    DiskFileHandle getAuxFile();
 
     /**
      * Returns the number of bytes written to the key/value disk file.
