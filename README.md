@@ -170,7 +170,7 @@ the merge-phase of the disk bucket files actually occurred.
 A simple dispatcher which just prints the output to the console could look like this: 
 
 ```java
-public class ConsoleDispatcher<V extends Serializer, A extends Serializer> extends NullDispatcher<V, A>
+public class ConsoleDispatcher<V extends Serializable, A extends Serializable> extends NullDispatcher<V, A>
 {
     @Override
     public void uniqueKeyCheck(Long key)
