@@ -2,7 +2,6 @@ package at.rovo.caching.drum.internal;
 
 import at.rovo.caching.drum.Broker;
 import at.rovo.caching.drum.DrumEventDispatcher;
-import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.event.InMemoryBufferEvent;
 import at.rovo.caching.drum.event.InMemoryBufferState;
 import at.rovo.caching.drum.event.InMemoryBufferStateUpdate;
@@ -21,10 +20,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * <em>InMemoryMessageBroker</em> is a {@link Broker} implementation which manages {@link InMemoryEntry} objects. If
+ * <em>InMemoryMessageBroker</em> is a {@link Broker} implementation which manages {@link InMemoryEntry} objects. It
  * will store new data objects in a lock free {@link FlippableDataContainer} on invoking {@link #put(InMemoryEntry)} and
  * return all currently buffered data objects through invoking {@link #takeAll()}. This implementation will block
- * consumer threads if no buffered data are currently available.
+ * consumer threads if no buffered data are currently available. If a {@link #stop} was requested, {@link #takeAll()}
+ * semantics changes and instead of blocking it will return data immediately in order to push data to consumers as fast
+ * as possible.
  * <p>
  * On invoking {@link #takeAll()} the backing {@link FlippableDataContainer} will be flipped which results in the buffer
  * holding the buffered data from being returned while a new {@link Queue} is set to store new received {@link
@@ -71,16 +72,13 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
     /** The old state of the crawler. Used to minimize state updates if the state remained the same as the old state **/
     private InMemoryBufferState oldState = null;
     /** Indicates if the thread the runnable part is running in should stop its work **/
-    private volatile boolean stopRequested = false;
+    private volatile boolean isStopRequested = false;
     /** To avoid logging of multiple stopped sending data messages **/
     private boolean stopAlreadyLogged = false;
     /** A reference to the thread which executes the <code>takeAll()</code> logic in order to interrupt a blocking wait
      * for further data on application shutdown **/
     private Thread consumerThread = null;
 
-    /** Flag to indicate that the data is available **/
-    @GuardedBy("lock")
-    private volatile boolean isDataAvailable = false;
     /** The flippable lock-free buffer to add in memory data to **/
     @GuardedBy("lock")
     private FlippableDataContainer<T> buffer = new FlippableDataContainer<>();
@@ -113,7 +111,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
     public void stop()
     {
         LOG.trace("[{}] - [{}] - stop requested!", this.drumName, this.bucketId);
-        this.stopRequested = true;
+        this.isStopRequested = true;
 
         updateState(InMemoryBufferState.STOPPED);
 
@@ -156,11 +154,11 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void put(T data) throws DrumException
+    public void put(T data)
     {
-        if (stopRequested)
+        if (this.isStopRequested)
         {
-            throw new DrumException("Could not accept further data entries as a stop was already requested");
+            throw new IllegalStateException("Could not accept further data entries as a stop was already requested");
         }
         if (null == data)
         {
@@ -179,7 +177,16 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
 
         this.checkStateChange(byteLengthKV, byteLengthAux);
 
-        this.signalNotEmpty();
+        this.lock.lock();
+        try
+        {
+            // signal that data is available. This should wake up a thread waiting on data
+            this.dataAvailable.signal();
+        }
+        finally
+        {
+            this.lock.unlock();
+        }
     }
 
     /**
@@ -212,79 +219,83 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
         }
     }
 
-    /**
-     * Signals a blocked consumer thread that data are available now so that it can wake up and proceed with retrieving
-     * buffered data objects.
-     */
-    private void signalNotEmpty()
-    {
-        this.lock.lock();
-        try
-        {
-            this.isDataAvailable =  true;
-            this.dataAvailable.signal();
-        }
-        finally
-        {
-            this.lock.unlock();
-        }
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///                                invoked usually by consumer threads                                           ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Will return all currently available items from the buffer on atomically flipping the buffer.
+     * <p>
+     * As thread interruption can occur anytime without any user-based trigger, this method maintains a rather passive
+     * handling of {@link InterruptedException} by catching it internally, which will also remove the interrupted flag
+     * from the thread that invoked this method. This guarantees that the currently available data is still returned to
+     * the invoking instance so that it has a chance to process the data further. This however can lead to a consecutive
+     * invocation after the interrupt was noticed, which will therefore block again.
+     * <p>
+     * If {@link #stop} was requested previous to invoking this method, this method will keep returning data until the
+     * internal buffer is emptied. Once a stop was requested, this method will no longer block. If no data is available
+     * any further, this method will return an empty queue.
+     *
+     * @return While not stopped, this method will return a {@link Queue} containing the data which was available on
+     * buffer flip time. If an interruption was noticed while the consumer thread was waiting on new data, a queue
+     * without any data might get returned. After a stop was requested via {@link #stop()} this method keeps returning
+     * data as long as available. Once no data is available any further, an empty {@link Queue} is returned.
+     */
     @Override
     public Queue<T> takeAll()
     {
 
-        if (!this.isDataAvailable && this.stopRequested)
+        if (this.buffer.isEmpty() && this.isStopRequested)
         {
             if (!this.stopAlreadyLogged)
             {
                 LOG.trace("[{}] - [{}] - stopped sending data!", this.drumName, this.bucketId);
                 this.stopAlreadyLogged = true;
             }
-            return null;
+            return this.buffer.flip();
         }
-        // safe the reference to the current thread in order to interrupt the blocking await in case of an application
-        // shutdown
-        this.consumerThread = Thread.currentThread();
 
+        // needed if acquiring the lock threw the exception as there was no lock acquired then and as a consequence an
+        // IllegalMonitorException is thrown on releasing the lock
         boolean lockAcquired = false;
         try
         {
             this.lock.lockInterruptibly();
-            LOG.trace("[{}] - [{}] - Acquired lock of buffer", this.drumName, this.bucketId);
             lockAcquired = true;
-            while (!this.isDataAvailable && !Thread.currentThread().isInterrupted())
+            // safe the reference to the current thread in order to interrupt the blocking await in case of an
+            // application shutdown
+            this.consumerThread = Thread.currentThread();
+            LOG.trace("[{}] - [{}] - Acquired lock of buffer", this.drumName, this.bucketId);
+            while (this.buffer.isEmpty() && !this.isStopRequested)
             {
-                // wait till data is available
+                // wait till data is available if not a stop was requested
                 this.dataAvailable.await();
             }
         }
-        catch (InterruptedException ie)
+        catch (InterruptedException iEx)
         {
             LOG.debug("[{}] - [{}] - Interrupted while waiting on in-memory data", this.drumName, this.bucketId);
         }
         finally
         {
+            LOG.trace("[{}] - [{}] - Releasing lock of buffer", this.drumName, this.bucketId);
             if (lockAcquired)
             {
-                LOG.trace("[{}] - [{}] - Releasing lock of buffer", this.drumName, this.bucketId);
                 this.lock.unlock();
             }
         }
 
         final Queue<T> queue = this.buffer.flip();
-        this.isDataAvailable = false;
         LOG.debug("[{}] - [{}] - Flipped buffers. Transmitting {} data objects",
                   this.drumName, this.bucketId, queue.size());
 
         if (LOG.isTraceEnabled())
         {
             Queue<T> copy = new ConcurrentLinkedQueue<>(queue);
-            copy.forEach(entry -> LOG.trace("[{}] - [{}] - Transmitted: {}", this.drumName, this.bucketId, entry));
+//            copy.forEach(entry -> LOG.trace("[{}] - [{}] - Transmitted: {}", this.drumName, this.bucketId, entry));
+            for (T entry : copy) {
+                LOG.trace("[{}] - [{}] - Size: {} - Transmitted: {}", this.drumName, this.bucketId, copy.size(), entry);
+            }
         }
 
         return queue;

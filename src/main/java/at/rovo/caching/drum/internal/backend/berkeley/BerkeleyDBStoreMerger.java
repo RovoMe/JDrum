@@ -17,11 +17,9 @@ import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.ExceptionEvent;
 import com.sleepycat.je.ExceptionListener;
 import com.sleepycat.je.OperationStatus;
-import com.sleepycat.je.ThreadInterruptedException;
 import java.io.File;
 import java.io.Serializable;
 import java.util.List;
-import java.util.concurrent.Callable;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -46,12 +44,6 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
     /** The logger of this class **/
     private final static Logger LOG = LogManager.getLogger(BerkeleyDBStoreMerger.class);
 
-    /** A reference to the BerkeleyDB directory **/
-    private final File dbFile;
-    /** Berkeley's environment configuration**/
-    private final EnvironmentConfig envConfig;
-    /** Berkeley's database configuration **/
-    private final DatabaseConfig dbConfig;
     /** Berkeley's environment object **/
     private Environment environment = null;
     /** The actual reference to the BerkeleyDB **/
@@ -85,9 +77,9 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
         LOG.debug("{} - creating berkeley db", this.drumName);
         try
         {
-            this.envConfig = new EnvironmentConfig();
-            this.envConfig.setAllowCreate(true);
-            this.envConfig.setExceptionListener(this);
+            EnvironmentConfig envConfig = new EnvironmentConfig();
+            envConfig.setAllowCreate(true);
+            envConfig.setExceptionListener(this);
 
             // check if the cache sub-directory exists - if not create one
             File cacheDir = new File(System.getProperty("user.dir") + "/cache");
@@ -101,27 +93,27 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
             }
             // check if a sub-directory inside the cache sub-directory exists that has the name of this instance
             // - if not create it
-            this.dbFile = new File(System.getProperty("user.dir") + "/cache/" + this.drumName);
-            if (!this.dbFile.exists())
+            File dbFile = new File(System.getProperty("user.dir") + "/cache/" + this.drumName);
+            if (!dbFile.exists())
             {
-                boolean success = this.dbFile.mkdir();
+                boolean success = dbFile.mkdir();
                 if (!success)
                 {
                     LOG.warn("Could not create backend data-store");
                 }
             }
             // create the environment for the DB
-            this.environment = new Environment(this.dbFile, this.envConfig);
+            this.environment = new Environment(dbFile, envConfig);
 
-            this.dbConfig = new DatabaseConfig();
+            DatabaseConfig dbConfig = new DatabaseConfig();
             // allow the database to be created if non could be found
-            this.dbConfig.setAllowCreate(true);
+            dbConfig.setAllowCreate(true);
             // Sets the comparator for the key
-            this.dbConfig.setBtreeComparator(new BTreeCompare());
+            dbConfig.setBtreeComparator(new BTreeCompare());
             // writing to DB does not occur upon operation call - instead it is delayed as long as possible changes are
             // only guaranteed to be durable after the Database.sync() method got called or the database is properly
             // closed
-            this.dbConfig.setDeferredWrite(true);
+            dbConfig.setDeferredWrite(true);
 
             this.berkeleyDB = this.environment.openDatabase(null, this.drumName + ".db", dbConfig);
         }
@@ -145,6 +137,10 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
     @Override
     public void close()
     {
+        if (null != this.berkeleyDB)
+        {
+            this.berkeleyDB.close();
+        }
         if (null != this.environment)
         {
             this.environment.close();
@@ -169,7 +165,7 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
                     // In Berkeley DB Java edition there is no method available to check for existence only so checking
                     // the key also retrieves the data
                     DatabaseEntry dbValue = new DatabaseEntry();
-                    OperationStatus status = tryCommand(() -> this.berkeleyDB.get(null, dbKey, dbValue, null));
+                    OperationStatus status = this.berkeleyDB.get(null, dbKey, dbValue, null);
                     if (OperationStatus.NOTFOUND.equals(status))
                     {
                         element.setResult(DrumResult.UNIQUE_KEY);
@@ -193,7 +189,7 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
                     byte[] byteValue = DrumUtils.serialize(value);
                     DatabaseEntry dbValue = new DatabaseEntry(byteValue);
                     // forces overwrite if the key is already present
-                    OperationStatus status = tryCommand(() -> this.berkeleyDB.put(null, dbKey, dbValue));
+                    OperationStatus status = this.berkeleyDB.put(null, dbKey, dbValue);
                     if (!OperationStatus.SUCCESS.equals(status))
                     {
                         throw new DrumException("Error merging with repository!");
@@ -203,7 +199,7 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
                 {
                     // read the old value and append it to the current value
                     DatabaseEntry dbReadValue = new DatabaseEntry();
-                    OperationStatus status = tryCommand(() -> this.berkeleyDB.get(null, dbKey, dbReadValue, null));
+                    OperationStatus status = this.berkeleyDB.get(null, dbKey, dbReadValue, null);
                     if (OperationStatus.KEYEXIST.equals(status))
                     {
                         V storedVal = DrumUtils.deserialize(dbReadValue.getData(), this.valueClass);
@@ -214,7 +210,7 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
                     byte[] byteValue = DrumUtils.serialize(value);
                     DatabaseEntry dbWriteValue = new DatabaseEntry(byteValue);
                     // forces overwrite if the key is already present
-                    status = tryCommand(() -> this.berkeleyDB.put(null, dbKey, dbWriteValue));
+                    status =  this.berkeleyDB.put(null, dbKey, dbWriteValue);
 
                     if (!OperationStatus.SUCCESS.equals(status))
                     {
@@ -226,81 +222,15 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
                          this.drumName, key, op, element.getResult());
 
                 // Persist modifications
-                tryCommand(this.berkeleyDB::sync);
+                this.berkeleyDB.sync();
 
-                this.numUniqueEntries = tryCommand(this.berkeleyDB::count);
+                this.numUniqueEntries = this.berkeleyDB.count();
             }
         }
         catch (Exception e)
         {
             throw new DrumException("Error synchronizing buckets with repository!", e);
         }
-    }
-
-    /**
-     * Tries to execute the provided work object. In case of a {@link ThreadInterruptedException}, which is thrown by
-     * the underlying database layer, the database is re-initialized and the previously failed method is re-executed
-     * again. If the error remains or an other error then {@link ThreadInterruptedException} is thrown, this error will
-     * be propagated back to the invoking method.
-     *
-     * @param work
-     *         The work load to execute
-     */
-    private void tryCommand(Runnable work)
-    {
-        try
-        {
-            work.run();
-        }
-        catch (ThreadInterruptedException tiEx)
-        {
-            LOG.warn("BerkeleyDB process was interrupted. Trying to reinitialize database");
-            this.reinitializeDB();
-            work.run();
-        }
-    }
-
-    /**
-     * Tries to execute the provided work object and returns its outcome. In case of a {@link
-     * ThreadInterruptedException}, which is thrown by the underlying database layer, the database is re-initialized and
-     * the previously failed method is re-executed again. In case the error could be solved, the outcome of the method
-     * is returned, otherwise the failure is propagated to the invoking method.
-     *
-     * @param work
-     *         The callable work which should be probed and in case of a {@link ThreadInterruptedException} retried with
-     *         a re-initialized database
-     * @param <T>
-     *         The type of the return value
-     *
-     * @return The result of the provided callable argument
-     *
-     * @throws Exception
-     *         In case an other exception then {@link ThreadInterruptedException} is thrown, this exception will be
-     *         propagated. In case the re-tried work load has thrown the {@link ThreadInterruptedException} again, this
-     *         exception will also be propagated back to the invoking method
-     */
-    private <T> T tryCommand(Callable<T> work) throws Exception
-    {
-        try
-        {
-            return work.call();
-        }
-        catch (ThreadInterruptedException tiEx)
-        {
-            LOG.warn("BerkeleyDB process was interrupted. Trying to reinitialize database");
-            this.reinitializeDB();
-            return work.call();
-        }
-    }
-
-    /**
-     * Re-initializes the BerkeleyDB in case of an {@link ThreadInterruptedException}.
-     */
-    private void reinitializeDB()
-    {
-        this.close();
-        this.environment = new Environment(this.dbFile, this.envConfig);
-        this.berkeleyDB = this.environment.openDatabase(null, this.drumName + ".db", dbConfig);
     }
 
     @Override

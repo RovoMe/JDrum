@@ -103,7 +103,7 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
             this.inMemoryBuffer.add(broker);
             this.diskWriters.add(consumer);
 
-            this.executors.submit(consumer);
+            this.executors.execute(consumer);
 
             // add a reference of the disk writer to the merger, so it can use the semaphore to lock the file it is
             // currently reading from to merge the data into the backing data store. While reading from a file, a
@@ -112,11 +112,11 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         }
         // Merger-thread
         namedFactory.setName(this.drumName + "-Merger");
-        this.executors.submit(this.merger);
+        this.executors.execute(this.merger);
 
         // Dispatcher-thread
         namedFactory.setName(this.drumName + "-EventDispatcher");
-        this.executors.submit(this.eventDispatcher);
+        this.executors.execute(this.eventDispatcher);
 
         if (settings.getListener() != null)
         {
@@ -184,10 +184,8 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         // give the threads a chance to finish their work without being interrupted
         // flip the buffers which sends the writers the latest data
         this.inMemoryBuffer.forEach(Broker::stop);
-        sleep(20);
         // write the last data collected to the bucket files
         this.diskWriters.forEach(DiskWriter::stop);
-        sleep(20);
         // merge the content of the bucket files with the data store and send the last unique/duplicate key results
         this.merger.stop();
         // send the remaining internal state updates to listeners
@@ -206,24 +204,14 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
 
         // close the open resources held by the writers
         this.diskWriters.forEach(DiskWriter::close);
+        // ... and the merger
+        this.merger.close();
 
         LOG.trace("[{}] - disposed", this.drumName);
 
         if (caught != null)
         {
             throw new DrumException(caught.getLocalizedMessage(), caught);
-        }
-    }
-
-    private void sleep(long time)
-    {
-        try
-        {
-            TimeUnit.MILLISECONDS.sleep(time);
-        }
-        catch (InterruptedException e)
-        {
-            LOG.warn("Got interrupted while waiting for time to pass");
         }
     }
 
@@ -251,6 +239,11 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      *         The auxiliary data of the key
      * @param operation
      *         The operation to be used on the data
+     *
+     * @throws IllegalArgumentException
+     *         If the key is not a power of 2
+     * @throws IllegalStateException
+     *         If an entry is added after {@link #dispose()} was invoked
      */
     private void add(Long key, V value, A aux, DrumOperation operation)
     {
@@ -258,14 +251,7 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         int bucketId = DrumUtils.getBucketForKey(key, this.numBuckets);
 
         // add a new InMemoryData object to the broker
-        try
-        {
-            this.inMemoryBuffer.get(bucketId).put(new InMemoryEntry<>(key, value, aux, operation));
-        }
-        catch (DrumException ex)
-        {
-            LOG.error(ex.getMessage(), ex);
-        }
+        this.inMemoryBuffer.get(bucketId).put(new InMemoryEntry<>(key, value, aux, operation));
     }
 
     /**

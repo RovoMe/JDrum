@@ -35,9 +35,18 @@ public interface Merger extends Runnable, DrumRuntimeListener
     void requestMerge();
 
     /**
+     * The merger implementation should wait for all threads it is collecting data from until they signaled their
+     * completion before starting a final merge phase and stop.
+     */
+    void writerDone();
+
+    /**
      * Returns the number of unique entries stored into the data store.
      */
     long getNumberUniqueEntriesStored();
 
-    void close() throws Exception;
+    /**
+     * Closes resources held by the instance.
+     */
+    void close();
 }

@@ -84,4 +84,14 @@ public class FlippableDataContainer<E extends InMemoryEntry>
         }
         return oldData.getQueue();
     }
+
+    /**
+     * Returns false if data is available within the current buffer, true if no further data is available.
+     *
+     * @return true if the current buffer is empty; false otherwise
+     */
+    public boolean isEmpty()
+    {
+        return dataObj.get().getQueue().isEmpty();
+    }
 }

@@ -24,10 +24,10 @@ public interface Broker<T extends DrumStoreEntry<V>, V extends Serializable> ext
      * @param data
      *         The data item to add to the broker
      *
-     * @throws DrumException
-     *         Thrown if entries are added to the broker while a shutdown is requested
+     * @throws IllegalStateException
+     *         Thrown if entries are added to the broker after a shutdown was requested
      */
-    void put(T data) throws DrumException;
+    void put(T data);
 
     /**
      * Returns all data stored by the broker.

@@ -30,7 +30,7 @@ public class FlippableData<T extends InMemoryEntry>
      * @param auxLength
      *         The current byte length of all auxiliary data bytes stored within the backing queue
      */
-    public FlippableData(Queue<T> queue, int keyLength, int valLength, int auxLength)
+    FlippableData(Queue<T> queue, int keyLength, int valLength, int auxLength)
     {
         this.queue = queue;
         this.keyLength = keyLength;
@@ -77,5 +77,35 @@ public class FlippableData<T extends InMemoryEntry>
     public int getAuxLength()
     {
         return this.auxLength;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int hash = 1;
+        hash = 37 * hash + (queue != null ? queue.hashCode() : 0);
+        hash = 37 * hash + keyLength;
+        hash = 37 * hash + valLength;
+        hash = 37 * hash + auxLength;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object other)
+    {
+        if (other == this)
+        {
+            return true;
+        }
+        if (other instanceof FlippableData)
+        {
+            @SuppressWarnings("unchecked")
+            FlippableData<T> o = (FlippableData<T>)other;
+            return ((this.queue == null && o.queue == null) || this.queue != null && this.queue.equals(o.queue))
+                   && this.keyLength == o.keyLength
+                   && this.valLength == o.valLength
+                   && this.auxLength == o.auxLength;
+        }
+        return false;
     }
 }

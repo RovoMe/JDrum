@@ -176,11 +176,18 @@ public class DataStoreMerger<V extends Serializable, A extends Serializable> ext
     }
 
     @Override
-    public void close() throws Exception
+    public void close()
     {
         if (this.dataStore != null)
         {
-            this.dataStore.close();
+            try
+            {
+                this.dataStore.close();
+            }
+            catch (Exception e)
+            {
+                LOG.warn("Caught exception while closing data store: {}", e.getLocalizedMessage());
+            }
         }
     }
 }

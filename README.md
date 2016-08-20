@@ -37,7 +37,9 @@ public class DrumTest implements DrumListener
         Drum<V, A> drum = new DrumBuilder<>("keyValueName", V.class, A.class)
                                            .numBuckets(4).bufferSize(64)
                                            .dispatcher(new LogFileDispatcher<>())
-                                           .listener(this).build();
+                                           .listener(this)
+                                           .factory(BerkeleyDBStoreMergerFactory.class)
+                                           .build();
         ...
         
         drum.dispose();
@@ -53,12 +55,13 @@ public class DrumTest implements DrumListener
 }
 ```
 
-As the API makes use of an own serialization mechanism, `V` and `A`, which are the types for values and auxiliary data 
-attached to the key/value tuple, need to implement either `ByteSerializer<T>` or `AppendableData<T>`. Currently this API
-ships with two pre-made serializers: `StringSerializer` which handles Java Strings and `ObjectSerializer<O>`.
-
+As the API makes use of the default or a customized serialization mechanism, `V` and `A`, which are the types for values 
+and auxiliary data attached to the key/value tuple, need to implement either `Serializable`, `ByteSerializable<T>` or
+ `AppendableData<T>`. The first interface is the default Java `Serializable` interface while the latter two are custom ones
+ which were introduced to minimize the byte load written to files to a bare minimum.
+ 
 The builder provides a series of configuration options. The only ones required are the constructor-parameters which 
-specify the instance name of the JDrum key/value store and the expected classes for key and values.
+specify the instance name of the JDrum key/value store and the expected classes for value and auxiliary data objects.
 
 | Method                      | Explanation                                                                               | Default |
 | --------------------------- | ----------------------------------------------------------------------------------------- | ------- |
@@ -100,12 +103,12 @@ data store. This sample makes use of a custom `PLDData` bean which is taken from
 short further below.
 
 ```java
-public class DrumTest extends NullDispatcher<PLDData, StringSerializer>
+public class DrumTest extends NullDispatcher<PLDData, String>
 {
     public void testDrum() throws DrumException, IOException
     {
-        Drum<PLDData, StringSerializer> drum = 
-                new DrumBuilder<>("pldIndegree", PLDData.class, StringSerializer.class)
+        Drum<PLDData, String> drum = 
+                new DrumBuilder<>("pldIndegree", PLDData.class, String.class)
                                  .numBuckets(4).bufferSize(64).dispatcher(this).build();
         ...
         
@@ -117,7 +120,7 @@ public class DrumTest extends NullDispatcher<PLDData, StringSerializer>
         neighbor1.add(3L);
         data1.setIndegreeNeighbors(neighbor1);
         
-        drum.update(DrumUtils.hash(url), data1, new StringSerializer(url));
+        drum.update(DrumUtils.hash(url), data1, url);
         
         PLDData data2 = new PLDData();
         data2.setHash(1);
@@ -126,7 +129,7 @@ public class DrumTest extends NullDispatcher<PLDData, StringSerializer>
         neighbor2.add(4L);
         data2.setIndegreeNeighbors(neighbor2);
         
-        drum.appendUpdate(DrumUtils.hash(url), data2, new StringSerializer(url));
+        drum.appendUpdate(DrumUtils.hash(url), data2, url);
         
         ...
         
@@ -138,7 +141,7 @@ public class DrumTest extends NullDispatcher<PLDData, StringSerializer>
     // get the results delivered once the data is merged with the backing data store
     
     @Override
-    public void update(Long key, PLDData data, StringSerializer aux)
+    public void update(Long key, PLDData data, String aux)
     {
         ...
         
@@ -167,7 +170,7 @@ the merge-phase of the disk bucket files actually occurred.
 A simple dispatcher which just prints the output to the console could look like this: 
 
 ```java
-public class ConsoleDispatcher<V extends ByteSerializer<V>, A extends ByteSerializer<A>> extends NullDispatcher<V, A>
+public class ConsoleDispatcher<V extends Serializer, A extends Serializer> extends NullDispatcher<V, A>
 {
     @Override
     public void uniqueKeyCheck(Long key)
@@ -197,12 +200,19 @@ public class ConsoleDispatcher<V extends ByteSerializer<V>, A extends ByteSerial
 
 ### Creating own serializable data
 
-In order to persist more complex objects a custom serializable object needs to be created. As the current version of the
-JDrum API ships with a custom serialization mechanism an object which should be serialized to the backing data store
-either needs to implement `ByteSerializer<T>` or `AppendableData<T>`.
+JDrum supports the default serialization mechanism offered by Java, though this creates a lot more byte and overhead
+then the data actually requires as Java will serialize the class name and other meta data as well, even on utilizing
+`writeObject(ObjectOutputStream)` and `readObject(ObjectInputStream)`. To tackle this issue, JDrum provides two further
+interfaces: `ByteSerializable<T>` and `AppendableData<T>`.
 
-The primer one simply transforms the state of an object to a byte array while the latter one also contains a method for
-appending data.
+The former one is a `Serializable` replacement which also extends this interface and requires an implementation to 
+define two methods `public byte[] toBytes() { ... }` and `public T readBytes(byte[] bytes)`. The first method here will
+transform the current state of an object to bytes whereas the second method will take a byte array and convert it to a
+new instance of this class.
+
+`AppendableData<T>` extends `ByteSerializable<T>` by a further method `public void append(T data)` which will append
+the internal state stored in the provided data object to the object the method was invoked on. Here an implementing 
+object should merge the given data into its current state.
 
 Below is a small excerpt from the `PLDData` bean used in the JIRLbot framework:
 
@@ -236,8 +246,8 @@ public class PLDData implements AppendableData<PLDData>
     
     // serialize object to bytes
     @Override
-    public synchronized byte[] toBytes()
-    {        
+    public byte[] toBytes()
+    {
         int size = 12 + 8 * this.indegreeNeighbors.size() + 4;
         byte[] totalBytes = new byte[size];
         byte[] keyBytes = DrumUtils.long2bytes(this.hash); // 8 bytes
@@ -257,9 +267,9 @@ public class PLDData implements AppendableData<PLDData>
         return totalBytes;
     }
 
-    // deserialize data
+    // deserialize byte to object
     @Override
-    public synchronized PLDData readBytes(byte[] bytes)
+    public PLDData readBytes(byte[] bytes)
     {
         byte[] keyBytes = new byte[8];
         System.arraycopy(bytes, 0, keyBytes, 0, 8);
@@ -284,7 +294,7 @@ public class PLDData implements AppendableData<PLDData>
         System.arraycopy(bytes, pos, budgetBytes, 0, 4);
         int budget = DrumUtils.bytes2int(budgetBytes);
 
-        PLDData data = new PLDData();
+        PLDTestData data = new PLDTestData();
         data.setHash(hash);
         data.setIndegreeNeighbors(indegreeNeighbors);
         data.setBudget(budget);

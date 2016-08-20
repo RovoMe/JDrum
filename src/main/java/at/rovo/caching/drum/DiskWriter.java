@@ -24,25 +24,11 @@ public interface DiskWriter extends Runnable, DrumRuntimeListener
     int getBucketId();
 
     /**
-     * Shares the locking mechanism with a caller to access the managed disk file.
+     * Returns a handle to the disk bucket files managed by this writer.
      *
-     * @return The lock used to get access to the managed disk file.
+     * @return A handle to the disk bucket files
      */
-    Semaphore accessDiskFile();
-
-    /**
-     * Returns a handle of the bucket file which stores key/value data.
-     *
-     * @return The reference to the key/value bucket file
-     */
-    DiskFileHandle getKVFile();
-
-    /**
-     * Returns a handle of the bucket file which stores the auxiliary data that is attached to a key
-     *
-     * @return The reference to the auxiliary bucket file
-     */
-    DiskFileHandle getAuxFile();
+    DiskFileHandle getDiskFiles();
 
     /**
      * Returns the number of bytes written to the key/value disk file.

@@ -28,6 +28,5 @@ public class DrumExceptionHandler implements UncaughtExceptionHandler
                       e.getClass().getName() + " - " + e.getLocalizedMessage());
             LOG.catching(Level.ERROR, e);
         }
-        System.exit(1);
     }
 }

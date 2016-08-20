@@ -108,7 +108,7 @@ public abstract class DrumStoreFactory<V extends Serializable, A extends Seriali
      * @throws DrumException
      *         If the backing data store could not be created
      */
-    public static <V extends Serializable, A extends Serializable> DrumStoreFactory<V, A> getDefaultStorageFactory(
+    static <V extends Serializable, A extends Serializable> DrumStoreFactory<V, A> getDefaultStorageFactory(
             String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass, Class<A> auxClass,
             DrumEventDispatcher eventDispatcher) throws DrumException
     {
