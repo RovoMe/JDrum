@@ -50,7 +50,6 @@ public class FlippableDataContainer<E extends InMemoryEntry>
             while (true)
             {
                 Queue<E> queue = data.getQueue();
-                queue.add(value);
                 FlippableData<E> merged =
                         new FlippableData<>(queue,
                                             data.getKeyLength() + keyLength,
@@ -58,6 +57,7 @@ public class FlippableDataContainer<E extends InMemoryEntry>
                                             data.getAuxLength() + auxLength);
                 if (dataObj.compareAndSet(data, merged))
                 {
+                    merged.getQueue().add(value);
                     return merged;
                 }
             }

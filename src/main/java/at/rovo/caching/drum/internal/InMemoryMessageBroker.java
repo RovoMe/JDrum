@@ -12,7 +12,6 @@ import at.rovo.common.annotations.ThreadSafe;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -291,11 +290,8 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
 
         if (LOG.isTraceEnabled())
         {
-            Queue<T> copy = new ConcurrentLinkedQueue<>(queue);
-//            copy.forEach(entry -> LOG.trace("[{}] - [{}] - Transmitted: {}", this.drumName, this.bucketId, entry));
-            for (T entry : copy) {
-                LOG.trace("[{}] - [{}] - Size: {} - Transmitted: {}", this.drumName, this.bucketId, copy.size(), entry);
-            }
+            queue.forEach(entry -> LOG.trace("[{}] - [{}] - Size: {} - Transmitted: {}",
+                                             this.drumName, this.bucketId, queue.size(), entry));
         }
 
         return queue;
