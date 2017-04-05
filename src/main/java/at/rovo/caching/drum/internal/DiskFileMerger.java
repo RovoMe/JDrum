@@ -12,8 +12,10 @@ import at.rovo.caching.drum.NotAppendableException;
 import at.rovo.caching.drum.event.MergerState;
 import at.rovo.caching.drum.event.MergerStateUpdate;
 import at.rovo.caching.drum.event.StorageEvent;
+import at.rovo.caching.drum.util.DrumExceptionHandler;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.KeyComparator;
+import at.rovo.caching.drum.util.NamedThreadFactory;
 import at.rovo.common.annotations.GuardedBy;
 import at.rovo.common.annotations.ThreadSafe;
 import java.io.IOException;
@@ -24,6 +26,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -70,17 +75,15 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
     /** The lock condition who will perform the {@link Condition#await()} and {@link Condition#signal()} on the merging
      * thread **/
     private final Condition mergeRequest = mergeLock.newCondition();
+    /** Tracks shutdown disk writer instances. Once all disk writers are gone, the merger can run through all disk
+     * bucket files once more and synchronize data with the backing data store **/
     private final CountDownLatch finishedWriters;
+    private final ExecutorService executor;
 
     // mutable members
     /** Specifies if a merge was requested by one of the disk writers **/
     @GuardedBy("mergeLock")
     private volatile boolean isMergeRequested = false;
-
-    /** Used during merge with disk **/
-    private List<InMemoryEntry<V, A>> sortedMergeBuffer = null;
-    /** Original positions of elements in buckets **/
-    private List<Integer> unsortingHelper = null;
 
     /** Indicates if the thread the runnable part is running in should stop its work **/
     private volatile boolean stopRequested = false;
@@ -98,13 +101,17 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
         this.drumName = drumName;
         this.eventDispatcher = eventDispatcher;
         this.diskWriters = new ArrayList<>(numBuckets);
-        this.sortedMergeBuffer = new ArrayList<>();
 
         this.dispatcher = dispatcher;
         this.valueClass = valueClass;
         this.auxClass = auxClass;
 
         this.finishedWriters = new CountDownLatch(numBuckets);
+        DrumExceptionHandler exceptionHandler = new DrumExceptionHandler();
+        NamedThreadFactory namedFactory = new NamedThreadFactory();
+        namedFactory.setName(this.drumName + "-Dispatcher");
+        namedFactory.setUncaughtExceptionHandler(exceptionHandler);
+        this.executor = Executors.newSingleThreadExecutor(namedFactory);
     }
 
     @Override
@@ -236,20 +243,22 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
                 // Here the 4 steps of merging the bucket files into the backing data store are managed:
                 //
                 // 1) read key/value disk file into the bucket buffer and sort it
-                if (this.readDataFromDiskFile(writer))
+                List<InMemoryEntry<V, A>> sortedMergeBuffer = new ArrayList<>();
+                if (this.readDataFromDiskFile(writer, sortedMergeBuffer))
                 {
-                    this.sortMergeBuffer();
+                    List<Integer> unsortingHelper = new ArrayList<>(sortedMergeBuffer.size());
+                    this.sortMergeBuffer(sortedMergeBuffer);
                     // 2) backing data store is sequentially read in chunks of delta bytes and compared with the keys in
                     //    the sorted bucket buffer
                     // ... combined into 3)
                     // 3) those key/value pairs that require an update are merged with the contents of the disk cache
                     //    and written to the data store
-                    this.compareDataWithDataStore(this.sortedMergeBuffer);
+                    this.compareDataWithDataStore(sortedMergeBuffer);
                     // 4) after all unique keys are found the original order of the bucket buffer is restored and the
                     //    auxiliary data file is read in chunks of delta bytes to process auxiliary data of unique keys
-                    this.unsortMergeBuffer();
-                    this.readAuxBucketForDispatching(writer);
-                    this.dispatch();
+                    this.unsortMergeBuffer(sortedMergeBuffer, unsortingHelper);
+                    this.readAuxBucketForDispatching(writer, sortedMergeBuffer, unsortingHelper);
+                    this.dispatch(sortedMergeBuffer, unsortingHelper);
 
                     LOG.debug("[{}] - [{}] - resetting disk file {}",
                               this.drumName, writer.getBucketId(), writer.getBucketId());
@@ -289,14 +298,6 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
                     LOG.trace("[{}] - [{}] - Releasing lock of disk bucket file", this.drumName, writer.getBucketId());
                     writer.getDiskFiles().getLock().release();
                 }
-                if (this.unsortingHelper != null)
-                {
-                    this.unsortingHelper.clear();
-                }
-                if (this.sortedMergeBuffer != null)
-                {
-                    this.sortedMergeBuffer.clear();
-                }
             }
         }
 
@@ -312,7 +313,7 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
      *
      * @return Returns true if data could be read from the disk bucket file, false otherwise
      */
-    private boolean readDataFromDiskFile(DiskWriter writer) throws DrumException
+    private boolean readDataFromDiskFile(DiskWriter writer, List<InMemoryEntry<V,A>> sortedMergeBuffer) throws DrumException
     {
         if (writer.getKVFileBytesWritten() == 0)
         {
@@ -339,9 +340,9 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
                 InMemoryEntry<V, A> data = new InMemoryEntry<>();
 
                 // add the data element to the list we will sort later on
-                this.sortedMergeBuffer.add(data);
+                sortedMergeBuffer.add(data);
                 // keep track of the original position
-                data.setPosition(this.sortedMergeBuffer.size() - 1);
+                data.setPosition(sortedMergeBuffer.size() - 1);
 
                 // Set the operation of the query the key was sent with
                 char c = (char) kvFile.readByte();
@@ -365,7 +366,6 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
                           "valueBytes: '{}'",
                           this.drumName, writer.getBucketId(), op, key, valueSize, Arrays.toString(byteValue));
             }
-            this.unsortingHelper = new ArrayList<>(this.sortedMergeBuffer.size());
             kvFile.setLength(0);
         }
         catch (Exception e)
@@ -380,32 +380,32 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
     /**
      * Sorts the merge buffer based on the key-value.
      */
-    private void sortMergeBuffer()
+    private void sortMergeBuffer(List<InMemoryEntry<V,A>> sortedMergeBuffer)
     {
         LOG.debug("[{}] - sorting merge buffer", this.drumName);
-        Collections.sort(this.sortedMergeBuffer, new KeyComparator<>());
+        Collections.sort(sortedMergeBuffer, new KeyComparator<>());
     }
 
     /**
-     * Reverts the origin order of the merge buffer. {@link #unsortingHelper} afterwards contains the origin position of
-     * the merge buffer, while the {@link #sortedMergeBuffer} is not touched!
+     * Reverts the origin order of the merge buffer. <em>unsortingHelper</em> afterwards contains the origin position of
+     * the merge buffer, while the <em>sortedMergeBuffer</em> is not touched!
      */
-    private void unsortMergeBuffer()
+    private void unsortMergeBuffer(List<InMemoryEntry<V,A>> sortedMergeBuffer, List<Integer> unsortingHelper)
     {
         LOG.debug("[{}] - unsorting merge buffer", this.drumName);
         // When elements were read into the merge buffer their original positions were stored. Now I use those positions
         // as keys to "sort" them back in linear time. Traversing unsortingHelper gives the indexes into
         // sortedMergeBuffer considering the original order.
-        int total = this.sortedMergeBuffer.size();
+        int total = sortedMergeBuffer.size();
         for (int i = 0; i < total; ++i)
         {
-            this.unsortingHelper.add(i);
+            unsortingHelper.add(i);
         }
         for (int i = 0; i < total; ++i)
         {
-            InMemoryEntry<V, A> data = this.sortedMergeBuffer.get(i);
+            InMemoryEntry<V, A> data = sortedMergeBuffer.get(i);
             int original = data.getPosition();
-            this.unsortingHelper.set(original, i);
+            unsortingHelper.set(original, i);
         }
     }
 
@@ -418,7 +418,9 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
      * @param writer
      *         The already locked writer instance we access its disk file
      */
-    private void readAuxBucketForDispatching(DiskWriter writer) throws DrumException
+    private void readAuxBucketForDispatching(DiskWriter writer,
+                                             List<InMemoryEntry<V,A>> sortedMergeBuffer,
+                                             List<Integer> unsortingHelper) throws DrumException
     {
         // get the number of bytes written since the last merge
         long auxWritten = writer.getAuxFileBytesWritte();
@@ -439,15 +441,15 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
             }
             auxFile.seek(0);
 
-            while (auxFile.getFilePointer() < auxWritten && i < this.unsortingHelper.size())
+            while (auxFile.getFilePointer() < auxWritten && i < unsortingHelper.size())
             {
                 // check if there is data available to store the auxiliary information to
-                if (null == this.unsortingHelper.get(i))
+                if (null == unsortingHelper.get(i))
                 {
                     continue;
                 }
                 int index = unsortingHelper.get(i);
-                InMemoryEntry<V, A> data = this.sortedMergeBuffer.get(index);
+                InMemoryEntry<V, A> data = sortedMergeBuffer.get(index);
 
                 // the first value written to the cache is always the size of bytes written to the file - this is a
                 // 32 bit integer value in Java!
@@ -484,65 +486,65 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
     /**
      * Dispatches {@link DrumResult}s to the caller.
      */
-    private void dispatch() throws DrumException
+    private void dispatch(final List<InMemoryEntry<V,A>> sortedMergeBuffer, final List<Integer> unsortingHelper)
+            throws DrumException
     {
-        LOG.debug("[{}] - dispatching results", this.drumName);
-        // get the number of data to dispatch
-        int total = this.sortedMergeBuffer.size();
-        for (int i = 0; i < total; ++i)
+        executor.execute(() ->
         {
-            // check if there is data available to dispatch
-            if (null == this.unsortingHelper.get(i))
+            LOG.debug("[{}] - dispatching results", this.drumName);
+            // get the number of data to dispatch
+            int total = sortedMergeBuffer.size();
+            for (int i = 0; i < total; ++i)
             {
-                continue;
-            }
-            // if so, get the element index of the original order
-            int dataIndex = this.unsortingHelper.get(i);
-            // ... and use it to retrieve the actual key/value-pair from the sorted list
-            InMemoryEntry<V, A> data = this.sortedMergeBuffer.get(dataIndex);
-
-            // now retrieving the key, the action, the result of the query and the auxiliary data of the key is fairly
-            // easy
-            Long key = data.getKey();
-            DrumOperation op = data.getOperation();
-            DrumResult result = data.getResult();
-            A aux = data.getAuxiliary();
-
-            LOG.debug("[{}] - dispatching: op: {}; key: {}; value: {}; aux: {}; result: {}", this.drumName,
-                      data.getOperation(), data.getKey(), data.getValue(), data.getAuxiliary(), data.getResult());
-
-            // inform the dispatcher of the outcome
-            if (DrumOperation.CHECK.equals(op) && DrumResult.UNIQUE_KEY.equals(result))
-            {
-                this.dispatcher.uniqueKeyCheck(key, aux);
-            }
-            else
-            {
-                V value = data.getValue();
-
-                if (DrumOperation.CHECK.equals(op) && DrumResult.DUPLICATE_KEY.equals(result))
+                // check if there is data available to dispatch
+                if (null == unsortingHelper.get(i))
                 {
-                    this.dispatcher.duplicateKeyCheck(key, value, aux);
+                    continue;
                 }
-                else if (DrumOperation.CHECK_UPDATE.equals(op) && DrumResult.UNIQUE_KEY.equals(result))
+                // if so, get the element index of the original order
+                int dataIndex = unsortingHelper.get(i);
+                // ... and use it to retrieve the actual key/value-pair from the sorted list
+                InMemoryEntry<V, A> data = sortedMergeBuffer.get(dataIndex);
+
+                // now retrieving the key, the action, the result of the query and the auxiliary data of the key is
+                // fairly easy
+                Long key = data.getKey();
+                DrumOperation op = data.getOperation();
+                DrumResult result = data.getResult();
+                A aux = data.getAuxiliary();
+
+                LOG.debug("[{}] - dispatching: op: {}; key: {}; value: {}; aux: {}; result: {}", this.drumName,
+                          data.getOperation(), data.getKey(), data.getValue(), data.getAuxiliary(), data.getResult());
+
+                // inform the dispatcher of the outcome
+                if (DrumOperation.CHECK.equals(op) && DrumResult.UNIQUE_KEY.equals(result))
                 {
-                    this.numUniqueEntries++;
-                    this.dispatcher.uniqueKeyUpdate(key, value, aux);
-                }
-                else if (DrumOperation.CHECK_UPDATE.equals(op) && DrumResult.DUPLICATE_KEY.equals(result))
-                {
-                    this.dispatcher.duplicateKeyUpdate(key, value, aux);
-                }
-                else if (DrumOperation.UPDATE.equals(op) || DrumOperation.APPEND_UPDATE.equals(op))
-                {
-                    this.dispatcher.update(key, value, aux);
+                    this.dispatcher.uniqueKeyCheck(key, aux);
                 }
                 else
                 {
-                    throw new DrumException("Invalid action method selected on data element: " + data);
+                    V value = data.getValue();
+
+                    if (DrumOperation.CHECK.equals(op) && DrumResult.DUPLICATE_KEY.equals(result))
+                    {
+                        this.dispatcher.duplicateKeyCheck(key, value, aux);
+                    }
+                    else if (DrumOperation.CHECK_UPDATE.equals(op) && DrumResult.UNIQUE_KEY.equals(result))
+                    {
+                        this.numUniqueEntries++;
+                        this.dispatcher.uniqueKeyUpdate(key, value, aux);
+                    }
+                    else if (DrumOperation.CHECK_UPDATE.equals(op) && DrumResult.DUPLICATE_KEY.equals(result))
+                    {
+                        this.dispatcher.duplicateKeyUpdate(key, value, aux);
+                    }
+                    else if (DrumOperation.UPDATE.equals(op) || DrumOperation.APPEND_UPDATE.equals(op))
+                    {
+                        this.dispatcher.update(key, value, aux);
+                    }
                 }
             }
-        }
+        });
     }
 
     /**
@@ -645,6 +647,16 @@ public abstract class DiskFileMerger<V extends Serializable, A extends Serializa
         finally
         {
             this.mergeLock.unlock();
+        }
+
+        this.executor.shutdown();
+        try
+        {
+            this.executor.awaitTermination(10, TimeUnit.SECONDS);
+        }
+        catch (InterruptedException e)
+        {
+            LOG.error("Error while terminating threads", e);
         }
     }
 }
