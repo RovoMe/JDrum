@@ -8,6 +8,7 @@ import at.rovo.caching.drum.DrumException;
 import at.rovo.caching.drum.DrumListener;
 import at.rovo.caching.drum.DrumOperation;
 import at.rovo.caching.drum.Merger;
+import at.rovo.caching.drum.util.DiskFileHandle;
 import at.rovo.caching.drum.util.DrumExceptionHandler;
 import at.rovo.caching.drum.util.DrumUtils;
 import at.rovo.caching.drum.util.NamedThreadFactory;
@@ -95,10 +96,12 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
 
         for (int i = 0; i < numBuckets; i++)
         {
+            int bufferSize = settings.getBufferSize();
             Broker<InMemoryEntry<V, A>, V> broker =
-                    new InMemoryMessageBroker<>(drumName, i, settings.getBufferSize(), eventDispatcher);
+                    new InMemoryMessageBroker<>(drumName, i, bufferSize, eventDispatcher);
             DiskWriter consumer =
-                    new DiskBucketWriter<>(drumName, i, settings.getBufferSize(), broker, merger, eventDispatcher);
+                    new DiskBucketWriter<>(drumName, i, bufferSize, broker, merger, eventDispatcher,
+                                           new DiskFileHandle(this.drumName, i));
 
             this.inMemoryBuffer.add(broker);
             this.diskWriters.add(consumer);

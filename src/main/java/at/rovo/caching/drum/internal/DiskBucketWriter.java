@@ -12,7 +12,6 @@ import at.rovo.caching.drum.event.DiskWriterStateUpdate;
 import at.rovo.caching.drum.util.DiskFileHandle;
 import at.rovo.common.annotations.GuardedBy;
 import at.rovo.common.annotations.ThreadSafe;
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
@@ -90,7 +89,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      *         The broker who administers the in memory data
      */
     public DiskBucketWriter(String drumName, int bucketId, int bucketByteSize, Broker<InMemoryEntry<V, A>, V> broker,
-                            Merger merger, DrumEventDispatcher eventDispatcher) throws DrumException
+                            Merger merger, DrumEventDispatcher eventDispatcher, DiskFileHandle diskFiles)
+            throws DrumException
     {
         this.drumName = drumName;
         this.bucketId = bucketId;
@@ -98,38 +98,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         this.broker = broker;
         this.merger = merger;
         this.eventDispatcher = eventDispatcher;
-
-        // check if the cache sub-directory exists - if not create one
-        File cacheDir = new File(System.getProperty("user.dir") + "/cache");
-        if (!cacheDir.exists())
-        {
-            if (!cacheDir.mkdir())
-            {
-                throw new DrumException("No cache directory found and could not initialize one!");
-            }
-        }
-        // check if a sub-directory inside the cache sub-directory exists that has the name of this instance - if not
-        // create it
-        File file = new File(System.getProperty("user.dir") + "/cache/" + this.drumName);
-        if (!file.exists())
-        {
-            if (!file.mkdir())
-            {
-                throw new DrumException("No cache data dir found and could not initialize one!");
-            }
-        }
-
-        try
-        {
-            String fileName = "bucket" + bucketId;
-            this.diskFiles = new DiskFileHandle(fileName,
-                                                new RandomAccessFile(new File(cacheDir, "/" + fileName + ".kv"), "rw"),
-                                                new RandomAccessFile(new File(cacheDir, "/" + fileName + ".aux"), "rw"));
-        }
-        catch (Exception e)
-        {
-            throw new DrumException("Error creating bucket file!", e);
-        }
+        this.diskFiles = diskFiles;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +191,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      */
     private void feedBucket(Queue<InMemoryEntry<V, A>> inMemoryData) throws DrumException
     {
-        boolean lockAquired = false;
+        boolean lockAcquired = false;
         try
         {
             if (inMemoryData.isEmpty())
@@ -236,7 +205,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
             // do not interrupt the file access as otherwise data might get lost!
             this.diskFiles.getLock().acquireUninterruptibly();
             LOG.trace("[{}] - [{}] - Acquired lock of disk bucket file", this.drumName, this.bucketId);
-            lockAquired = true;
+            lockAcquired = true;
             updateState(DiskWriterState.WRITING);
             final RandomAccessFile kvFile = this.diskFiles.getKVFile();
             final RandomAccessFile auxFile = this.diskFiles.getAuxFile();
@@ -343,7 +312,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         }
         finally
         {
-            if (lockAquired)
+            if (lockAcquired)
             {
                 LOG.trace("[{}] - [{}] - Releasing lock of disk bucket file", this.drumName, this.bucketId);
                 this.diskFiles.getLock().release();
@@ -444,34 +413,15 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     {
         try
         {
-            this.closeFile(this.diskFiles.getKVFile());
-            this.closeFile(this.diskFiles.getAuxFile());
+            this.diskFiles.close();
         }
-        catch (DrumException e)
+        catch (IOException e)
         {
             LOG.error("Error while closing disk bucket writer " + this.drumName + "-" + this.bucketId + "!", e);
         }
-    }
-
-    /**
-     * Closes a previously opened {@link RandomAccessFile} and frees resources held by the application.
-     *
-     * @param bucketFile
-     *         The previously opened bucket file which needs to be closed
-     */
-    private void closeFile(RandomAccessFile bucketFile) throws DrumException
-    {
-        try
-        {
-            bucketFile.close();
-        }
-        catch (Exception e)
-        {
-            throw new DrumException("Exception closing disk bucket!");
-        }
         finally
         {
-            LOG.debug("[{}] - [{}] - Closing file {}", this.drumName, this.bucketId, bucketFile);
+            LOG.debug("[{}] - [{}] - Closed disk bucket files successfully", this.drumName, this.bucketId);
         }
     }
 }

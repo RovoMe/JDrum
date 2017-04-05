@@ -17,14 +17,10 @@ public class Test implements DrumListener, Dispatcher<String, String>
     /** The timestamp the test was started at **/
     private final long start;
     /** The number of updates performed **/
-    // private volatile int updates;
     private AtomicInteger updates = new AtomicInteger(0);
     /** The number of answers received **/
-    // private volatile int answers;
     private AtomicInteger answers = new AtomicInteger(0);
 
-    /** The lock object to synchronize **/
-    private final Object statLock = new Object();
     /** A random number calculator **/
     private final Random random = new Random();
 
@@ -103,12 +99,6 @@ public class Test implements DrumListener, Dispatcher<String, String>
                     drum.checkUpdate(val, null, "" + val);
                     updates.incrementAndGet();
                 }
-
-                // synchronized (statLock) {
-                // while (answers < updates) {
-                // statLock.wait(1000);
-                // }
-                // }
             }
         }
         catch (Exception e)
@@ -146,22 +136,14 @@ public class Test implements DrumListener, Dispatcher<String, String>
     @Override
     public void uniqueKeyUpdate(Long key, String value, String aux)
     {
-//        synchronized (statLock)
-        {
-            answers.incrementAndGet();
-//            statLock.notifyAll();
-        }
+        answers.incrementAndGet();
     }
 
     @Override
     public void duplicateKeyUpdate(Long key, String value, String aux)
     {
         System.out.println("dup update " + key + " " + aux);
-//        synchronized (statLock)
-        {
-            answers.incrementAndGet();
-//            statLock.notifyAll();
-        }
+        answers.incrementAndGet();
     }
 
     @Override

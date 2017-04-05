@@ -1,5 +1,6 @@
 package at.rovo.caching.drum.util;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.Semaphore;
@@ -27,19 +28,45 @@ public class DiskFileHandle
     /**
      * Creates a new immutable instance for the given <em>file</em> with the specified name.
      *
-     * @param fileName
+     * @param drumName
      *         The name without the extension of the file this handle is created for
-     * @param kvFile
+     * @param bucketId
      *         A reference to the key/value file
-     * @param auxFile
-     *         A reference to the auxiliary data file
      */
-    public DiskFileHandle(String fileName, RandomAccessFile kvFile, RandomAccessFile auxFile)
+    public DiskFileHandle(final String drumName, final int bucketId)
     {
-        this.kvFileName = fileName + ".kv";
-        this.auxFileName = fileName + ".aux";
-        this.kvFile = kvFile;
-        this.auxFile = auxFile;
+        this.kvFileName = "bucket" + bucketId + ".kv";
+        this.auxFileName = "bucket" + bucketId + ".aux";
+
+        // check if the cache sub-directory exists - if not create one
+        File cacheDir = new File(System.getProperty("user.dir") + "/cache");
+        if (!cacheDir.exists())
+        {
+            if (!cacheDir.mkdir())
+            {
+                throw new RuntimeException("No cache directory found and could not initialize one!");
+            }
+        }
+        // check if a sub-directory inside the cache sub-directory exists that has the name of this instance - if not
+        // create it
+        File drumDir = new File(System.getProperty("user.dir") + "/cache/" + drumName);
+        if (!drumDir.exists())
+        {
+            if (!drumDir.mkdir())
+            {
+                throw new RuntimeException("No cache data dir found and could not initialize one!");
+            }
+        }
+
+        try
+        {
+            this.kvFile = new RandomAccessFile(new File(drumDir, "/" + this.kvFileName), "rw");
+            this.auxFile = new RandomAccessFile(new File(drumDir, "/" + this.auxFileName), "rw");
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Error creating bucket file!", e);
+        }
     }
 
     /**
@@ -92,9 +119,45 @@ public class DiskFileHandle
         return this.lock;
     }
 
+    /**
+     * Resets the cursor of the key/value and auxiliary data file back to the start.
+     *
+     * @throws IOException If the position of the cursor could not reset to the beginning
+     */
     public void reset() throws IOException
     {
         this.kvFile.seek(0);
         this.auxFile.seek(0);
+    }
+
+    /**
+     * Closes the files managed by this instance.
+     *
+     * @throws IOException If during the close of the managed files an error occurred
+     */
+    public void close() throws IOException
+    {
+        IOException caught = null;
+        try
+        {
+            this.kvFile.close();
+        }
+        catch (IOException ex)
+        {
+            caught = ex;
+        }
+        try
+        {
+            this.auxFile.close();
+        }
+        catch (IOException ex)
+        {
+            caught = ex;
+        }
+
+        if (caught != null)
+        {
+            throw caught;
+        }
     }
 }
