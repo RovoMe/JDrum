@@ -221,11 +221,11 @@ public class BerkeleyDBStoreMerger<V extends Serializable, A extends Serializabl
                 LOG.info("[{}] - synchronizing key: '{}' operation: '{}' with repository - result: '{}'",
                          this.drumName, key, op, element.getResult());
 
-                // Persist modifications
-                this.berkeleyDB.sync();
-
-                this.numUniqueEntries = this.berkeleyDB.count();
             }
+            // Persist modifications
+            this.berkeleyDB.sync();
+
+            this.numUniqueEntries = this.berkeleyDB.count();
         }
         catch (Exception e)
         {

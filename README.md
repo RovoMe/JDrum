@@ -21,7 +21,7 @@ data store, responses are dispatched asynchronously via a `Dispatcher` interface
 This implementation extends the original architecture with an `appendUpdate` operation which appends data to the value
 segment of the key/value tuple. 
 
-As of now only the self-written `CacheFile` data store and a `Berkeley DB` key-value store are supported by JDrum.
+As of now only a self-written `DataStore` and a `Berkeley DB` key-value store are supported by JDrum.
 
 ## Usage
 

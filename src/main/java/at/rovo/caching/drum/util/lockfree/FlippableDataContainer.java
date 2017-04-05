@@ -46,9 +46,9 @@ public class FlippableDataContainer<E extends InMemoryEntry>
             int valLength = value.getValueAsBytes() != null ? value.getValueAsBytes().length : 0;
             int auxLength = value.getAuxiliaryAsBytes() != null ? value.getAuxiliaryAsBytes().length : 0;
 
-            FlippableData<E> data = dataObj.get();
             while (true)
             {
+                FlippableData<E> data = dataObj.get();
                 Queue<E> queue = data.getQueue();
                 FlippableData<E> merged =
                         new FlippableData<>(queue,
