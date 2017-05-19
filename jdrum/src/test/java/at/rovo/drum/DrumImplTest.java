@@ -81,7 +81,6 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
         {
             if (drum != null)
             {
-                // grant jdrum a bit time in order to push the result to the thread executor
                 drum.dispose();
             }
         }
@@ -120,9 +119,8 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
         drum.checkUpdate(DrumUtils.hash(url5), null, url5);
 
         // as new URLs are added to the DRUM instance very fast it may happen that the main thread reaches the end
-        // of this block (or the synchronize method below) without giving its threads a chance to perform their
-        // tasks - buffers are examined every 10 ms so the wait should be a bit longer than those 10 ms
-        Thread.sleep(50L);
+        // of this block without giving its threads a chance to perform their tasks
+        Thread.sleep(20L);
 
         drum.checkUpdate(DrumUtils.hash(url6), null, url6);
         LOG.info("done!");
