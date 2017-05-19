@@ -2,21 +2,28 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>Drum</artifactId>
+    <parent>
+        <groupId>at.rovo</groupId>
+        <artifactId>super-pom</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jdrum-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>jdrum-commons</module>
+        <module>jdrum-datastore-base</module>
+        <module>jdrum-datastore-simple</module>
+        <module>jdrum</module>
+    </modules>
 
     <name>Disk Repository with Update Management (DRUM)</name>
     <description>Drum divides data received via its check, checkUpdate or update method into a number of buckets and
         stores them efficiently with the help of bucket sort into bucket disk files. If a disk files gets full all the
         data is stored and compared with the data in a general backend data store and updated if required.
     </description>
-
-    <parent>
-        <groupId>at.rovo</groupId>
-        <artifactId>super-pom</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
-    </parent>
 
     <dependencies>
         <!-- Log4J -->
@@ -27,12 +34,6 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-        </dependency>
-        <!-- berkeley db -->
-        <dependency>
-            <groupId>com.sleepycat</groupId>
-            <artifactId>je</artifactId>
-            <version>${sleepycat.version}</version>
         </dependency>
         <!-- Common -->
         <dependency>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>jdrum-parent</artifactId>
+        <groupId>at.rovo</groupId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>jdrum</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>Common</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>jdrum-commons</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>jdrum-datastore-base</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <!-- JUnit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- UnitTest, IntegrationTest, ... annotations-->
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>Common</artifactId>
+            <version>${commons.version}</version>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency>
+        <!-- Test data store to use for testing-->
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>jdrum-datastore-simple</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>at.rovo</groupId>
+            <artifactId>jdrum-datastore-simple</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency>
+    </dependencies>
+</project>
