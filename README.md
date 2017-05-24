@@ -109,7 +109,11 @@ public class DrumTest extends NullDispatcher<PLDData, String>
     {
         Drum<PLDData, String> drum = 
                 new DrumBuilder<>("pldIndegree", PLDData.class, String.class)
-                                 .numBuckets(4).bufferSize(64).dispatcher(this).build();
+                                 .numBuckets(4)
+                                 .bufferSize(64)
+                                 .dispatcher(this)
+                                 .datastore(SimpleDataStoreMerger.class)
+                                 .build();
         ...
         
         String url = "https://github.com/RovoMe/JDrum";
