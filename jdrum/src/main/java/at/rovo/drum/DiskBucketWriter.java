@@ -9,11 +9,11 @@ import at.rovo.common.annotations.ThreadSafe;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.Queue;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <em>DiskBucketWriter</em> is a consumer in the producer-consumer pattern and it takes data stored from the in-memory
@@ -37,7 +37,7 @@ import org.apache.logging.log4j.Logger;
 public class DiskBucketWriter<V extends Serializable, A extends Serializable> implements DiskWriter
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(DiskBucketWriter.class);
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     // immutable fields
     /** The name of the DRUM instance **/
@@ -138,8 +138,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
             }
             catch (Exception e)
             {
-                LOG.error("[{}] - [{}] - caught exception: {}", this.drumName, this.bucketId, e.getLocalizedMessage());
-                LOG.catching(Level.ERROR, e);
+                LOG.error("[" + this.drumName + "] - ["+ this.bucketId + "] - caught exception: " + e.getLocalizedMessage(), e);
                 updateState(DiskWriterState.FINISHED_WITH_ERROR);
                 this.merger.writerDone();
                 Thread.currentThread().interrupt();
@@ -159,8 +158,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         }
         catch (DrumException ex)
         {
-            LOG.error("[{}] - [{}] - caught exception: {}", this.drumName, this.bucketId, ex.getLocalizedMessage());
-            LOG.catching(Level.ERROR, ex);
+            LOG.error("[" + this.drumName + "] - ["+ this.bucketId + "] - caught exception: " + ex.getLocalizedMessage(), ex);
             updateState(DiskWriterState.FINISHED_WITH_ERROR);
             this.merger.writerDone();
             return;

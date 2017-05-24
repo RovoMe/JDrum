@@ -2,8 +2,9 @@ package at.rovo.drum.utils;
 
 import at.rovo.drum.NullDispatcher;
 import java.io.Serializable;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.lang.invoke.MethodHandles;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dispatcher implementation which simply logs unique or duplicate key notification to a log file.
@@ -18,7 +19,7 @@ import org.apache.logging.log4j.Logger;
 public class LogFileDispatcher<V extends Serializable, A extends Serializable> extends NullDispatcher<V, A>
 {
     /** The logger instance used to log unique or duplicate key notifications **/
-    private final static Logger logger = LogManager.getLogger(LogFileDispatcher.class);
+    private final static Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     @Override
     public void uniqueKeyUpdate(Long key, V value, A aux)

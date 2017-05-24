@@ -8,10 +8,10 @@ import at.rovo.drum.util.DrumUtils;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of {@link SimpleDataStore} which is a key/value storage which supports updates of existing key/value pairs.
@@ -28,7 +28,7 @@ import org.apache.logging.log4j.Logger;
 public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataStore<V>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(SimpleDataStoreImpl.class);
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     /** The backing caching file to store data to and read it from **/
     private RandomAccessFile file = null;
     /** The last key written to the data storage **/
@@ -103,8 +103,7 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
             }
             catch (Exception e)
             {
-                LOG.error("[{}] - Error closing cache file!", this.drum);
-                LOG.catching(Level.ERROR, e);
+                LOG.error("[" + this.drum + "] - Error closing cache file!", e);
             }
         }
     }
@@ -125,8 +124,7 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
             }
             catch (Exception e)
             {
-                LOG.error("Error while resetting the file pointer! Reason {}", e.getMessage());
-                LOG.catching(Level.ERROR, e);
+                LOG.error("Error while resetting the file pointer! Reason " + e.getMessage(), e);
             }
         }
     }

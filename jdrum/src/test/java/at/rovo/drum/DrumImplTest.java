@@ -11,10 +11,10 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.assertTrue;
 
@@ -36,7 +36,7 @@ import static org.junit.Assert.assertTrue;
 @Category(IntegrationTest.class)
 public class DrumImplTest extends BaseDataStoreTest implements DrumListener
 {
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * Example-Output:
@@ -145,6 +145,6 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
     @Override
     public void update(DrumEvent<? extends DrumEvent<?>> event)
     {
-        LOG.debug(event);
+        LOG.debug(event.toString());
     }
 }

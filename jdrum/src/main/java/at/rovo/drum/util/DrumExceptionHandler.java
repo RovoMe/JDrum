@@ -1,9 +1,9 @@
 package at.rovo.drum.util;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.lang.invoke.MethodHandles;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Takes care of handling any exceptions caught in threads monitored by Javas
@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Logger;
 public class DrumExceptionHandler implements UncaughtExceptionHandler
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(DrumExceptionHandler.class);
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     @Override
     public void uncaughtException(Thread t, Throwable e)
@@ -24,8 +24,7 @@ public class DrumExceptionHandler implements UncaughtExceptionHandler
         if (LOG.isErrorEnabled())
         {
             LOG.error("Exception in Thread: " + t.getName() + "; Reason: " +
-                      e.getClass().getName() + " - " + e.getLocalizedMessage());
-            LOG.catching(Level.ERROR, e);
+                      e.getClass().getName() + " - " + e.getLocalizedMessage(), e);
         }
     }
 }

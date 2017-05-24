@@ -6,8 +6,8 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingQueue;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This {@link DrumEventDispatcher} takes care of broadcasting internal state changes received via {@link
@@ -21,7 +21,7 @@ import org.apache.logging.log4j.Logger;
 public class DrumEventDispatcherImpl implements DrumEventDispatcher
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /** The set of registered listener instances which need to be informed on state changes **/
     private final Set<DrumListener> listeners = new CopyOnWriteArraySet<>();

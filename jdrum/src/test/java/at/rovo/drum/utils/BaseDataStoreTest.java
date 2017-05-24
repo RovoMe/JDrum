@@ -5,10 +5,10 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for all data store based unit tests. This abstract class does take responsibility of the creation and
@@ -19,7 +19,7 @@ import org.junit.Before;
 public abstract class BaseDataStoreTest
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     protected File cacheDir = null;
 
@@ -84,7 +84,7 @@ public abstract class BaseDataStoreTest
             }
             catch (IOException e)
             {
-                LOG.catching(e);
+                LOG.warn(e.getLocalizedMessage(), e);
             }
         }
     }

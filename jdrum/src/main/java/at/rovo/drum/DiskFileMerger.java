@@ -4,15 +4,14 @@ import at.rovo.drum.datastore.DataStoreMerger;
 import at.rovo.drum.event.MergerState;
 import at.rovo.drum.event.MergerStateUpdate;
 import at.rovo.drum.event.StorageEvent;
-import at.rovo.drum.util.DrumExceptionHandler;
 import at.rovo.drum.util.DrumUtils;
 import at.rovo.drum.util.KeyComparator;
-import at.rovo.drum.util.NamedThreadFactory;
 import at.rovo.common.annotations.GuardedBy;
 import at.rovo.common.annotations.ThreadSafe;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,9 +19,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <em>DiskFileMerger</em> merges all disk files with the backing data store and classifies stored data into {@link
@@ -40,7 +38,7 @@ import org.apache.logging.log4j.Logger;
 public class DiskFileMerger<V extends Serializable, A extends Serializable> implements Merger
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(DiskFileMerger.class);
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     // immutable members
     /** The name of the DRUM instance this file merger is linked to **/
@@ -274,9 +272,10 @@ public class DiskFileMerger<V extends Serializable, A extends Serializable> impl
                              this.drumName, writer.getBucketId());
                 }
 
-                LOG.error("[{}] - [{}] - Error merging disk bucket files with data storage! Could not process {} key/value bytes and {} auxiliary data bytes. Reason: {}",
-                          this.drumName, writer.getDiskFiles().getKVFile(), kvLengt, auxLength, e.getLocalizedMessage());
-                LOG.catching(Level.ERROR, e);
+                LOG.error("[" + this.drumName + "] - [" + writer.getDiskFiles().getKVFile() +
+                          "] - Error merging disk bucket files with data storage! Could not process " +
+                          kvLengt +" key/value bytes and " + auxLength + " auxiliary data bytes. Reason: ",
+                          e.getLocalizedMessage(), e);
             }
             finally
             {

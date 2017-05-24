@@ -5,8 +5,8 @@ import at.rovo.drum.util.DrumUtils;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <em>InMemoryData</em> is a bean which holds the data related to an object that either should be stored within the
@@ -30,7 +30,7 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
         implements DrumStoreEntry<V, A>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /** The key of the statement **/
     private Long key;

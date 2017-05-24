@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This utility class provides convenient methods to interact with the {@link SimpleDataStore}.
@@ -22,7 +22,7 @@ import org.apache.logging.log4j.Logger;
  */
 public final class DataStoreUtils
 {
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * Iterates through the content of the data store and returns a list of contained hash keys for the respective

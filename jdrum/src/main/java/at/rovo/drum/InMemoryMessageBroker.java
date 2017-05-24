@@ -13,8 +13,8 @@ import java.util.Queue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <em>InMemoryMessageBroker</em> is a {@link Broker} implementation which manages {@link InMemoryEntry} objects. It
@@ -46,7 +46,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
         implements Broker<T, V>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     // final state
     /** The name of the DRUM instance **/

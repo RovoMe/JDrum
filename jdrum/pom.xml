@@ -28,12 +28,6 @@
             <version>${project.parent.version}</version>
         </dependency>
 
-        <!-- JUnit -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!-- UnitTest, IntegrationTest, ... annotations-->
         <dependency>
             <groupId>at.rovo</groupId>

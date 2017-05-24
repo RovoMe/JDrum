@@ -4,11 +4,11 @@ import at.rovo.common.Pair;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Map;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Custom Hamcrest matcher used to compare actual data store entries with expected ones.
@@ -18,7 +18,7 @@ import org.hamcrest.TypeSafeMatcher;
 public class DataStoreMatcher
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * Helper class to encapsulate the comparison state during execution of the <code>matchesSafely</code> method.

@@ -12,16 +12,6 @@
     <artifactId>jdrum-commons</artifactId>
 
     <dependencies>
-        <!-- JUnit -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-core</artifactId>
-            <version>LATEST</version>
-        </dependency>
+
     </dependencies>
 </project>

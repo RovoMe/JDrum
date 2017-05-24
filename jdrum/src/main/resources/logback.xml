@@ -1,0 +1,42 @@
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- encoders are assigned the type
+     ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>log/Common.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>logFile.%d{yyyy-MM-dd}.log</fileNamePattern>
+
+            <!-- keep 5 days' worth of history -->
+            <maxHistory>5</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS}  %-4relative [%thread] %-5level %logger{35} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="at.rovo" level="info" />
+
+    <logger name="at.rovo.drum.DrumImpl" level="info"/>
+    <logger name="at.rovo.drum.InMemoryMessageBroker" level="info"/>
+    <logger name="at.rovo.drum.DiskBucketWriter" level="info"/>
+    <logger name="at.rovo.drum.DiskFileMerger" level="info"/>
+    <logger name="at.rovo.drum.datastore.DataStoreMerger" level="info"/>
+
+    <logger name="at.rovo.drum.util.DrumExceptionHandler" level="info"/>
+
+
+    <root level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+</configuration>

@@ -22,12 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static at.rovo.drum.datastore.simple.utils.DataStoreMatcher.containsEntries;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -48,7 +48,7 @@ import static org.junit.Assert.assertThat;
 public class SimpleDataStoreTest
 {
     /** The logger for this class **/
-    private static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private File testDir = null;
 

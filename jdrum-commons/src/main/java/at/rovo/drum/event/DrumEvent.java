@@ -63,4 +63,9 @@ public abstract class DrumEvent<T extends DrumEvent<T>>
     {
         return this.currentThread;
     }
+
+    @Override
+    public String toString() {
+        return "DrumEvent[name=" + this.drumName + ", clazz=" + clazz + ", thread=" + currentThread.getName() + "]";
+    }
 }

@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This implementation of the 'Disk Repository with Update Management' structure utilizes a consumer/producer pattern to
@@ -38,7 +38,7 @@ import org.apache.logging.log4j.Logger;
 public class DrumImpl<V extends Serializable, A extends Serializable> implements StatisticsEnabledDrum<V, A>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /** The name of the DRUM instance **/
     protected final String drumName;

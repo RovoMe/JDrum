@@ -16,7 +16,7 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
     private InMemoryBufferState state = null;
 
     /**
-     * Initializes a new event triggered by the {@link at.rovo.caching.drum.Broker} when the state of the internal
+     * Initializes a new event triggered by the {@link at.rovo.drum.Broker} when the state of the internal
      * buffer changed.
      *
      * @param drumName
@@ -24,7 +24,7 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
      * @param bucketId
      *         The identifier of the bucket the event was triggered from
      * @param state
-     *         The new state the {@link at.rovo.caching.drum.Broker} is in
+     *         The new state the {@link at.rovo.drum.Broker} is in
      */
     public InMemoryBufferStateUpdate(String drumName, int bucketId, InMemoryBufferState state)
     {

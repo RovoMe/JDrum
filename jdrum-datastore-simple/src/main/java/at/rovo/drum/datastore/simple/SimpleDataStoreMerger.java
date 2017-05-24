@@ -9,9 +9,10 @@ import at.rovo.drum.datastore.DataStoreMerger;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
 import java.util.List;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <em>DataStoreMerger</em> uses {@link SimpleDataStoreImpl} to check keys for their uniqueness and merges data that needs to
@@ -30,7 +31,7 @@ import org.apache.logging.log4j.Logger;
 public class SimpleDataStoreMerger<V extends Serializable, A extends Serializable> extends DataStoreMerger<V, A>
 {
     /** The logger of this class **/
-    private final static Logger LOG = LogManager.getLogger(SimpleDataStoreMerger.class);
+    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /** A reference to the actual data store **/
     private final SimpleDataStore<V> dataStore;
@@ -77,7 +78,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                 boolean result = cache.createNewFile();
                 if (!result)
                 {
-                    LOG.warn("");
+                    LOG.warn("Could not create new cache file: " + cache.getAbsolutePath());
                 }
             }
             catch (IOException e)
