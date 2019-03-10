@@ -14,11 +14,6 @@
     <dependencies>
         <dependency>
             <groupId>at.rovo</groupId>
-            <artifactId>commons</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>at.rovo</groupId>
             <artifactId>jdrum-commons</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
@@ -28,14 +23,6 @@
             <version>${project.parent.version}</version>
         </dependency>
 
-        <!-- UnitTest, IntegrationTest, ... annotations-->
-        <dependency>
-            <groupId>at.rovo</groupId>
-            <artifactId>commons</artifactId>
-            <version>${commons.version}</version>
-            <scope>test</scope>
-            <type>test-jar</type>
-        </dependency>
         <!-- Test data store to use for testing-->
         <dependency>
             <groupId>at.rovo</groupId>

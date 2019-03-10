@@ -8,26 +8,26 @@ import at.rovo.drum.Broker;
  *
  * @author Roman Vottner
  */
-public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpdate>
-{
-    /** The bucket ID the event was triggered from **/
-    private int bucketId = 0;
-    /** The new state the broker is in **/
-    private InMemoryBufferState state = null;
+public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpdate> {
+
+    /**
+     * The bucket ID the event was triggered from
+     */
+    private int bucketId;
+    /**
+     * The new state the broker is in
+     */
+    private InMemoryBufferState state;
 
     /**
      * Initializes a new event triggered by the {@link at.rovo.drum.Broker} when the state of the internal
      * buffer changed.
      *
-     * @param drumName
-     *         The name of the DRUM instance this event was issued from
-     * @param bucketId
-     *         The identifier of the bucket the event was triggered from
-     * @param state
-     *         The new state the {@link at.rovo.drum.Broker} is in
+     * @param drumName The name of the DRUM instance this event was issued from
+     * @param bucketId The identifier of the bucket the event was triggered from
+     * @param state    The new state the {@link at.rovo.drum.Broker} is in
      */
-    public InMemoryBufferStateUpdate(String drumName, int bucketId, InMemoryBufferState state)
-    {
+    public InMemoryBufferStateUpdate(String drumName, int bucketId, InMemoryBufferState state) {
         super(drumName, InMemoryBufferStateUpdate.class);
         this.bucketId = bucketId;
         this.state = state;
@@ -38,8 +38,7 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
      *
      * @return The bucket identifier the event was sent from
      */
-    public int getBucketId()
-    {
+    public int getBucketId() {
         return this.bucketId;
     }
 
@@ -48,15 +47,13 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
      *
      * @return The new state of the {@link Broker brokers} buffer
      */
-    public InMemoryBufferState getState()
-    {
+    public InMemoryBufferState getState() {
         return this.state;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - InMemoryBuffer " + this.bucketId
-               + " state changed to: " + this.state;
+                + " state changed to: " + this.state;
     }
 }

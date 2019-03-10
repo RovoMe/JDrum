@@ -8,23 +8,17 @@ import java.util.Queue;
  * <p>
  * New data is added to the broker via {@link #put(T)} and may be retrieved via {@link #takeAll()}.
  *
- * @param <T>
- *         The type of the data stored by the broker
- * @param <V>
- *         The type of the data object the broker will manage
- *
+ * @param <T> The type of the data stored by the broker
+ * @param <V> The type of the data object the broker will manage
  * @author Roman Vottner
  */
-public interface Broker<T extends DrumStoreEntry<V, ?>, V extends Serializable> extends Stoppable
-{
+public interface Broker<T extends DrumStoreEntry<V, ?>, V extends Serializable> extends Stoppable {
+
     /**
      * Feeds the broker with a new data item.
      *
-     * @param data
-     *         The data item to add to the broker
-     *
-     * @throws IllegalStateException
-     *         Thrown if entries are added to the broker after a shutdown was requested
+     * @param data The data item to add to the broker
+     * @throws IllegalStateException Thrown if entries are added to the broker after a shutdown was requested
      */
     void put(T data);
 

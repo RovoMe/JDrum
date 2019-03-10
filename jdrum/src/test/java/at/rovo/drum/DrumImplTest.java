@@ -3,7 +3,6 @@ package at.rovo.drum;
 import at.rovo.drum.datastore.simple.SimpleDataStoreMerger;
 import at.rovo.drum.datastore.simple.utils.DataStoreUtils;
 import at.rovo.drum.event.DrumEvent;
-import at.rovo.common.IntegrationTest;
 import at.rovo.drum.util.DrumUtils;
 import at.rovo.drum.utils.BaseDataStoreTest;
 import at.rovo.drum.utils.ConsoleDispatcher;
@@ -11,12 +10,12 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the functionality of DRUM through adding a couple of URLs which get first stored in memory. If a certain
@@ -33,7 +32,6 @@ import static org.junit.Assert.assertTrue;
  *
  * @author Roman Vottner
  */
-@Category(IntegrationTest.class)
 public class DrumImplTest extends BaseDataStoreTest implements DrumListener
 {
     private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -64,7 +62,7 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
      */
 
     @Test
-    public void testDrumWithSimpleDataStore() throws Exception
+    void testDrumWithSimpleDataStore() throws Exception
     {
         String drumName = "urlSeenTest";
         Drum<String, String> drum = null;
@@ -88,10 +86,10 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
         Map<Long, String> dbContent = DataStoreUtils.getContentAsMap(drumName, String.class);
         for (Long urlHash : urlHashes)
         {
-            assertTrue(urlHash + " not found in data store!", dbContent.containsKey(urlHash));
+            assertTrue( dbContent.containsKey(urlHash), urlHash + " not found in data store!");
             dbContent.remove(urlHash);
         }
-        assertTrue(dbContent.isEmpty());
+        assertTrue(dbContent.isEmpty(), "DB content was not empty!");
     }
 
     private void runTest(Drum<String, String> drum, List<Long> urlHashes) throws Exception

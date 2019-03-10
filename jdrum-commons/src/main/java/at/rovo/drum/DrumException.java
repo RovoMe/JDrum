@@ -6,19 +6,18 @@ package at.rovo.drum;
  *
  * @author Roman Vottner
  */
-public class DrumException extends Exception
-{
-    /** Unique serialization ID **/
+public class DrumException extends Exception {
+    /**
+     * Unique serialization ID
+     */
     private static final long serialVersionUID = 3116709459268263012L;
 
     /**
      * Creates a new instance of a drum exception and sets the error String to the provided argument
      *
-     * @param msg
-     *         The error message of this instance
+     * @param msg The error message of this instance
      */
-    public DrumException(String msg)
-    {
+    public DrumException(String msg) {
         super(msg);
     }
 
@@ -26,13 +25,10 @@ public class DrumException extends Exception
      * Creates a new instance of a drum exception and sets the error String to the provided argument and sets the
      * throwing object via the specified parameter.
      *
-     * @param msg
-     *         The error message of this instance
-     * @param t
-     *         The object which threw the exception
+     * @param msg The error message of this instance
+     * @param t   The object which threw the exception
      */
-    public DrumException(String msg, Throwable t)
-    {
+    public DrumException(String msg, Throwable t) {
         super(msg, t);
     }
 }

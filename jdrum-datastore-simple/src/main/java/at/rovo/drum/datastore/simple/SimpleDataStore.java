@@ -3,6 +3,7 @@ package at.rovo.drum.datastore.simple;
 import at.rovo.drum.DrumException;
 import at.rovo.drum.DrumStoreEntry;
 import at.rovo.drum.NotAppendableException;
+
 import java.io.IOException;
 import java.io.Serializable;
 
@@ -16,22 +17,17 @@ import java.io.Serializable;
  * {@link #reset()} will set the cursor of the data file back to the start while {@link #close()} will shut down the
  * data store and free any held resources.
  *
- * @param <V>
- *         The type of the value entry
- *
+ * @param <V> The type of the value entry
  * @author Roman Vottner
  */
-public interface SimpleDataStore<V extends Serializable> extends AutoCloseable
-{
+public interface SimpleDataStore<V extends Serializable> extends AutoCloseable {
     /**
      * Writes a new pair of key and value data into the cache file in a sorted order depending on the value of the key.
      * <p>
      * If a key with the same value exists, it will be overwritten to update the new value for this key. Existing
      * entries located after the data to write will be moved further backwards.
      *
-     * @param data
-     *         The data to write into the cache file
-     *
+     * @param data The data to write into the cache file
      * @return The updated entry
      */
     DrumStoreEntry<V, ?> writeEntry(DrumStoreEntry<V, ?> data)
@@ -44,11 +40,8 @@ public interface SimpleDataStore<V extends Serializable> extends AutoCloseable
      * If a key with the same value exists, it will be overwritten to update the new value for this key. Existing
      * entries located after the data to write will be moved further backwards.
      *
-     * @param data
-     *         The data to write into the cache file
-     * @param append
-     *         Specifies if the data to write should be appended to an already existing entry with the same key.
-     *
+     * @param data   The data to write into the cache file
+     * @param append Specifies if the data to write should be appended to an already existing entry with the same key.
      * @return The updated entry
      */
     DrumStoreEntry<V, ?> writeEntry(DrumStoreEntry<V, ?> data, boolean append)
@@ -58,9 +51,7 @@ public interface SimpleDataStore<V extends Serializable> extends AutoCloseable
     /**
      * Returns the entry which matches the given <em>key</em> value.
      *
-     * @param key
-     *         The key value the entry should be retrieved for
-     *
+     * @param key The key value the entry should be retrieved for
      * @return The data value which is stored under the given key or null if no data with the given key could be found
      */
     DrumStoreEntry<V, ?> getEntry(Long key)

@@ -9,43 +9,43 @@ import java.util.concurrent.ThreadFactory;
  *
  * @author Roman Vottner
  */
-public class NamedThreadFactory implements ThreadFactory
-{
-    /** The name of the thread to store in a thread pool **/
+public class NamedThreadFactory implements ThreadFactory {
+
+    /**
+     * The name of the thread to store in a thread pool
+     */
     private String name = "pool-" + Thread.currentThread().getThreadGroup().getName() + "-thread-" + this.number++;
-    /** The number of threads added to the pool **/
+    /**
+     * The number of threads added to the pool
+     */
     private int number = 0;
-    /** The handler to execute if any uncaught exceptions occur **/
+    /**
+     * The handler to execute if any uncaught exceptions occur
+     */
     private UncaughtExceptionHandler exceptionHandler = null;
 
     /**
      * Sets the new name of the thread.
      *
-     * @param name
-     *         The new name of this thread.
+     * @param name The new name of this thread.
      */
-    public void setName(String name)
-    {
+    public void setName(String name) {
         this.name = name;
     }
 
     /**
      * Sets the handler to invoke if any uncaught exceptions occur.
      *
-     * @param exceptionHandler
-     *         The handler taking care of any uncaught exceptions thrown by threads in the thread pool
+     * @param exceptionHandler The handler taking care of any uncaught exceptions thrown by threads in the thread pool
      */
-    public void setUncaughtExceptionHandler(UncaughtExceptionHandler exceptionHandler)
-    {
+    public void setUncaughtExceptionHandler(UncaughtExceptionHandler exceptionHandler) {
         this.exceptionHandler = exceptionHandler;
     }
 
     @Override
-    public Thread newThread(Runnable r)
-    {
+    public Thread newThread(Runnable r) {
         Thread thread = new Thread(r, this.name + (this.name.contains("Writer") ? "-" + this.number++ : ""));
-        if (this.exceptionHandler != null)
-        {
+        if (this.exceptionHandler != null) {
             thread.setUncaughtExceptionHandler(this.exceptionHandler);
         }
         return thread;

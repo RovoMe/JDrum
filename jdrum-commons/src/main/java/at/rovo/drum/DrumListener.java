@@ -7,13 +7,11 @@ import at.rovo.drum.event.DrumEvent;
  *
  * @author Roman Vottner
  */
-public interface DrumListener
-{
+public interface DrumListener {
     /**
      * Will be invoked if a new DRUM event arises.
      *
-     * @param event
-     *         The DRUM event that triggered the invocation
+     * @param event The DRUM event that triggered the invocation
      */
     void update(DrumEvent<? extends DrumEvent<?>> event);
 }

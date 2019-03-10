@@ -13,15 +13,14 @@ package at.rovo.drum;
  *
  * @author Roman Vottner
  */
-public interface Merger extends Runnable, Stoppable
-{
+public interface Merger extends Runnable, Stoppable {
+
     /**
      * Adds a disk writer object to the merger instance, which is used to share a lock on the disk file both objects try
      * to access. This is necessary as the disk writer could write additional data to the file while the merger is
      * reading from the same file, which could result in an inconsistent state.
      *
-     * @param writer
-     *         The responsible class for writing the actual data to disk
+     * @param writer The responsible class for writing the actual data to disk
      */
     void addDiskFileWriter(DiskWriter writer);
 

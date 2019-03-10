@@ -5,8 +5,9 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
-import org.junit.After;
-import org.junit.Before;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,9 +22,9 @@ public abstract class BaseDataStoreTest
     /** The logger of this class **/
     private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    protected File cacheDir = null;
+    private File cacheDir = null;
 
-    @Before
+    @BeforeEach
     public final void init() throws Exception
     {
         String appDirPath = System.getProperty("user.dir");
@@ -65,13 +66,13 @@ public abstract class BaseDataStoreTest
         this.initDataDir();
     }
 
-    public void initDataDir() throws Exception
+    private void initDataDir()
     {
 
     }
 
-    @After
-    public final void clean() throws Exception
+    @AfterEach
+    public final void clean()
     {
         this.cleanDataDir();
 
@@ -89,7 +90,7 @@ public abstract class BaseDataStoreTest
         }
     }
 
-    public void cleanDataDir() throws Exception
+    private void cleanDataDir()
     {
 
     }

@@ -12,8 +12,8 @@ import at.rovo.drum.util.DiskFileHandle;
  *
  * @author Roman Vottner
  */
-public interface DiskWriter extends Runnable, Stoppable
-{
+public interface DiskWriter extends Runnable, Stoppable {
+
     /**
      * Returns the ID of the bucket the writer is responsible for.
      *

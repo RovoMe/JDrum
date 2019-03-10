@@ -5,8 +5,8 @@ package at.rovo.drum;
  *
  * @author Roman Vottner
  */
-public enum DrumOperation
-{
+public enum DrumOperation {
+
     /**
      * Defines that the cache should be checked against a key for its availability.
      * <p>
@@ -32,8 +32,7 @@ public enum DrumOperation
 
     private final char c;
 
-    DrumOperation(char c)
-    {
+    DrumOperation(char c) {
         this.c = c;
     }
 
@@ -42,27 +41,20 @@ public enum DrumOperation
      *
      * @return A character identifying the current DRUM operation
      */
-    public final char getTokenForOperation()
-    {
+    public final char getTokenForOperation() {
         return c;
     }
 
     /**
      * Returns a DRUM operation for the given token. If the token is unknown a {@link DrumException} will be thrown.
      *
-     * @param c
-     *         The character representing the DRUM operation
-     *
+     * @param c The character representing the DRUM operation
      * @return The matching DRUM operation
-     *
-     * @throws DrumException
-     *         If the provided token does not match a valid DRUM operation
+     * @throws DrumException If the provided token does not match a valid DRUM operation
      */
-    public static DrumOperation fromToken(char c) throws DrumException
-    {
+    public static DrumOperation fromToken(char c) throws DrumException {
         DrumOperation op;
-        switch (c)
-        {
+        switch (c) {
             case 'c':
                 op = DrumOperation.CHECK;
                 break;

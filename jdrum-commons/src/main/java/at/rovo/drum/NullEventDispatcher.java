@@ -9,35 +9,29 @@ import at.rovo.drum.event.DrumEvent;
  *
  * @author Roman Vottner
  */
-public class NullEventDispatcher implements DrumEventDispatcher
-{
+public class NullEventDispatcher implements DrumEventDispatcher {
     @Override
-    public void addDrumListener(DrumListener listener)
-    {
+    public void addDrumListener(DrumListener listener) {
         // do nothing
     }
 
     @Override
-    public void removeDrumListener(DrumListener listener)
-    {
+    public void removeDrumListener(DrumListener listener) {
         // do nothing
     }
 
     @Override
-    public void update(DrumEvent<? extends DrumEvent<?>> event)
-    {
+    public void update(DrumEvent<? extends DrumEvent<?>> event) {
         // do nothing
     }
 
     @Override
-    public void run()
-    {
+    public void run() {
         // do nothing
     }
 
     @Override
-    public void stop()
-    {
+    public void stop() {
         // do nothing
     }
 }

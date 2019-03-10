@@ -10,29 +10,30 @@ import at.rovo.drum.DrumListener;
  *
  * @author Roman Vottner
  */
-public class DiskWriterEvent extends DrumEvent<DiskWriterEvent>
-{
-    /** The bucket ID the event was triggered from **/
-    private int bucketId = 0;
-    /** The length of the key/value bytes of the bucket when the event occurred **/
-    private long kvBytes = 0L;
-    /** The length of the auxiliary data in bytes of the respective bucket when the event occurred **/
-    private long auxBytes = 0L;
+public class DiskWriterEvent extends DrumEvent<DiskWriterEvent> {
+
+    /**
+     * The bucket ID the event was triggered from
+     */
+    private int bucketId;
+    /**
+     * The length of the key/value bytes of the bucket when the event occurred
+     */
+    private long kvBytes;
+    /**
+     * The length of the auxiliary data in bytes of the respective bucket when the event occurred
+     */
+    private long auxBytes;
 
     /**
      * Initializes a new disk writer event for the given DRUM instance' bucket ID.
      *
-     * @param drumName
-     *         The name of the DRUM instance this event was issued from
-     * @param bucketId
-     *         The identifier of the bucket the event was triggered from
-     * @param kvBytes
-     *         The number of bytes of the key/value entry when the event occurred
-     * @param auxBytes
-     *         The number of bytes of the auxiliary data when the event occurred
+     * @param drumName The name of the DRUM instance this event was issued from
+     * @param bucketId The identifier of the bucket the event was triggered from
+     * @param kvBytes  The number of bytes of the key/value entry when the event occurred
+     * @param auxBytes The number of bytes of the auxiliary data when the event occurred
      */
-    public DiskWriterEvent(String drumName, int bucketId, long kvBytes, long auxBytes)
-    {
+    public DiskWriterEvent(String drumName, int bucketId, long kvBytes, long auxBytes) {
         super(drumName, DiskWriterEvent.class);
         this.bucketId = bucketId;
         this.kvBytes = kvBytes;
@@ -44,8 +45,7 @@ public class DiskWriterEvent extends DrumEvent<DiskWriterEvent>
      *
      * @return The bucket identifier the event was sent from
      */
-    public int getBucketId()
-    {
+    public int getBucketId() {
         return this.bucketId;
     }
 
@@ -54,8 +54,7 @@ public class DiskWriterEvent extends DrumEvent<DiskWriterEvent>
      *
      * @return The length of the key/value pair in bytes
      */
-    public long getKVBytes()
-    {
+    public long getKVBytes() {
         return this.kvBytes;
     }
 
@@ -64,16 +63,14 @@ public class DiskWriterEvent extends DrumEvent<DiskWriterEvent>
      *
      * @return The length of the auxiliary data in bytes
      */
-    public long getAuxBytes()
-    {
+    public long getAuxBytes() {
         return this.auxBytes;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - DiskWriter " + this.bucketId + " has written "
-               + this.kvBytes + " bytes into bucket" + this.bucketId + ".kv file and " + this.auxBytes +
-               " bytes into bucket" + this.bucketId + ".aux file";
+                + this.kvBytes + " bytes into bucket" + this.bucketId + ".kv file and " + this.auxBytes +
+                " bytes into bucket" + this.bucketId + ".aux file";
     }
 }

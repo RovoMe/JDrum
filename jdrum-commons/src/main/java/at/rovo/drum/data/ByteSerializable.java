@@ -12,11 +12,10 @@ import java.io.Serializable;
  * needed.
  *
  * @author Roman Vottner
- *
  * @link http://www.javaworld.com/article/2072752/the-java-serialization-algorithm-revealed.html
  */
-public interface ByteSerializable<T extends Serializable> extends Serializable
-{
+public interface ByteSerializable<T extends Serializable> extends Serializable {
+
     /**
      * Returns internal state of the implementing object as byte array.
      *

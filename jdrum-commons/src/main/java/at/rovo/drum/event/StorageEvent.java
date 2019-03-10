@@ -7,22 +7,21 @@ import at.rovo.drum.DrumListener;
  *
  * @author Roman Vottner
  */
-public class StorageEvent extends DrumEvent<StorageEvent>
-{
-    /** The number of entries stored in the data store **/
+public class StorageEvent extends DrumEvent<StorageEvent> {
+
+    /**
+     * The number of entries stored in the data store
+     */
     private long numEntries = 0L;
 
     /**
      * Initializes a new storage event that notifies the listeners about the new total number of unique entries within
      * the backing data store.
      *
-     * @param drumName
-     *         The name of the DRUM instance this event was issued from
-     * @param numEntries
-     *         The new total number of unique entries within the data store
+     * @param drumName   The name of the DRUM instance this event was issued from
+     * @param numEntries The new total number of unique entries within the data store
      */
-    public StorageEvent(String drumName, long numEntries)
-    {
+    public StorageEvent(String drumName, long numEntries) {
         super(drumName, StorageEvent.class);
         this.numEntries = numEntries;
     }
@@ -32,8 +31,7 @@ public class StorageEvent extends DrumEvent<StorageEvent>
      *
      * @return The number of entries in the data store
      */
-    public long getNumberOfEntries()
-    {
+    public long getNumberOfEntries() {
         return this.numEntries;
     }
 }

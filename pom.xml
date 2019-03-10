@@ -2,12 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>at.rovo</groupId>
-        <artifactId>super-pom</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
-    </parent>
-
+    <groupId>at.rovo</groupId>
     <artifactId>jdrum-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
@@ -25,49 +20,44 @@
         data is stored and compared with the data in a general backend data store and updated if required.
     </description>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+
+        <slf4j.version>1.7.25</slf4j.version>
+        <logback.version>1.2.3</logback.version>
+        <junit.version>5.4.0</junit.version>
+        <hamcrest.version>2.1</hamcrest.version>
+    </properties>
+
     <dependencies>
         <!-- Logging -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <!-- Common -->
-        <dependency>
-            <groupId>at.rovo</groupId>
-            <artifactId>commons</artifactId>
-            <version>${commons.version}</version>
+            <version>${slf4j.version}</version>
         </dependency>
 
         <!-- Test dependencies-->
 
         <!-- JUnit -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-core</artifactId>
-            <version>LATEST</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- UnitTest, IntegrationTest, ... annotations-->
-        <dependency>
-            <groupId>at.rovo</groupId>
-            <artifactId>commons</artifactId>
-            <version>${commons.version}</version>
-            <scope>test</scope>
-            <type>test-jar</type>
-        </dependency>
-        <!-- Wildcard pattern suite -->
-        <dependency>
-            <groupId>com.googlecode.junit-toolbox</groupId>
-            <artifactId>junit-toolbox</artifactId>
+            <version>${hamcrest.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -78,11 +68,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.0</version>
             </plugin>
             <!-- Surefire is a test framework project. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M3</version>
             </plugin>
         </plugins>
     </build>

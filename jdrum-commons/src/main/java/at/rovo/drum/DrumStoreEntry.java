@@ -1,6 +1,7 @@
 package at.rovo.drum;
 
 import at.rovo.drum.data.AppendableData;
+
 import java.io.Serializable;
 
 /**
@@ -10,8 +11,8 @@ import java.io.Serializable;
  *
  * @author Roman Vottner
  */
-public interface DrumStoreEntry<V extends Serializable, A extends Serializable> extends Serializable
-{
+public interface DrumStoreEntry<V extends Serializable, A extends Serializable> extends Serializable {
+
     /**
      * Returns the key of the current data object.
      *
@@ -22,8 +23,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
     /**
      * Sets the key of the current data object
      *
-     * @param key
-     *         The new key of the data object
+     * @param key The new key of the data object
      */
     void setKey(Long key);
 
@@ -37,8 +37,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
     /**
      * Sets the value of the current data object.
      *
-     * @param value
-     *         The new value of the data object
+     * @param value The new value of the data object
      */
     void setValue(V value);
 
@@ -52,8 +51,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
     /**
      * Sets the additional information attached to a key for the current data object.
      *
-     * @param aux
-     *         The additional information of the data object
+     * @param aux The additional information of the data object
      */
     void setAuxiliary(A aux);
 
@@ -67,13 +65,9 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
     /**
      * Appends the value of the provided data object to the value of this data object.
      *
-     * @param data
-     *         The data object containing the value to append to the value of this data object
-     *
-     * @throws IllegalArgumentException
-     *         thrown if the provided data to append is null
-     * @throws NotAppendableException
-     *         Thrown if the data object to append is not an instance of {@link AppendableData}
+     * @param data The data object containing the value to append to the value of this data object
+     * @throws IllegalArgumentException thrown if the provided data to append is null
+     * @throws NotAppendableException   Thrown if the data object to append is not an instance of {@link AppendableData}
      */
     void appendValue(V data) throws NotAppendableException;
 
@@ -101,8 +95,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
     /**
      * Sets the result for the defined DRUM operation based on the data of this object.
      *
-     * @param result
-     *         The result for this data object
+     * @param result The result for this data object
      */
     void setResult(DrumResult result);
 

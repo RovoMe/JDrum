@@ -5,8 +5,8 @@ package at.rovo.drum;
  *
  * @author Roman Vottner
  */
-public interface Stoppable
-{
+public interface Stoppable {
+
     /**
      * Signals the running instance to stop work and close all open resources. The object should give a running process
      * the chance to finish its work before closing all resources.

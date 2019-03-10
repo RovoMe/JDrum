@@ -6,8 +6,8 @@ package at.rovo.drum;
  *
  * @author Roman Vottner
  */
-public enum DrumResult
-{
+public enum DrumResult {
+
     /**
      * Is returned by the caching system if the given key was not found in the synchronized Berkeley DB
      */

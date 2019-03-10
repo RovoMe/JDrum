@@ -7,52 +7,44 @@ import java.io.Serializable;
  * required methods. Its main purpose is to provide a base class to extend from and only require limited methods
  * overriding.
  *
- * @param <V>
- *         The type of the value element
- * @param <A>
- *         The type of the auxiliary data element
- *
+ * @param <V> The type of the value element
+ * @param <A> The type of the auxiliary data element
  * @author Roman Vottner
  */
-public class NullDispatcher<V extends Serializable, A extends Serializable> implements Dispatcher<V, A>
-{
+public class NullDispatcher<V extends Serializable, A extends Serializable> implements Dispatcher<V, A> {
+
     /**
      * Handles unique key check events
      */
-    public void uniqueKeyCheck(Long key, A aux)
-    {
+    public void uniqueKeyCheck(Long key, A aux) {
 
     }
 
     /**
      * Handles duplicate key check events
      */
-    public void duplicateKeyCheck(Long key, V value, A aux)
-    {
+    public void duplicateKeyCheck(Long key, V value, A aux) {
 
     }
 
     /**
      * Handles unique key update events
      */
-    public void uniqueKeyUpdate(Long key, V value, A aux)
-    {
+    public void uniqueKeyUpdate(Long key, V value, A aux) {
 
     }
 
     /**
      * Handles duplicate key update events
      */
-    public void duplicateKeyUpdate(Long key, V value, A aux)
-    {
+    public void duplicateKeyUpdate(Long key, V value, A aux) {
 
     }
 
     /**
      * Handles update events
      */
-    public void update(Long key, V value, A aux)
-    {
+    public void update(Long key, V value, A aux) {
 
     }
 }

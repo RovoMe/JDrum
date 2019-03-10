@@ -5,8 +5,8 @@ package at.rovo.drum;
  *
  * @author Roman Vottner
  */
-public abstract class PositionAware
-{
+public abstract class PositionAware {
+
     /**
      * Will keep track of the original position of this data object before sorting to revert the sorting after the
      * key/value data was persisted in the bucket file
@@ -17,11 +17,9 @@ public abstract class PositionAware
      * Intended to store the original position in the array managed by {@link Merger} to enable reverting the
      * sorting after storing the key/value pair into the bucket file.
      *
-     * @param position
-     *         The original position for this data object before sorting
+     * @param position The original position for this data object before sorting
      */
-    void setPosition(int position)
-    {
+    void setPosition(int position) {
         this.position = position;
     }
 
@@ -31,8 +29,7 @@ public abstract class PositionAware
      *
      * @return The original position of this data object
      */
-    int getPosition()
-    {
+    int getPosition() {
         return this.position;
     }
 }
