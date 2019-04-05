@@ -41,8 +41,10 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>
-                        --add-opens package.commons/com.acme.util=ALL-UNNAMED
-                        --illegal-access=permit
+                        <!-- Allow access to the tests during test-time -->
+                        --add-opens jdrum.commons/at.rovo.drum.util.lockfree=ALL-UNNAMED
+                        --add-opens jdrum.commons/at.rovo.drum.util=ALL-UNNAMED
+                        --illegal-access=deny
                     </argLine>
                 </configuration>
             </plugin>

@@ -36,4 +36,22 @@
             <artifactId>hamcrest</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>
+                        <!-- Allow access to the tests during test-time -->
+                        --add-opens jdrum.datastore.simple/at.rovo.drum.datastore.simple=ALL-UNNAMED
+                        <!-- Allow DataStoreUtils access to DrumUtils.deserialize(...) invocation -->
+                        --add-exports jdrum.datastore.simple/at.rovo.drum.datastore.simple.utils=jdrum.commons
+                        --illegal-access=deny
+                    </argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

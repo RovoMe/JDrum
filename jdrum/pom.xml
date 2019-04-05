@@ -55,4 +55,20 @@
             <type>test-jar</type>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>
+                        <!-- Allow access to the tests during test-time -->
+                        --add-opens jdrum/at.rovo.drum.impl=ALL-UNNAMED
+                        --illegal-access=deny
+                    </argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
