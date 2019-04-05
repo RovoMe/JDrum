@@ -1,6 +1,7 @@
-package at.rovo.drum.utils;
+package at.rovo.drum.impl.utils;
 
 import at.rovo.drum.datastore.simple.utils.CacheFileDeleter;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -17,48 +18,39 @@ import org.slf4j.LoggerFactory;
  *
  * @author Roman Vottner
  */
-public abstract class BaseDataStoreTest
-{
-    /** The logger of this class **/
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+public abstract class BaseDataStoreTest {
+
+    /**
+     * The logger of this class
+     */
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private File cacheDir = null;
 
     @BeforeEach
-    public final void init() throws Exception
-    {
+    public final void init() throws Exception {
         String appDirPath = System.getProperty("user.dir");
         File appDir = new File(appDirPath);
-        if (appDir.isDirectory())
-        {
+        if (appDir.isDirectory()) {
             String[] items = appDir.list();
-            for (String item : items)
-            {
-                if (item.endsWith("cache"))
-                {
+            for (String item : items) {
+                if (item.endsWith("cache")) {
                     this.cacheDir = new File(item);
-                    if (this.cacheDir.isDirectory() && "cache".equals(this.cacheDir.getName()))
-                    {
-                        try
-                        {
+                    if (this.cacheDir.isDirectory() && "cache".equals(this.cacheDir.getName())) {
+                        try {
                             Files.walkFileTree(this.cacheDir.toPath(), new CacheFileDeleter());
-                        }
-                        catch (IOException e)
-                        {
+                        } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
                 }
             }
         }
-        if (this.cacheDir == null)
-        {
+        if (this.cacheDir == null) {
             this.cacheDir = new File(appDir.getAbsoluteFile() + "/cache");
         }
-        if (!this.cacheDir.exists())
-        {
-            if (!this.cacheDir.mkdir())
-            {
+        if (!this.cacheDir.exists()) {
+            if (!this.cacheDir.mkdir()) {
                 throw new Exception("Cache did not exist yet and could not get created!");
             }
         }
@@ -66,32 +58,25 @@ public abstract class BaseDataStoreTest
         this.initDataDir();
     }
 
-    private void initDataDir()
-    {
+    private void initDataDir() {
 
     }
 
     @AfterEach
-    public final void clean()
-    {
+    public final void clean() {
         this.cleanDataDir();
 
         File cache = this.cacheDir;
-        if (cache.isDirectory() && "cache".equals(cache.getName()))
-        {
-            try
-            {
+        if (cache.isDirectory() && "cache".equals(cache.getName())) {
+            try {
                 Files.walkFileTree(cache.toPath(), new CacheFileDeleter());
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 LOG.warn(e.getLocalizedMessage(), e);
             }
         }
     }
 
-    private void cleanDataDir()
-    {
+    private void cleanDataDir() {
 
     }
 }

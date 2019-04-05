@@ -28,10 +28,11 @@ import org.slf4j.LoggerFactory;
  * @author Roman Vottner
  */
 public class SimpleDataStoreMerger<V extends Serializable, A extends Serializable> extends DataStoreMerger<V, A> {
+
     /**
      * The logger of this class
      */
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * A reference to the actual data store

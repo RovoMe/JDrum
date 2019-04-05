@@ -1,9 +1,9 @@
-package at.rovo.drum;
+package at.rovo.drum.impl;
 
-import at.rovo.drum.util.DiskFileHandle;
-import at.rovo.drum.util.DrumExceptionHandler;
-import at.rovo.drum.util.DrumUtils;
-import at.rovo.drum.util.NamedThreadFactory;
+import at.rovo.drum.*;
+import at.rovo.drum.base.InMemoryEntry;
+import at.rovo.drum.impl.util.DrumExceptionHandler;
+
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,9 +19,9 @@ import org.slf4j.LoggerFactory;
  * This implementation of the 'Disk Repository with Update Management' structure utilizes a consumer/producer pattern to
  * store and process input received by its
  * <ul>
- *     <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
- *     <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
- *     <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
+ * <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
+ * <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
+ * <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
  * </ul>
  * methods.
  * <p>
@@ -28,48 +29,56 @@ import org.slf4j.LoggerFactory;
  * are the in-memory storage while buckets are the intermediary disk files. Buffers fill up to <code> bufferSize</code>
  * bytes before they get sent to a disk file.
  *
- * @param <V>
- *         The type of the value
- * @param <A>
- *         The type of the auxiliary data attached to a key
- *
+ * @param <V> The type of the value
+ * @param <A> The type of the auxiliary data attached to a key
  * @author Roman Vottner
  */
-public class DrumImpl<V extends Serializable, A extends Serializable> implements StatisticsEnabledDrum<V, A>
-{
-    /** The logger of this class **/
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+public class DrumImpl<V extends Serializable, A extends Serializable> implements StatisticsEnabledDrum<V, A> {
+    /**
+     * The logger of this class
+     **/
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    /** The name of the DRUM instance **/
+    /**
+     * The name of the DRUM instance
+     **/
     protected final String drumName;
-    /** The number of buffers and buckets used **/
+    /**
+     * The number of buffers and buckets used
+     **/
     protected final int numBuckets;
 
-    /** The broker list which holds elements in memory until they get written to the disk file **/
+    /**
+     * The broker list which holds elements in memory until they get written to the disk file
+     **/
     private final List<Broker<InMemoryEntry<V, A>, V>> inMemoryBuffer;
-    /** The set of writer objects that listens to notifications of a broker and write content from the broker to a disk
-     * file **/
+    /**
+     * The set of writer objects that listens to notifications of a broker and write content from the broker to a disk
+     * file
+     **/
     private final List<DiskWriter> diskWriters;
-    /** The merger which takes care of synchronizing the data stored in bucket disk files with a backing data store **/
+    /**
+     * The merger which takes care of synchronizing the data stored in bucket disk files with a backing data store
+     **/
     private final Merger merger;
-    /** The instance which takes care of informing registered listeners about internal state changes **/
+    /**
+     * The instance which takes care of informing registered listeners about internal state changes
+     **/
     private final DrumEventDispatcher eventDispatcher;
 
-    /** The execution service which hosts our writer, merger and event dispatcher threads **/
+    /**
+     * The execution service which hosts our writer, merger and event dispatcher threads
+     **/
     private final ExecutorService executors;
 
     /**
      * Creates a new instance and assigns initial values contained within the builder object to the corresponding
      * attributes.
      *
-     * @param settings
-     *         The parameter object containing the actual settings for the DRUM instance
-     *
-     * @throws DrumException
-     *         If during the initialization of the backing data store an error occurred
+     * @param settings The parameter object containing the actual settings for the DRUM instance
+     * @throws DrumException If during the initialization of the backing data store an error occurred
      */
-    public DrumImpl(DrumSettings<V, A> settings) throws DrumException
-    {
+    public DrumImpl(DrumSettings<V, A> settings) throws DrumException {
         this.drumName = settings.getDrumName();
         this.numBuckets = settings.getNumBuckets();
         this.eventDispatcher = settings.getEventDispatcher();
@@ -79,23 +88,22 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         this.inMemoryBuffer = new ArrayList<>(numBuckets);
         this.diskWriters = new ArrayList<>(numBuckets);
         this.merger = new DiskFileMerger<>(settings.getDrumName(), settings.getNumBuckets(), settings.getDispatcher(),
-                                           settings.getValueClass(), settings.getAuxClass(),
-                                           settings.getDataStoreMerger(), settings.getEventDispatcher());
+                settings.getValueClass(), settings.getAuxClass(),
+                settings.getDataStoreMerger(), settings.getEventDispatcher());
 
         // Bucket-writer-threads
-        NamedThreadFactory namedFactory = new NamedThreadFactory();
+        at.rovo.drum.util.NamedThreadFactory namedFactory = new at.rovo.drum.util.NamedThreadFactory();
         namedFactory.setName(this.drumName + "-Writer");
         namedFactory.setUncaughtExceptionHandler(exceptionHandler);
         this.executors = Executors.newFixedThreadPool(this.numBuckets + 2, namedFactory);
 
-        for (int i = 0; i < numBuckets; i++)
-        {
+        for (int i = 0; i < numBuckets; i++) {
             int bufferSize = settings.getBufferSize();
             Broker<InMemoryEntry<V, A>, V> broker =
                     new InMemoryMessageBroker<>(drumName, i, bufferSize, eventDispatcher);
             DiskWriter consumer =
                     new DiskBucketWriter<>(drumName, i, bufferSize, broker, merger, eventDispatcher,
-                                           new DiskFileHandle(this.drumName, i));
+                            new at.rovo.drum.util.DiskFileHandle(this.drumName, i));
 
             this.inMemoryBuffer.add(broker);
             this.diskWriters.add(consumer);
@@ -115,8 +123,7 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         namedFactory.setName(this.drumName + "-EventDispatcher");
         this.executors.execute(this.eventDispatcher);
 
-        if (settings.getListener() != null)
-        {
+        if (settings.getListener() != null) {
             this.addDrumListener(settings.getListener());
         }
 
@@ -125,56 +132,47 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
     }
 
     @Override
-    public void check(Long key)
-    {
+    public void check(Long key) {
         this.add(key, null, null, DrumOperation.CHECK);
     }
 
     @Override
-    public void check(Long key, A aux)
-    {
+    public void check(Long key, A aux) {
         this.add(key, null, aux, DrumOperation.CHECK);
     }
 
     @Override
-    public void update(Long key, V value)
-    {
+    public void update(Long key, V value) {
         this.add(key, value, null, DrumOperation.UPDATE);
     }
 
     @Override
-    public void update(Long key, V value, A aux)
-    {
+    public void update(Long key, V value, A aux) {
         this.add(key, value, aux, DrumOperation.UPDATE);
     }
 
     @Override
-    public void appendUpdate(Long key, V value)
-    {
+    public void appendUpdate(Long key, V value) {
         this.add(key, value, null, DrumOperation.APPEND_UPDATE);
     }
 
     @Override
-    public void appendUpdate(Long key, V value, A aux)
-    {
+    public void appendUpdate(Long key, V value, A aux) {
         this.add(key, value, aux, DrumOperation.APPEND_UPDATE);
     }
 
     @Override
-    public void checkUpdate(Long key, V value)
-    {
+    public void checkUpdate(Long key, V value) {
         this.add(key, value, null, DrumOperation.CHECK_UPDATE);
     }
 
     @Override
-    public void checkUpdate(Long key, V value, A aux)
-    {
+    public void checkUpdate(Long key, V value, A aux) {
         this.add(key, value, aux, DrumOperation.CHECK_UPDATE);
     }
 
     @Override
-    public void dispose() throws DrumException
-    {
+    public void dispose() throws DrumException {
         Exception caught = null;
 
         LOG.debug("[{}] - Disposal initiated", this.drumName);
@@ -189,12 +187,9 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         this.eventDispatcher.stop();
 
         // wait for the threads to finish
-        try
-        {
+        try {
             this.executors.awaitTermination(10, TimeUnit.SECONDS);
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             LOG.error("Error while terminating threads", e);
             caught = e;
         }
@@ -206,21 +201,18 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
 
         LOG.trace("[{}] - disposed", this.drumName);
 
-        if (caught != null)
-        {
+        if (caught != null) {
             throw new DrumException(caught.getLocalizedMessage(), caught);
         }
     }
 
     @Override
-    public void addDrumListener(DrumListener listener)
-    {
+    public void addDrumListener(DrumListener listener) {
         this.eventDispatcher.addDrumListener(listener);
     }
 
     @Override
-    public void removeDrumListener(DrumListener listener)
-    {
+    public void removeDrumListener(DrumListener listener) {
         this.eventDispatcher.removeDrumListener(listener);
     }
 
@@ -228,24 +220,16 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      * Stores the key, the value and the auxiliary data as well as the operation to be executed on these data in the
      * according in-memory buffer.
      *
-     * @param key
-     *         The hash value of the data
-     * @param value
-     *         The value associated with the key
-     * @param aux
-     *         The auxiliary data of the key
-     * @param operation
-     *         The operation to be used on the data
-     *
-     * @throws IllegalArgumentException
-     *         If the key is not a power of 2
-     * @throws IllegalStateException
-     *         If an entry is added after {@link #dispose()} was invoked
+     * @param key       The hash value of the data
+     * @param value     The value associated with the key
+     * @param aux       The auxiliary data of the key
+     * @param operation The operation to be used on the data
+     * @throws IllegalArgumentException If the key is not a power of 2
+     * @throws IllegalStateException    If an entry is added after {@link #dispose()} was invoked
      */
-    private void add(Long key, V value, A aux, DrumOperation operation)
-    {
+    private void add(Long key, V value, A aux, DrumOperation operation) {
         // get the bucket index based on the first n bits of the key, according to the number of defined buckets
-        int bucketId = DrumUtils.getBucketForKey(key, this.numBuckets);
+        int bucketId = at.rovo.drum.util.DrumUtils.getBucketForKey(key, this.numBuckets);
 
         // add a new InMemoryData object to the broker
         this.inMemoryBuffer.get(bucketId).put(new InMemoryEntry<>(key, value, aux, operation));
@@ -256,8 +240,7 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      *
      * @return The name of the DRUM instance
      */
-    public String getName()
-    {
+    public String getName() {
         return this.drumName;
     }
 
@@ -266,8 +249,7 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      *
      * @return The number of buckets used
      */
-    public int getNumberOfBuckets()
-    {
+    public int getNumberOfBuckets() {
         return this.numBuckets;
     }
 }

@@ -1,12 +1,13 @@
-package at.rovo.drum;
+package at.rovo.drum.impl;
 
+import at.rovo.drum.Broker;
+import at.rovo.drum.DrumEventDispatcher;
+import at.rovo.drum.base.InMemoryEntry;
 import at.rovo.drum.event.InMemoryBufferEvent;
 import at.rovo.drum.event.InMemoryBufferState;
 import at.rovo.drum.event.InMemoryBufferStateUpdate;
 import at.rovo.drum.util.lockfree.FlippingDataContainer;
 import at.rovo.drum.util.lockfree.FlippingDataContainerEntry;
-import at.rovo.common.annotations.GuardedBy;
-import at.rovo.common.annotations.ThreadSafe;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
@@ -15,6 +16,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +49,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
     /**
      * The logger of this class
      */
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * The name of the DRUM instance

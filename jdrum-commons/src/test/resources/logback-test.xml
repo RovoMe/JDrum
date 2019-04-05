@@ -2,7 +2,6 @@
 
     <property name="pattern" value="%date{yyyy-MM-dd HH:mm:ss.SSS} [%-5p] [%-25.25thread{24}] %-40.40logger{39}: %msg %throwable %n"/>
 
-
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${pattern}</pattern>
@@ -10,12 +9,12 @@
     </appender>
 
     <appender name="File" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>log/Common.log</file>
+        <file>log/test.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
             <fileNamePattern>logFile.%d{yyyy-MM-dd}.log</fileNamePattern>
 
-            <!-- keep 5 days' worth of history -->
+            <!-- keep 1 days' worth of history -->
             <maxHistory>5</maxHistory>
         </rollingPolicy>
 
@@ -26,18 +25,8 @@
 
     <logger name="at.rovo" level="info" />
 
-    <logger name="at.rovo.drum.base.DrumImpl" level="info"/>
-    <logger name="at.rovo.drum.base.InMemoryMessageBroker" level="info"/>
-    <logger name="at.rovo.drum.base.DiskBucketWriter" level="info"/>
-    <logger name="at.rovo.drum.base.DiskFileMerger" level="info"/>
-    <logger name="at.rovo.drum.datastore.DataStoreMerger" level="info"/>
-
-    <logger name="at.rovo.drum.util.DrumExceptionHandler" level="info"/>
-
-
     <root level="info" additivity="false">
         <appender-ref ref="Console"/>
-        <appender-ref ref="File"/>
     </root>
 
 </configuration>

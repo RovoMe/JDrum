@@ -1,6 +1,5 @@
 package at.rovo.drum.datastore.simple.utils;
 
-import at.rovo.common.Pair;
 import at.rovo.drum.DrumException;
 import at.rovo.drum.datastore.simple.SimpleDataStore;
 import at.rovo.drum.util.DrumUtils;
@@ -24,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class DataStoreUtils {
 
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * Iterates through the content of the data store and returns a list of contained hash keys for the respective

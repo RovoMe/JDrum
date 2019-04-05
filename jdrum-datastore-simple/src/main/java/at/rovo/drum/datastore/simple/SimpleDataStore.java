@@ -21,6 +21,7 @@ import java.io.Serializable;
  * @author Roman Vottner
  */
 public interface SimpleDataStore<V extends Serializable> extends AutoCloseable {
+
     /**
      * Writes a new pair of key and value data into the cache file in a sorted order depending on the value of the key.
      * <p>

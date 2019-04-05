@@ -1,7 +1,5 @@
 package at.rovo.drum.datastore.simple.utils;
 
-import at.rovo.common.Pair;
-
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +20,7 @@ public class DataStoreMatcher {
     /**
      * The logger of this class
      */
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * Helper class to encapsulate the comparison state during execution of the <code>matchesSafely</code> method.

@@ -1,5 +1,10 @@
-package at.rovo.drum;
+package at.rovo.drum.base;
 
+import at.rovo.drum.DrumOperation;
+import at.rovo.drum.DrumResult;
+import at.rovo.drum.DrumStoreEntry;
+import at.rovo.drum.NotAppendableException;
+import at.rovo.drum.PositionAware;
 import at.rovo.drum.data.AppendableData;
 import at.rovo.drum.util.DrumUtils;
 
@@ -14,9 +19,6 @@ import org.slf4j.LoggerFactory;
  * <em>InMemoryData</em> is a bean which holds the data related to an object that either should be stored within the
  * DRUM cache or is returned due to a DUPLICATE event from a back-end data store.
  * <p>
- * Besides getter and setter methods for the corresponding fields it provides a convenience method to restore the
- * original ordering after a sorting through {@link #getPosition()}.
- * <p>
  * Moreover, the bytes of the key, value or auxiliary data attached to a key can be retrieved via {@link #getKey()},
  * {@link #getValue()} or {@link #getAuxiliary()} methods.
  *
@@ -27,10 +29,11 @@ import org.slf4j.LoggerFactory;
 public class InMemoryEntry<V extends Serializable, A extends Serializable>
         extends PositionAware
         implements DrumStoreEntry<V, A> {
+
     /**
      * The logger of this class
      */
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * The key of the statement

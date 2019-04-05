@@ -1,12 +1,13 @@
 package at.rovo.drum.datastore.simple;
 
-import at.rovo.common.Pair;
 import at.rovo.drum.DrumOperation;
 import at.rovo.drum.DrumStoreEntry;
-import at.rovo.drum.InMemoryEntry;
+import at.rovo.drum.base.InMemoryEntry;
 import at.rovo.drum.datastore.simple.utils.CacheFileDeleter;
+import at.rovo.drum.datastore.simple.utils.DataStoreMatcher;
 import at.rovo.drum.datastore.simple.utils.DataStoreUtils;
 import at.rovo.drum.datastore.simple.utils.PLDTestData;
+import at.rovo.drum.datastore.simple.utils.Pair;
 import at.rovo.drum.util.DrumUtils;
 import at.rovo.drum.util.KeyComparator;
 
@@ -22,13 +23,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static at.rovo.drum.datastore.simple.utils.DataStoreMatcher.containsEntries;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -105,7 +106,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, null));    // ... 8+4 bytes
 
             assertThat(dataStore.length(), is(equalTo(52L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             // set the cursor back to the start - mock a new iteration of a merging process
             dataStore.reset();
@@ -141,7 +142,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, "test2"));          // ... 8+4+5 bytes
 
             assertThat(dataStore.length(), is(equalTo(106L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -164,7 +165,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, "test2"));  // ... 8+4+5 bytes
 
             assertThat(dataStore.length(), is(equalTo(98L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -187,7 +188,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, "test2"));  // ... 8+4+5 bytes
 
             assertThat(dataStore.length(), is(equalTo(93L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -210,7 +211,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, "test2"));          // ... 8+4+5 bytes
 
             assertThat(dataStore.length(), is(equalTo(106L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -233,7 +234,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, "test"));           // ... 8+4+4 bytes
 
             assertThat(dataStore.length(), is(equalTo(105L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -256,7 +257,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(356380646382129811L, null));             // ... 8+4 bytes
 
             assertThat(dataStore.length(), is(equalTo(101L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -274,12 +275,12 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(-8388954286180259435L, null));             // ... 8+4 bytes
             expected.add(new Pair<>(-7747270999347618272L, null));             // ... 8+4 bytes
             expected.add(new Pair<>(-7398944357989757338L, null));             // ... 8+4 bytes
-            expected.add(new Pair<>(-427820934381562479L,  "Test"));           // ... 8+4+4 bytes
-            expected.add(new Pair<>(-408508820557862601L,  "Noch ein Test"));  // ... 8+4+13 bytes
-            expected.add(new Pair<>(356380646382129811L,   "test"));           // ... 8+4+4 bytes
+            expected.add(new Pair<>(-427820934381562479L, "Test"));           // ... 8+4+4 bytes
+            expected.add(new Pair<>(-408508820557862601L, "Noch ein Test"));  // ... 8+4+13 bytes
+            expected.add(new Pair<>(356380646382129811L, "test"));           // ... 8+4+4 bytes
 
             assertThat(dataStore.length(), is(equalTo(105L)));
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
         }
     }
 
@@ -315,7 +316,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(5L, mem2.getValue()));
             expected.add(new Pair<>(76L, mem3.getValue()));
 
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
 
             dataStore.reset();
 
@@ -339,7 +340,7 @@ public class SimpleDataStoreTest {
             expected.add(new Pair<>(5L, new PLDTestData(5L, 0, new TreeSet<>(Arrays.asList(2L, 3L, 7L, 19L, 88L)))));
             expected.add(new Pair<>(76L, new PLDTestData(76L, 0, new TreeSet<>(Arrays.asList(4L, 5L, 13L, 22L, 88L)))));
 
-            assertThat(dataStoreContent, containsEntries(expected));
+            MatcherAssert.assertThat(dataStoreContent, DataStoreMatcher.containsEntries(expected));
         }
     }
 

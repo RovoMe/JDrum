@@ -14,11 +14,6 @@
     <dependencies>
         <dependency>
             <groupId>at.rovo</groupId>
-            <artifactId>commons</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>at.rovo</groupId>
             <artifactId>jdrum-commons</artifactId>
             <version>${project.parent.version}</version>
         </dependency>

@@ -1,59 +1,71 @@
-package at.rovo.drum;
+package at.rovo.drum.impl;
 
+import at.rovo.drum.Dispatcher;
+import at.rovo.drum.Drum;
+import at.rovo.drum.DrumEventDispatcher;
+import at.rovo.drum.DrumListener;
 import at.rovo.drum.datastore.DataStoreMerger;
+
 import java.io.Serializable;
 
 /**
  * This immutable class encapsulates the configuration settings which should be used to initialize a new {@link Drum}
  * instance with.
  *
- * @param <V>
- *         The type of the value DRUM will manage
- * @param <A>
- *         The type of the auxiliary data attached to a key
- *
+ * @param <V> The type of the value DRUM will manage
+ * @param <A> The type of the auxiliary data attached to a key
  * @author Roman Vottner
  */
-public class DrumSettings<V extends Serializable, A extends Serializable>
-{
-    /** The name of the DRUM instance **/
+public class DrumSettings<V extends Serializable, A extends Serializable> {
+
+    /**
+     * The name of the DRUM instance
+     */
     private final String drumName;
-    /** The number of buckets to initialize **/
+    /**
+     * The number of buckets to initialize
+     */
     private final int numBuckets;
-    /** The byte size before an exceeded event is triggered **/
+    /**
+     * The byte size before an exceeded event is triggered
+     */
     private final int bufferSize;
-    /** The class of the value object **/
+    /**
+     * The class of the value object
+     */
     private final Class<V> valueClass;
-    /** The class of the auxiliary data object **/
+    /**
+     * The class of the auxiliary data object
+     */
     private final Class<A> auxClass;
-    /** The dispatcher to send responses with **/
-    private final Dispatcher<V,A> dispatcher;
-    /** The listener to inform on internal state changes **/
+    /**
+     * The dispatcher to send responses with
+     */
+    private final Dispatcher<V, A> dispatcher;
+    /**
+     * The listener to inform on internal state changes
+     */
     private final DrumListener listener;
-    /** The data store merger to use to check entries for their uniqueness **/
-    private final DataStoreMerger<V,A> dataStoreMerger;
-    /** The object which is dispatching the internal state events **/
+    /**
+     * The data store merger to use to check entries for their uniqueness
+     */
+    private final DataStoreMerger<V, A> dataStoreMerger;
+    /**
+     * The object which is dispatching the internal state events
+     */
     private final DrumEventDispatcher eventDispatcher;
 
     /**
      * Creates a new immutable instance containing configuration settings for the {@link Drum} instance to initialize.
      *
-     * @param drumName
-     *         The name of the DRUM instance
-     * @param numBuckets
-     *         The number of buckets to initialize
-     * @param bufferSize
-     *         The size of the buckets before an exceeded event is triggered
-     * @param valueClass
-     *         The class object of the value object
-     * @param auxClass
-     *         The class object of the auxiliary data object
-     * @param dispatcher
-     *         The dispatcher to send results with
-     * @param listener
-     *         The listener to inform on internal state changes
-     * @param dataStoreMerger
-     *         The factory to initialize the backing data store with
+     * @param drumName        The name of the DRUM instance
+     * @param numBuckets      The number of buckets to initialize
+     * @param bufferSize      The size of the buckets before an exceeded event is triggered
+     * @param valueClass      The class object of the value object
+     * @param auxClass        The class object of the auxiliary data object
+     * @param dispatcher      The dispatcher to send results with
+     * @param listener        The listener to inform on internal state changes
+     * @param dataStoreMerger The factory to initialize the backing data store with
      */
     public DrumSettings(String drumName, int numBuckets, int bufferSize, Class<V> valueClass, Class<A> auxClass,
                         Dispatcher<V, A> dispatcher, DrumListener listener, DrumEventDispatcher eventDispatcher,
@@ -74,8 +86,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The name of the DRUM instance
      */
-    String getDrumName()
-    {
+    String getDrumName() {
         return this.drumName;
     }
 
@@ -84,8 +95,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The class type of the value elements
      */
-    Class<V> getValueClass()
-    {
+    Class<V> getValueClass() {
         return this.valueClass;
     }
 
@@ -94,8 +104,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The class type of the auxiliary data elements
      */
-    Class<A> getAuxClass()
-    {
+    Class<A> getAuxClass() {
         return this.auxClass;
     }
 
@@ -104,8 +113,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The number of buckets to use for DRUM
      */
-    int getNumBuckets()
-    {
+    int getNumBuckets() {
         return this.numBuckets;
     }
 
@@ -115,8 +123,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The size of the buffer at which a merge will occur.
      */
-    int getBufferSize()
-    {
+    int getBufferSize() {
         return this.bufferSize;
     }
 
@@ -125,8 +132,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The assigned dispatcher for the DRUM instance
      */
-    Dispatcher<V, A> getDispatcher()
-    {
+    Dispatcher<V, A> getDispatcher() {
         return this.dispatcher;
     }
 
@@ -135,8 +141,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The specified listener to use with the DRUM instance to create
      */
-    DrumListener getListener()
-    {
+    DrumListener getListener() {
         return this.listener;
     }
 
@@ -146,8 +151,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable>
      *
      * @return The factory for the backing storage service assigned to DRUM
      */
-    DataStoreMerger<V, A> getDataStoreMerger()
-    {
+    DataStoreMerger<V, A> getDataStoreMerger() {
         return this.dataStoreMerger;
     }
 

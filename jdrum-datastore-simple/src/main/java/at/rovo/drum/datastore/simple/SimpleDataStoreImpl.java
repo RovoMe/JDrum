@@ -2,7 +2,7 @@ package at.rovo.drum.datastore.simple;
 
 import at.rovo.drum.DrumException;
 import at.rovo.drum.DrumStoreEntry;
-import at.rovo.drum.InMemoryEntry;
+import at.rovo.drum.base.InMemoryEntry;
 import at.rovo.drum.NotAppendableException;
 import at.rovo.drum.util.DrumUtils;
 
@@ -26,10 +26,11 @@ import org.slf4j.LoggerFactory;
  * @author Roman Vottner
  */
 public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataStore<V> {
+
     /**
      * The logger of this class
      */
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     /**
      * The backing caching file to store data to and read it from
      */

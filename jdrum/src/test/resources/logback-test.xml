@@ -25,17 +25,17 @@
 
     <logger name="at.rovo" level="info" />
 
-    <logger name="at.rovo.drum.DrumImpl" level="trace"/>
-    <logger name="at.rovo.drum.InMemoryMessageBroker" level="trace"/>
-    <logger name="at.rovo.drum.DiskBucketWriter" level="trace"/>
-    <logger name="at.rovo.drum.DiskFileMerger" level="trace"/>
+    <logger name="at.rovo.drum.base.DrumImpl" level="trace"/>
+    <logger name="at.rovo.drum.base.InMemoryMessageBroker" level="trace"/>
+    <logger name="at.rovo.drum.base.DiskBucketWriter" level="trace"/>
+    <logger name="at.rovo.drum.base.DiskFileMerger" level="trace"/>
     <logger name="at.rovo.drum.datastore.DataStoreMerger" level="trace"/>
-    <logger name="at.rovo.drum.DrumEventDispatcherImpl" level="debug"/>
+    <logger name="at.rovo.drum.base.DrumEventDispatcherImpl" level="debug"/>
 
     <logger name="at.rovo.drum.util.DrumExceptionHandler" level="debug"/>
 
-    <logger name="at.rovo.drum.DrumImplTest" level="debug"/>
-    <logger name="at.rovo.drum.utils.LogFileDispatcher" level="debug"/>
+    <logger name="at.rovo.drum.base.DrumImplTest" level="debug"/>
+    <logger name="at.rovo.drum.base.utils.LogFileDispatcher" level="debug"/>
 
 
     <root level="info" additivity="false">

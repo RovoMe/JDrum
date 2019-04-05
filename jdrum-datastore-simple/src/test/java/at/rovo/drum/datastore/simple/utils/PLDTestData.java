@@ -77,7 +77,7 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
     @Override
     public int hashCode() {
         int result = 17;
-        result = 31 * result + new Long(this.hash).hashCode();
+        result = 31 * result + Long.valueOf(this.hash).hashCode();
         return result;
     }
 

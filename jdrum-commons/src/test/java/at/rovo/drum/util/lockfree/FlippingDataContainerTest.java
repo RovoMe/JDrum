@@ -107,7 +107,7 @@ class FlippingDataContainerTest {
             barrier.reset();
 
             // wait till all worker threads finished
-            LOG.info("Released worker threads. Waiting on them to finish their duty");
+            LOG.debug("Released worker threads. Waiting on them to finish their duty");
             barrier.await();
 
             shudwondAndAwaitTermination(threadPool);
@@ -115,9 +115,9 @@ class FlippingDataContainerTest {
             LOG.debug("Performing asserts");
 
             int itemsDone = consumer.getItemsDone();
-            LOG.info("Consumed " + itemsDone + " items so far");
+            LOG.debug("Consumed " + itemsDone + " items so far");
             Queue<TestMemoryEntry<Integer, String>> queue = sut.flip();
-            LOG.info("Collected " + queue.size() + " further items");
+            LOG.debug("Collected " + queue.size() + " further items");
             assertThat(sut.isEmpty(), is(equalTo(true)));
             itemsDone += queue.size();
             assertThat(itemsDone, is(equalTo(numWorkerThreads * numItems)));

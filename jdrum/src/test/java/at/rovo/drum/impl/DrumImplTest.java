@@ -1,11 +1,15 @@
-package at.rovo.drum;
+package at.rovo.drum.impl;
 
+import at.rovo.drum.Dispatcher;
+import at.rovo.drum.Drum;
+import at.rovo.drum.DrumListener;
 import at.rovo.drum.datastore.simple.SimpleDataStoreMerger;
 import at.rovo.drum.datastore.simple.utils.DataStoreUtils;
 import at.rovo.drum.event.DrumEvent;
+import at.rovo.drum.impl.utils.BaseDataStoreTest;
+import at.rovo.drum.impl.utils.ConsoleDispatcher;
 import at.rovo.drum.util.DrumUtils;
-import at.rovo.drum.utils.BaseDataStoreTest;
-import at.rovo.drum.utils.ConsoleDispatcher;
+
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,9 +36,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author Roman Vottner
  */
-public class DrumImplTest extends BaseDataStoreTest implements DrumListener
-{
-    private final static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+public class DrumImplTest extends BaseDataStoreTest implements DrumListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /**
      * Example-Output:
@@ -62,38 +66,31 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
      */
 
     @Test
-    void testDrumWithSimpleDataStore() throws Exception
-    {
+    void testDrumWithSimpleDataStore() throws Exception {
         String drumName = "urlSeenTest";
         Drum<String, String> drum = null;
         List<Long> urlHashes = new ArrayList<>();
-        try
-        {
+        try {
             Dispatcher<String, String> dispatcher = new ConsoleDispatcher<>();
             drum = new DrumBuilder<>(drumName, String.class, String.class).numBucket(4).bufferSize(64)
                     .dispatcher(dispatcher).listener(this).datastore(SimpleDataStoreMerger.class).build();
 
             runTest(drum, urlHashes);
-        }
-        finally
-        {
-            if (drum != null)
-            {
+        } finally {
+            if (drum != null) {
                 drum.dispose();
             }
         }
 
         Map<Long, String> dbContent = DataStoreUtils.getContentAsMap(drumName, String.class);
-        for (Long urlHash : urlHashes)
-        {
-            assertTrue( dbContent.containsKey(urlHash), urlHash + " not found in data store!");
+        for (Long urlHash : urlHashes) {
+            assertTrue(dbContent.containsKey(urlHash), urlHash + " not found in data store!");
             dbContent.remove(urlHash);
         }
         assertTrue(dbContent.isEmpty(), "DB content was not empty!");
     }
 
-    private void runTest(Drum<String, String> drum, List<Long> urlHashes) throws Exception
-    {
+    private void runTest(Drum<String, String> drum, List<Long> urlHashes) throws Exception {
         String url1 = "http://www.codeproject.com"; // produces 12 bytes in kvBucket and 26 bytes in auxBucket
         String url2 = "http://www.oracle.com/technology/products/berkeley-db/index.html"; // produces 12 bytes in kvBucket and 64 bytes in auxBucket
         String url3 = "http://www.boost.org"; // produces 12 bytes in kvBucket and 20 bytes in auxBucket
@@ -141,8 +138,7 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener
     }
 
     @Override
-    public void update(DrumEvent<? extends DrumEvent<?>> event)
-    {
+    public void update(DrumEvent<? extends DrumEvent<?>> event) {
         LOG.debug(event.toString());
     }
 }

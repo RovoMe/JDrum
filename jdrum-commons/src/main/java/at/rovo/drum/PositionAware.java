@@ -19,7 +19,7 @@ public abstract class PositionAware {
      *
      * @param position The original position for this data object before sorting
      */
-    void setPosition(int position) {
+    public void setPosition(int position) {
         this.position = position;
     }
 
@@ -29,7 +29,7 @@ public abstract class PositionAware {
      *
      * @return The original position of this data object
      */
-    int getPosition() {
+    public int getPosition() {
         return this.position;
     }
 }
