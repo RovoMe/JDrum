@@ -1,0 +1,35 @@
+<document xmlns="http://maven.apache.org/changes/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/changes/1.0.0 http://maven.apache.org/xsd/changes-1.0.0.xsd">
+    <properties>
+        <title>Changes JDrum Project</title>
+        <author email="rovo@gmx.at">Roman Vottner</author>
+    </properties>
+    <body>
+        <!-- SAMPLE:
+        <release version="1.1" date="2005-03-01" description="Subsequent release">
+            <action dev="jruiz" type="add">
+                Added additional documentation on how to configure the plugin.
+            </action>
+            <action dev="aramirez" type="fix" issue="MPJIRA-11">
+                Enable retrieving component-specific issues.
+            </action>
+            <action dev="jruiz" type="remove" due-to="Allan Ramirez" due-to-email="aramirez@exist.com">
+                The element type " link " must be terminated by the matching end-tag.
+                Deleted the erroneous code.
+            </action>
+        </release>
+
+        <release version="1.0" date="2005-01-01" description="First release">
+            <action dev="jruiz" type="update">
+                Uploaded documentation on how to use the plugin.
+            </action>
+        </release>
+        -->
+        <release version="1.0" date="2019-04-06" description="First release">
+            <action dev="RovoMe" type="update">
+                Updated project to Java 11 with modules support
+            </action>
+        </release>
+    </body>
+</document>

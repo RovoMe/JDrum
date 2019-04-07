@@ -2,6 +2,7 @@ package at.rovo.drum.util;
 
 import at.rovo.drum.DrumStoreEntry;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
 /**
@@ -15,7 +16,9 @@ import java.util.Comparator;
  *            {@link Comparable} object.
  * @author Roman Vottner
  */
-public class KeyComparator<T extends DrumStoreEntry<?, ?>> implements Comparator<T> {
+public class KeyComparator<T extends DrumStoreEntry<?, ?>> implements Comparator<T>, Serializable {
+
+    private static final long serialVersionUID = -687991492884005033L;
 
     @Override
     public int compare(T o1, T o2) {

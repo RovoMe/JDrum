@@ -39,6 +39,8 @@ public interface Merger extends Runnable, Stoppable {
 
     /**
      * Returns the number of unique entries stored into the data store.
+     *
+     * @return The number of unique entries synchronized and stored within the backing data store
      */
     long getNumberUniqueEntriesStored();
 

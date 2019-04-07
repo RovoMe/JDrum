@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 
 /**
  * This utility class provides some basic methods to convert 32bit integer values to a byte-array and vice versa and to
@@ -76,7 +77,8 @@ public class DrumUtils {
      * @param numBuckets The total number of available buckets. This should be a power of two (e.g. 2, 4, 8, 16, 32, ...)
      * @return The bucket the key should be in
      * @throws IllegalArgumentException If the provided input parameter is not a power of 2
-     * @link http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
+     * @see <a href="http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a">
+     *     DRUM - A C++ Implementation for the URL-seen Test of a Web Crawler</a>
      */
     public static long getBucketOfKey(long key, int numBuckets) {
         int exponent = Math.getExponent(numBuckets);
@@ -99,7 +101,8 @@ public class DrumUtils {
      * @param numBuckets The total number of available buckets. This should be a power of two (e.g. 2, 4, 8, 16, 32, ...)
      * @return The bucket the key should be in
      * @throws IllegalArgumentException If the provided input parameter is not a power of 2
-     * @link http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a
+     * @see <a href="http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a">
+     *     DRUM - A C++ Implementation for the URL-seen Test of a Web Crawler</a>
      */
     public static int getBucketOfKey(int key, int numBuckets) {
         int exponent = Math.getExponent(numBuckets);
@@ -130,7 +133,7 @@ public class DrumUtils {
      */
     public static byte[] serialize(Object obj) throws IOException {
         if (obj instanceof String) {
-            return obj.toString().getBytes();
+            return obj.toString().getBytes(StandardCharsets.UTF_8);
         }
         // objects implementing the ByteSerializable interface do their own homework on serializing/deserializing their
         // state to/from bytes. This avoids returning unnecessary bytes
@@ -155,14 +158,18 @@ public class DrumUtils {
      * Turns a byte-array into an object
      *
      * @param bytes The bytes of the object
+     * @param type The class for which the provided <em>bytes</em> should be transformed into a new instance for
+     * @param <V> The type of the value to deserialize into
      * @return The object deserialized from the array of bytes provided
+     * @throws IOException If the cast of the bytes to a {@link ByteSerializable} object failed
+     * @throws ClassNotFoundException If the class requested via the <em>type</em> parameter could not be found
      */
     public static <V> V deserialize(byte[] bytes, Class<? extends V> type)
             throws IOException, ClassNotFoundException {
         V ret;
         // check if the byte array is a String (character array)
         if (String.class.isAssignableFrom(type)) {
-            ret = type.cast(new String(bytes));
+            ret = type.cast(new String(bytes, StandardCharsets.UTF_8));
         } else if (ByteSerializable.class.isAssignableFrom(type)) {
             try {
                 ret = type.cast(((ByteSerializable) type.getConstructor().newInstance()).readBytes(bytes));

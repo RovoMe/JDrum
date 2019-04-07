@@ -6,7 +6,7 @@ import java.util.Queue;
 /**
  * The broker manages message exchange between a producer and a consumer.
  * <p>
- * New data is added to the broker via {@link #put(T)} and may be retrieved via {@link #takeAll()}.
+ * New data is added to the broker via {@link #put(DrumStoreEntry)} and may be retrieved via {@link #takeAll()}.
  *
  * @param <T> The type of the data stored by the broker
  * @param <V> The type of the data object the broker will manage

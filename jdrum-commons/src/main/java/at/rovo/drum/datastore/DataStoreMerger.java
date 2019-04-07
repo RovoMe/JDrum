@@ -4,6 +4,7 @@ import at.rovo.drum.DrumException;
 import at.rovo.drum.DrumResult;
 import at.rovo.drum.DrumStoreEntry;
 import at.rovo.drum.NotAppendableException;
+import at.rovo.drum.data.AppendableData;
 
 import java.io.Serializable;
 import java.util.List;
@@ -36,6 +37,8 @@ public abstract class DataStoreMerger<V extends Serializable, A extends Serializ
      *
      * @param data The list of data to check against the data in the data store
      * @return The number of unique entries
+     * @throws DrumException If the data could either not retrieved from the backing datastore or not be written to it
+     * @throws NotAppendableException If the passed <em>data</em> instance is not of type {@link AppendableData}
      */
     public abstract long compareDataWithDataStore(List<? extends DrumStoreEntry<V, A>> data)
             throws DrumException, NotAppendableException;

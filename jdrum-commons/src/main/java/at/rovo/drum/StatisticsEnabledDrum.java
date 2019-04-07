@@ -10,12 +10,16 @@ public interface StatisticsEnabledDrum<V extends Serializable, A extends Seriali
 
     /**
      * Adds an object to the {@link java.util.Set Set} of objects to be notified on state or statistic changes.
+     *
+     * @param listener A {@link DrumListener} instance to notify on internal state changes
      */
     void addDrumListener(DrumListener listener);
 
     /**
      * Removes a previously added object from the {@link java.util.Set Set} of objects which require notifications on
      * state or statistic changes.
+     *
+     * @param listener A {@link DrumListener} instance to be removed from the set of registered listeners
      */
     void removeDrumListener(DrumListener listener);
 }

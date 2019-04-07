@@ -8,7 +8,7 @@ import java.io.Serializable;
  * <p>
  * DRUM is a local caching system where key/value pairs are kept in memory or on local disc files utilizing a bucket
  * sort strategy to minimize all lookups and modifications to the buckets. It therefore allows for efficient storage of
- * large collections of &lt;key, value> pairs, where key is a unique identifier (hash) of some data and value is the
+ * large collections of &lt;key, value&gt; pairs, where key is a unique identifier (hash) of some data and value is the
  * arbitrary information attached to the key.
  * <p>
  * DRUM basically supports 3 types of operations: <ul> <li>check</li> <li>update</li> <li>check+update</li> </ul>
@@ -16,7 +16,7 @@ import java.io.Serializable;
  * classified as being duplicate or unique. For duplicate keys, the value associated with each key can be optionally
  * retrieved from disk and used for some processing.
  * <p>
- * <b>update</b>: the incoming list contains &lt;key, value> pairs that need to be merged into the existing disk cache.
+ * <b>update</b>: the incoming list contains &lt;key, value&gt; pairs that need to be merged into the existing disk cache.
  * If a given key exists, its value is updated (e.g. overridden or incremented), if it does not, a new entry is created
  * in the disk file.
  * <p>
@@ -31,7 +31,8 @@ import java.io.Serializable;
  * @param <A> The type of auxiliary data, which needs to be attached to key/value-pairs
  * @author Roman Vottner
  * @version 0.1
- * @link http://irl.cs.tamu.edu/people/hsin-tsang/papers/www2008.pdf
+ * @see <a href="http://irl.cs.tamu.edu/people/hsin-tsang/papers/www2008.pdf">
+ *     Paper: 'IRLbot: Scaling to 6 Billion Pages and Beyond'</a>
  */
 public interface Drum<V extends Serializable, A extends Serializable> {
 
@@ -114,6 +115,8 @@ public interface Drum<V extends Serializable, A extends Serializable> {
 
     /**
      * Releases the lock to the local backing DB and the locks held to other system imminent devices
+     *
+     * @throws DrumException Thrown if during the disposal an error occurred
      */
     void dispose() throws DrumException;
 }
