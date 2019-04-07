@@ -3,6 +3,6 @@ module jdrum {
     requires org.slf4j;
     requires jcip.annotations;
 
-    requires jdrum.datastore.base;
-    requires jdrum.commons;
+    requires transitive jdrum.datastore.base;
+    requires transitive jdrum.commons;
 }
