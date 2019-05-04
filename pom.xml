@@ -2,6 +2,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!--
+    Use the following commands to:
+
+    - check for plugin updates:                       mvn versions:display-plugin-updates
+    - check for dependency updates:                   mvn versions:display-dependency-updates
+    - generate project report without deployment:     mvn clean compile site
+    -->
+
     <groupId>at.rovo</groupId>
     <artifactId>jdrum-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
@@ -294,7 +302,7 @@
                         <show>protected</show>
                         <failOnWarnings>false</failOnWarnings>
                         <release>11</release>
-                        <javadocVersion>11.0.2</javadocVersion>
+                        <javadocVersion>11.0.3</javadocVersion>
                         <stylesheet>java</stylesheet>
                     </configuration>
                     <executions>
@@ -357,7 +365,7 @@
                     <show>protected</show>
                     <failOnWarnings>false</failOnWarnings>
                     <release>11</release>
-                    <javadocVersion>11.0.2</javadocVersion>
+                    <javadocVersion>11.0.3</javadocVersion>
                     <stylesheet>java</stylesheet>
                 </configuration>
                 <reportSets>
