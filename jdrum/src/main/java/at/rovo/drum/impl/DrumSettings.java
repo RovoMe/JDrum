@@ -65,6 +65,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      * @param auxClass        The class object of the auxiliary data object
      * @param dispatcher      The dispatcher to send results with
      * @param listener        The listener to inform on internal state changes
+     * @param eventDispatcher The instance responsible for sending out events to listeners
      * @param dataStoreMerger The factory to initialize the backing data store with
      */
     public DrumSettings(String drumName, int numBuckets, int bufferSize, Class<V> valueClass, Class<A> auxClass,

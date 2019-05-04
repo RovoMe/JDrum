@@ -102,13 +102,16 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     /**
      * Creates a new instance and instantiates required fields.
      *
-     * @param drumName       The name of the Drum instance
-     * @param bucketId       The index of the bucket this writer will read data from or write to
-     * @param bucketByteSize The size in bytes before a merge with the backing data store is invoked
-     * @param broker         The broker who administers the in memory data
+     * @param drumName        The name of the Drum instance
+     * @param bucketId        The index of the bucket this writer will read data from or write to
+     * @param bucketByteSize  The size in bytes before a merge with the backing data store is invoked
+     * @param broker          The broker who administers the in memory data
+     * @param merger          A reference to the instance that is performing the data merge with the backing data store
+     * @param eventDispatcher The instance responsible for sending out events to listeners
+     * @param diskFiles       A handle to the backing disk files this writer acts upon
      */
     public DiskBucketWriter(String drumName, int bucketId, int bucketByteSize, Broker<InMemoryEntry<V, A>, V> broker,
-                            Merger merger, DrumEventDispatcher eventDispatcher, at.rovo.drum.util.DiskFileHandle diskFiles) {
+                            Merger merger, DrumEventDispatcher eventDispatcher, DiskFileHandle diskFiles) {
         this.drumName = drumName;
         this.bucketId = bucketId;
         this.bucketByteSize = bucketByteSize;

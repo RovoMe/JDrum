@@ -30,10 +30,14 @@ public interface SimpleDataStore<V extends Serializable> extends AutoCloseable {
      *
      * @param data The data to write into the cache file
      * @return The updated entry
+     * @throws IOException            If the backing cache file could not get accessed or throw an exception while
+     *                                writing the entry to its storage
+     * @throws ClassNotFoundException If the bytes of one of the entries in the cache file, the <em>data</em> argument
+     *                                is compared with, belong to a different type than the value type of this data store
+     * @throws NotAppendableException If the entry to write does not implement {@link at.rovo.drum.data.AppendableData}
      */
     DrumStoreEntry<V, ?> writeEntry(DrumStoreEntry<V, ?> data)
-            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException,
-            NotAppendableException, DrumException;
+            throws IOException, ClassNotFoundException, NotAppendableException;
 
     /**
      * Writes a new pair of key and value data into the cache file in a sorted order depending on the value of the key.
@@ -44,19 +48,27 @@ public interface SimpleDataStore<V extends Serializable> extends AutoCloseable {
      * @param data   The data to write into the cache file
      * @param append Specifies if the data to write should be appended to an already existing entry with the same key.
      * @return The updated entry
+     * @throws IOException            If the backing cache file could not get accessed or throw an exception while
+     *                                writing the entry to its storage
+     * @throws ClassNotFoundException If the bytes of one of the entries in the cache file, the <em>data</em> argument
+     *                                is compared with, belong to a different type than the value type of this data store
+     * @throws NotAppendableException If the entry to write does not implement {@link at.rovo.drum.data.AppendableData}
      */
     DrumStoreEntry<V, ?> writeEntry(DrumStoreEntry<V, ?> data, boolean append)
-            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException,
-            NotAppendableException, DrumException;
+            throws IOException, ClassNotFoundException, NotAppendableException;
 
     /**
      * Returns the entry which matches the given <em>key</em> value.
      *
      * @param key The key value the entry should be retrieved for
      * @return The data value which is stored under the given key or null if no data with the given key could be found
+     * @throws IOException            If the backing cache file could not get accessed or throw an exception while
+     *                                reading the entry from its storage
+     * @throws ClassNotFoundException If the bytes of the entry in the cache file, the <em>key</em> argument points to,
+     *                                belong to a different type than the value type of this data store
      */
     DrumStoreEntry<V, ?> getEntry(Long key)
-            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException;
+            throws IOException, ClassNotFoundException;
 
     /**
      * Returns the entry starting at the current cursor position. If the cursor is in the middle of an entry it will not
@@ -65,14 +77,19 @@ public interface SimpleDataStore<V extends Serializable> extends AutoCloseable {
      *
      * @return The entry at the current cursor position or null if either the end of the file was reached without
      * finding an entry or if the cursor was placed in the middle of an entry.
+     * @throws IOException            If the backing cache file could not get accessed or throw an exception while
+     *                                reading the entry from its storage
+     * @throws ClassNotFoundException If the bytes of the entry in the cache file belong to a different type than the
+     *                                value type of this data store
      */
     DrumStoreEntry<V, ?> getNextEntry()
-            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException;
+            throws IOException, ClassNotFoundException;
 
     /**
      * Returns the length of the data store in bytes.
      *
      * @return The length of the data store in bytes
+     * @throws DrumException If the length of the backing cache file could not get accessed due to various reasons
      */
     long length() throws DrumException;
 

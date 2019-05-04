@@ -121,11 +121,19 @@ public class DiskFileMerger<V extends Serializable, A extends Serializable> impl
 
     /**
      * Creates a new instance.
+     *
+     * @param drumName        The name of the Drum instance
+     * @param numBuckets      The number of buckets to initialize
+     * @param dispatcher      The dispatcher to send results with
+     * @param valueClass      The class object of the value object
+     * @param auxClass        The class object of the auxiliary data object
+     * @param dataStoreMerger The factory to initialize the backing data store with
+     * @param eventDispatcher The instance responsible for sending out events to listeners
      */
     public DiskFileMerger(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
-                          Class<A> auxClass, DataStoreMerger<V, A> datastoreMerger, DrumEventDispatcher eventDispatcher) {
+                          Class<A> auxClass, DataStoreMerger<V, A> dataStoreMerger, DrumEventDispatcher eventDispatcher) {
         this.drumName = drumName;
-        this.datastoreMerger = datastoreMerger;
+        this.datastoreMerger = dataStoreMerger;
         this.eventDispatcher = eventDispatcher;
         this.diskWriters = new ArrayList<>(numBuckets);
         this.sortedMergeBuffer = new ArrayList<>();

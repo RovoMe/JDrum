@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
  * This implementation of the 'Disk Repository with Update Management' structure utilizes a consumer/producer pattern to
  * store and process input received by its
  * <ul>
- * <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
- * <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
- * <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
+ * <li>{@link #check(Long)} or {@link #check(Long, Serializable)}</li>
+ * <li>{@link #update(Long, Serializable)} or {@link #update(Long, Serializable, Serializable)}</li>
+ * <li>{@link #checkUpdate(Long, Serializable)} or {@link #checkUpdate(Long, Serializable, Serializable)}</li>
  * </ul>
  * methods.
  * <p>

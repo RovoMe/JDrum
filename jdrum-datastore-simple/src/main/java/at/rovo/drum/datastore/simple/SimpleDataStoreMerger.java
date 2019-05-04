@@ -101,7 +101,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                             element.setValue(entry.getValue());
                         }
                     }
-                } catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new DrumException("Error retrieving data object with key: " + key + "!", e);
                 }
             }
@@ -111,7 +111,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                 try {
                     this.dataStore.writeEntry(element, false);
                     numUniqueEntries = this.dataStore.getNumberOfEntries();
-                } catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new DrumException("Error writing data object with key: " + key + "!", e);
                 }
             }
@@ -121,7 +121,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                 try {
                     element.setValue(this.dataStore.writeEntry(element, true).getValue());
                     numUniqueEntries = this.dataStore.getNumberOfEntries();
-                } catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new DrumException("Error writing data object with key: " + key + "!", e);
                 }
             }
