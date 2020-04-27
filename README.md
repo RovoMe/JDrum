@@ -69,7 +69,7 @@ specify the instance name of the JDrum key/value store and the expected classes 
 | bufferSize(int)             | The size in bytes a buffers has to reach before it requests a merge. This has to be a power of 2      | 64kb    |
 | listener(DrumListener)      | Assigns an object to JDrum which gets notified on internal state changes like the filling up of buffers or disk files or on the current state of each disk bucket | null |
 | dispatcher(Dispatcher)      | An object implementing this interface which will receive responses to the invoked operation like f.e. `UNIQUE_KEY` or `DUPLICATE_KEY` classifications and/or the current value of an updated object | NullDispatcher |
-| datastore(DataStoreMerger) | A factory method to initialize a merger instance which takes care of merging data from the respective bucket files to a backing data store. By default this project ships with the `SimpleDataStoreMerder`, which merges data into a backing file. A `BerkeleyDBStoreMerger` is available in the [jdrum-datastore-berkeley](https://github.com/RovoMe/jdrum-datastore-berkeley) Github project | null
+| datastore(DataStoreMerger) | A factory method to initialize a merger instance which takes care of merging data from the respective bucket files to a backing data store. By default this project ships with the `SimpleDataStoreMerger`, which merges data into a backing file. A `BerkeleyDBStoreMerger` is available in the [jdrum-datastore-berkeley](https://github.com/RovoMe/jdrum-datastore-berkeley) Github project | null
 
 ### Insert or update data
 
