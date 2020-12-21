@@ -1,5 +1,6 @@
 package at.rovo.drum.data;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 
 /**
@@ -15,5 +16,5 @@ public interface AppendableData<T extends Serializable> extends ByteSerializable
      *
      * @param data The data to append to the value field of this object
      */
-    void append(T data);
+    void append(@Nonnull final T data);
 }

@@ -52,7 +52,7 @@ public enum DrumOperation {
      * @return The matching DRUM operation
      * @throws DrumException If the provided token does not match a valid DRUM operation
      */
-    public static DrumOperation fromToken(char c) throws DrumException {
+    public static DrumOperation fromToken(final char c) throws DrumException {
         DrumOperation op;
         switch (c) {
             case 'c':

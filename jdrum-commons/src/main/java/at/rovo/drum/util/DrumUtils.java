@@ -2,6 +2,7 @@ package at.rovo.drum.util;
 
 import at.rovo.drum.data.ByteSerializable;
 
+import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -28,7 +29,7 @@ public class DrumUtils {
      * @param string The string object to generate the 64bit hash value for
      * @return The 64bit long hash value for the provided string
      */
-    public static long hash(final String string) {
+    public static long hash(@Nonnull final String string) {
         long h = 1125899906842597L; // prime
         int len = string.length();
 
@@ -45,7 +46,7 @@ public class DrumUtils {
      * @param object The object whose key shall be calculated
      * @return The 64bit long hash value for the provided object
      */
-    public static long hash(final Object object) {
+    public static long hash(@Nonnull final Object object) {
         return hash(object.toString());
     }
 
@@ -59,7 +60,7 @@ public class DrumUtils {
      * @return The bucket index the key should be in
      * @throws IllegalArgumentException If the provided input parameter is not a power of 2
      */
-    public static int getBucketForKey(long key, int numBuckets) {
+    public static int getBucketForKey(final long key, final int numBuckets) {
         // test if numBuckets is a power of 2
         int exponent = Math.getExponent(numBuckets);
         if (numBuckets != Math.pow(2, exponent)) {
@@ -80,7 +81,7 @@ public class DrumUtils {
      * @see <a href="http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a">
      *     DRUM - A C++ Implementation for the URL-seen Test of a Web Crawler</a>
      */
-    public static long getBucketOfKey(long key, int numBuckets) {
+    public static long getBucketOfKey(final long key, final int numBuckets) {
         int exponent = Math.getExponent(numBuckets);
         // Build mask-string
         StringBuilder builder = checkExponentAndPrepareMaskString(numBuckets, exponent);
@@ -104,7 +105,7 @@ public class DrumUtils {
      * @see <a href="http://www.codeproject.com/Articles/36221/DRUM-A-C-Implementation-for-the-URL-seen-Test-of-a">
      *     DRUM - A C++ Implementation for the URL-seen Test of a Web Crawler</a>
      */
-    public static int getBucketOfKey(int key, int numBuckets) {
+    public static int getBucketOfKey(final int key, final int numBuckets) {
         int exponent = Math.getExponent(numBuckets);
         // Build mask-string
         StringBuilder builder = checkExponentAndPrepareMaskString(numBuckets, exponent);
@@ -116,7 +117,8 @@ public class DrumUtils {
         return (bucket >>> (32 - exponent));
     }
 
-    private static StringBuilder checkExponentAndPrepareMaskString(int numBuckets, int exponent) {
+    @Nonnull
+    private static StringBuilder checkExponentAndPrepareMaskString(final int numBuckets, final int exponent) {
         if (numBuckets != Math.pow(2, exponent)) {
             throw new IllegalArgumentException("Number of buckets does not correspond to a power of 2!");
         }
@@ -131,22 +133,20 @@ public class DrumUtils {
      * @return The bytes of the object or an empty byte array if the source object was null
      * @throws IOException If any error during the serialization occurs
      */
-    public static byte[] serialize(Object obj) throws IOException {
+    public static byte[] serialize(@Nonnull final Object obj) throws IOException {
         if (obj instanceof String) {
             return obj.toString().getBytes(StandardCharsets.UTF_8);
         }
         // objects implementing the ByteSerializable interface do their own homework on serializing/deserializing their
         // state to/from bytes. This avoids returning unnecessary bytes
         if (obj instanceof ByteSerializable) {
+            //noinspection rawtypes
             return ((ByteSerializable) obj).toBytes();
         }
         // no custom serialization available, fall back to the default one although it is wasteful in relation to the
         // number of actual bytes produced! Simple Integer objects create up to 81 bytes instead of only 4!
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            if (obj == null) {
-                return new byte[0];
-            }
             oos.writeObject(obj);
             oos.flush();
 
@@ -164,7 +164,9 @@ public class DrumUtils {
      * @throws IOException If the cast of the bytes to a {@link ByteSerializable} object failed
      * @throws ClassNotFoundException If the class requested via the <em>type</em> parameter could not be found
      */
-    public static <V> V deserialize(byte[] bytes, Class<? extends V> type)
+    @Nonnull
+    public static <V> V deserialize(@Nonnull final byte[] bytes,
+                                    @Nonnull final Class<? extends V> type)
             throws IOException, ClassNotFoundException {
         V ret;
         // check if the byte array is a String (character array)
@@ -172,6 +174,7 @@ public class DrumUtils {
             ret = type.cast(new String(bytes, StandardCharsets.UTF_8));
         } else if (ByteSerializable.class.isAssignableFrom(type)) {
             try {
+                //noinspection rawtypes
                 ret = type.cast(((ByteSerializable) type.getConstructor().newInstance()).readBytes(bytes));
             } catch (Exception ex) {
                 throw new IOException(ex);
@@ -192,7 +195,8 @@ public class DrumUtils {
      * @param l The long value to be converted into a byte array
      * @return the 8-byte array representing the long value
      */
-    public static byte[] long2bytes(long l) {
+    @Nonnull
+    public static byte[] long2bytes(final long l) {
         byte[] result = new byte[8];
 
         for (int i = 0; i < result.length; i++) {
@@ -207,7 +211,8 @@ public class DrumUtils {
      * @param i The integer value to be converted to a byte array
      * @return The 4-byte array representing the integer value
      */
-    public static byte[] int2bytes(int i) {
+    @Nonnull
+    public static byte[] int2bytes(final int i) {
         byte[] result = new byte[4];
 
         result[0] = (byte) (i >> 24);
@@ -223,7 +228,7 @@ public class DrumUtils {
      * @param b The 4 byte array containing the bits of the integer
      * @return The converted integer object
      */
-    public static int bytes2int(byte[] b) {
+    public static int bytes2int(final byte[] b) {
         return new BigInteger(b).intValue();
     }
 
@@ -233,7 +238,7 @@ public class DrumUtils {
      * @param b the 8 byte array containing the bits of the long value
      * @return the converted long object
      */
-    public static long byte2long(byte[] b) {
+    public static long byte2long(final byte[] b) {
         return new BigInteger(b).longValue();
     }
 }

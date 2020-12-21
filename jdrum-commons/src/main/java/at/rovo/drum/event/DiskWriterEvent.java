@@ -2,6 +2,8 @@ package at.rovo.drum.event;
 
 import at.rovo.drum.DrumListener;
 
+import javax.annotation.Nonnull;
+
 /**
  * Informs {@link DrumListener listeners} that the disk bucket writer has written new bytes to the
  * temporary bucket file. {@link #getBucketId()} will return the bucket ID of the file the data were written to while
@@ -15,15 +17,15 @@ public class DiskWriterEvent extends DrumEvent<DiskWriterEvent> {
     /**
      * The bucket ID the event was triggered from
      */
-    private int bucketId;
+    private final int bucketId;
     /**
      * The length of the key/value bytes of the bucket when the event occurred
      */
-    private long kvBytes;
+    private final long kvBytes;
     /**
      * The length of the auxiliary data in bytes of the respective bucket when the event occurred
      */
-    private long auxBytes;
+    private final long auxBytes;
 
     /**
      * Initializes a new disk writer event for the given DRUM instance' bucket ID.
@@ -33,7 +35,10 @@ public class DiskWriterEvent extends DrumEvent<DiskWriterEvent> {
      * @param kvBytes  The number of bytes of the key/value entry when the event occurred
      * @param auxBytes The number of bytes of the auxiliary data when the event occurred
      */
-    public DiskWriterEvent(String drumName, int bucketId, long kvBytes, long auxBytes) {
+    public DiskWriterEvent(@Nonnull final String drumName,
+                           final int bucketId,
+                           final long kvBytes,
+                           final long auxBytes) {
         super(drumName, DiskWriterEvent.class);
         this.bucketId = bucketId;
         this.kvBytes = kvBytes;
@@ -68,6 +73,7 @@ public class DiskWriterEvent extends DrumEvent<DiskWriterEvent> {
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - DiskWriter " + this.bucketId + " has written "
                 + this.kvBytes + " bytes into bucket" + this.bucketId + ".kv file and " + this.auxBytes +

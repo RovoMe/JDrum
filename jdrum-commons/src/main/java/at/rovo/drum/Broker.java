@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Queue;
 
@@ -20,12 +22,13 @@ public interface Broker<T extends DrumStoreEntry<V, ?>, V extends Serializable> 
      * @param data The data item to add to the broker
      * @throws IllegalStateException Thrown if entries are added to the broker after a shutdown was requested
      */
-    void put(T data);
+    void put(@Nullable final T data);
 
     /**
      * Returns all data stored by the broker.
      *
      * @return The stored data of the broker instance
      */
+    @Nonnull
     Queue<T> takeAll();
 }

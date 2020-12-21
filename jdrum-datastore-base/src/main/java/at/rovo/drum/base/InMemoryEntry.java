@@ -15,6 +15,9 @@ import java.lang.invoke.MethodHandles;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * <em>InMemoryData</em> is a bean which holds the data related to an object that either should be stored within the
  * DRUM cache or is returned due to a DUPLICATE event from a back-end data store.
@@ -71,7 +74,7 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
      * @param aux       The auxiliary data attached to the key
      * @param operation The DRUM operation to execute for this data object
      */
-    public InMemoryEntry(Long key, V value, A aux, DrumOperation operation) {
+    public InMemoryEntry(@Nonnull final Long key, @Nullable final V value, @Nullable final A aux, @Nullable final DrumOperation operation) {
         this.key = key;
         this.value = value;
         this.aux = aux;
@@ -79,36 +82,40 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
+    @Nonnull
     public Long getKey() {
         return this.key;
     }
 
     @Override
-    public void setKey(Long key) {
+    public void setKey(@Nonnull final Long key) {
         this.key = key;
     }
 
     @Override
+    @Nullable
     public V getValue() {
         return this.value;
     }
 
     @Override
-    public void setValue(V value) {
+    public void setValue(@Nullable final V value) {
         this.value = value;
     }
 
     @Override
+    @Nullable
     public A getAuxiliary() {
         return this.aux;
     }
 
     @Override
-    public void setAuxiliary(A aux) {
+    public void setAuxiliary(@Nullable final A aux) {
         this.aux = aux;
     }
 
     @Override
+    @Nonnull
     public DrumOperation getOperation() {
         return this.operation;
     }
@@ -124,11 +131,7 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
 
     @SuppressWarnings("unchecked")
     @Override
-    public void appendValue(V data) throws NotAppendableException {
-        if (data == null) {
-            throw new IllegalArgumentException("Cannot append null value");
-        }
-
+    public void appendValue(@Nonnull final V data) throws NotAppendableException {
         if (null != this.value) {
             if (this.value instanceof AppendableData) {
                 ((AppendableData<V>) this.value).append(data);
@@ -144,11 +147,13 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
+    @Nonnull
     public byte[] getKeyAsBytes() {
         return DrumUtils.long2bytes(key);
     }
 
     @Override
+    @Nullable
     public byte[] getValueAsBytes() {
         if (this.value == null) {
             return null;
@@ -170,6 +175,7 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
      * @return The attached data to a key as byte-array
      */
     @Override
+    @Nullable
     public byte[] getAuxiliaryAsBytes() {
         if (this.aux == null) {
             return null;
@@ -187,11 +193,12 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
-    public void setResult(DrumResult result) {
+    public void setResult(@Nonnull final DrumResult result) {
         this.result = result;
     }
 
     @Override
+    @Nonnull
     public DrumResult getResult() {
         return this.result;
     }
@@ -202,7 +209,10 @@ public class InMemoryEntry<V extends Serializable, A extends Serializable>
         // take
         long bytes = 12;
         if (this.value != null) {
-            bytes += this.getValueAsBytes().length;
+            final byte[] valueBytes = this.getValueAsBytes();
+            if (null != valueBytes) {
+                bytes += this.getValueAsBytes().length;
+            }
         }
 
         return bytes;

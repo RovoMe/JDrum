@@ -6,6 +6,7 @@ import at.rovo.drum.DrumStoreEntry;
 import at.rovo.drum.NotAppendableException;
 import at.rovo.drum.data.AppendableData;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.List;
 
@@ -23,7 +24,7 @@ public abstract class DataStoreMerger<V extends Serializable, A extends Serializ
      */
     protected final Class<V> valueClass;
 
-    public DataStoreMerger(String drumName, Class<V> valueClass) {
+    public DataStoreMerger(@Nonnull final String drumName, @Nonnull final Class<V> valueClass) {
         this.drumName = drumName;
         this.valueClass = valueClass;
     }
@@ -40,7 +41,7 @@ public abstract class DataStoreMerger<V extends Serializable, A extends Serializ
      * @throws DrumException If the data could either not retrieved from the backing datastore or not be written to it
      * @throws NotAppendableException If the passed <em>data</em> instance is not of type {@link AppendableData}
      */
-    public abstract long compareDataWithDataStore(List<? extends DrumStoreEntry<V, A>> data)
+    public abstract long compareDataWithDataStore(@Nonnull final List<? extends DrumStoreEntry<V, A>> data)
             throws DrumException, NotAppendableException;
 
     /**

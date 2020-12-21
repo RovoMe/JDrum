@@ -2,6 +2,8 @@ package at.rovo.drum.event;
 
 import at.rovo.drum.Broker;
 
+import javax.annotation.Nonnull;
+
 /**
  * An event triggered by the {@link Broker} implementation when data was added to the broker.
  *
@@ -12,15 +14,15 @@ public class InMemoryBufferEvent extends DrumEvent<InMemoryBufferEvent> {
     /**
      * The bucket ID the event was triggered from
      */
-    private int bucketId;
+    private final int bucketId;
     /**
      * The length of the key/value bytes of the buffer when the event occurred
      */
-    private long kvSize;
+    private final long kvSize;
     /**
      * The length of the auxiliary data in bytes of the respective buffer when the event occurred
      */
-    private long auxSize;
+    private final long auxSize;
 
     /**
      * Initializes a new in-memory buffer event for the given DRUM instance' bucket ID.
@@ -30,7 +32,10 @@ public class InMemoryBufferEvent extends DrumEvent<InMemoryBufferEvent> {
      * @param kvSize   The number of bytes of the key/value entry when the event occurred
      * @param auxSize  The number of bytes of the auxiliary data when the event occurred
      */
-    public InMemoryBufferEvent(String drumName, int bucketId, long kvSize, long auxSize) {
+    public InMemoryBufferEvent(@Nonnull final String drumName,
+                               final int bucketId,
+                               final long kvSize,
+                               final long auxSize) {
         super(drumName, InMemoryBufferEvent.class);
         this.bucketId = bucketId;
         this.kvSize = kvSize;
@@ -65,6 +70,7 @@ public class InMemoryBufferEvent extends DrumEvent<InMemoryBufferEvent> {
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - InMemoryBuffer " + this.bucketId +
                 " new buffer size " + this.kvSize + " bytes for key/value buffer and " + this.auxSize +

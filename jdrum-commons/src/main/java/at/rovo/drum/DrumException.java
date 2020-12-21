@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+
 /**
  * A DrumException marks a failure while caching data either to disk or while reading from the appropriate disk files or
  * the Berkeley DB used in the back.
@@ -17,7 +19,7 @@ public class DrumException extends Exception {
      *
      * @param msg The error message of this instance
      */
-    public DrumException(String msg) {
+    public DrumException(@Nonnull final String msg) {
         super(msg);
     }
 
@@ -28,7 +30,7 @@ public class DrumException extends Exception {
      * @param msg The error message of this instance
      * @param t   The object which threw the exception
      */
-    public DrumException(String msg, Throwable t) {
+    public DrumException(@Nonnull final String msg, @Nonnull final Throwable t) {
         super(msg, t);
     }
 }

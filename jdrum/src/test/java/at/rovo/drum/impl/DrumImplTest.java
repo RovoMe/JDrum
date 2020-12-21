@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -138,7 +140,7 @@ public class DrumImplTest extends BaseDataStoreTest implements DrumListener {
     }
 
     @Override
-    public void update(DrumEvent<? extends DrumEvent<?>> event) {
+    public void update(@Nonnull final DrumEvent<? extends DrumEvent<?>> event) {
         LOG.debug(event.toString());
     }
 }

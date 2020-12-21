@@ -1,5 +1,6 @@
 package at.rovo.drum.util;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -40,7 +41,7 @@ public class DiskFileHandle {
      * @param drumName The name without the extension of the file this handle is created for
      * @param bucketId A reference to the key/value file
      */
-    public DiskFileHandle(final String drumName, final int bucketId) {
+    public DiskFileHandle(@Nonnull final String drumName, final int bucketId) {
         this.kvFileName = "bucket" + bucketId + ".kv";
         this.auxFileName = "bucket" + bucketId + ".aux";
 
@@ -73,6 +74,7 @@ public class DiskFileHandle {
      *
      * @return The name of the key/value file
      */
+    @Nonnull
     public String getKVFileName() {
         return this.kvFileName;
     }
@@ -82,6 +84,7 @@ public class DiskFileHandle {
      *
      * @return The name of auxiliary data file
      */
+    @Nonnull
     public String getAuxFileName() {
         return this.auxFileName;
     }
@@ -91,6 +94,7 @@ public class DiskFileHandle {
      *
      * @return The reference to the key/value file
      */
+    @Nonnull
     public RandomAccessFile getKVFile() {
         return this.kvFile;
     }
@@ -100,6 +104,7 @@ public class DiskFileHandle {
      *
      * @return The reference to the auxiliary data file
      */
+    @Nonnull
     public RandomAccessFile getAuxFile() {
         return this.auxFile;
     }
@@ -109,6 +114,7 @@ public class DiskFileHandle {
      *
      * @return A semaphore to acquire exclusive file access
      */
+    @Nonnull
     public Semaphore getLock() {
         return this.lock;
     }

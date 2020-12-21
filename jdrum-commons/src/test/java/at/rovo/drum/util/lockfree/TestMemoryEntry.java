@@ -8,6 +8,8 @@ import at.rovo.drum.PositionAware;
 import at.rovo.drum.data.AppendableData;
 import at.rovo.drum.util.DrumUtils;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.Serializable;
 
@@ -41,7 +43,7 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
     /**
      * The DRUM operation to execute on the data
      */
-    private DrumOperation operation;
+    private final DrumOperation operation;
     /**
      * The result extracted based on the data and the executed DRUM operation
      */
@@ -55,13 +57,7 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
      * @param aux       The auxiliary data attached to the key
      * @param operation The DRUM operation to execute for this data object
      */
-    TestMemoryEntry(Long key, V value, A aux, DrumOperation operation) {
-        if (key == null) {
-            throw new IllegalArgumentException("No key provided!");
-        }
-        if (operation == null) {
-            throw new IllegalArgumentException("No operation provided");
-        }
+    TestMemoryEntry(@Nonnull final Long key, @Nullable final V value, @Nullable final A aux, @Nonnull final DrumOperation operation) {
         this.key = key;
         this.value = value;
         this.aux = aux;
@@ -69,48 +65,47 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
+    @Nonnull
     public Long getKey() {
         return this.key;
     }
 
     @Override
-    public void setKey(Long key) {
+    public void setKey(@Nonnull final Long key) {
         this.key = key;
     }
 
     @Override
+    @Nullable
     public V getValue() {
         return this.value;
     }
 
     @Override
-    public void setValue(V value) {
+    public void setValue(@Nullable final V value) {
         this.value = value;
     }
 
     @Override
+    @Nullable
     public A getAuxiliary() {
         return this.aux;
     }
 
     @Override
-    public void setAuxiliary(A aux) {
+    public void setAuxiliary(@Nullable final A aux) {
         this.aux = aux;
     }
 
     @Override
+    @Nonnull
     public DrumOperation getOperation() {
         return this.operation;
     }
 
-
     @SuppressWarnings("unchecked")
     @Override
-    public void appendValue(V data) throws NotAppendableException {
-        if (data == null) {
-            throw new IllegalArgumentException("Cannot append null value");
-        }
-
+    public void appendValue(@Nonnull final V data) throws NotAppendableException {
         if (null != this.value) {
             if (this.value instanceof AppendableData) {
                 ((AppendableData<V>) this.value).append(data);
@@ -126,11 +121,13 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
+    @Nonnull
     public byte[] getKeyAsBytes() {
         return DrumUtils.long2bytes(key);
     }
 
     @Override
+    @Nullable
     public byte[] getValueAsBytes() {
         if (this.value == null) {
             return null;
@@ -151,6 +148,7 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
      * @return The attached data to a key as byte-array
      */
     @Override
+    @Nullable
     public byte[] getAuxiliaryAsBytes() {
         if (this.aux == null) {
             return null;
@@ -166,11 +164,12 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
-    public void setResult(DrumResult result) {
+    public void setResult(@Nonnull final DrumResult result) {
         this.result = result;
     }
 
     @Override
+    @Nonnull
     public DrumResult getResult() {
         return this.result;
     }
@@ -181,7 +180,10 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
         // take
         long bytes = 12;
         if (this.value != null) {
-            bytes += this.getValueAsBytes().length;
+            final byte[] valueBytes = this.getValueAsBytes();
+            if (null != valueBytes) {
+                bytes += this.getValueAsBytes().length;
+            }
         }
 
         return bytes;
@@ -198,9 +200,12 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable final Object other) {
         if (other == this) {
             return true;
+        }
+        if (null == other) {
+            return false;
         }
         if (other instanceof TestMemoryEntry) {
             @SuppressWarnings("unchecked")
@@ -214,6 +219,7 @@ public class TestMemoryEntry<V extends Serializable, A extends Serializable>
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return "op: " + this.operation + " key: " + this.key + " value: " + this.value + " aux: " + this.aux +
                 " result: " + this.result;

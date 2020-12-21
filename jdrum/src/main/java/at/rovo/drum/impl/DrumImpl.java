@@ -12,16 +12,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import at.rovo.drum.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * This implementation of the 'Disk Repository with Update Management' structure utilizes a consumer/producer pattern to
  * store and process input received by its
  * <ul>
- * <li>{@link #check(Long)} or {@link #check(Long, A)}</li>
- * <li>{@link #update(Long, V)} or {@link #update(Long, V, A)}</li>
- * <li>{@link #checkUpdate(Long, V)} or {@link #checkUpdate(Long, V, A)}</li>
+ * <li>{@link #check(Long)} or {@link #check(Long, Serializable)}</li>
+ * <li>{@link #update(Long, Serializable)} or {@link #update(Long, Serializable, Serializable)}</li>
+ * <li>{@link #checkUpdate(Long, Serializable)} )} or {@link #checkUpdate(Long, Serializable, Serializable)}</li>
  * </ul>
  * methods.
  * <p>
@@ -34,6 +38,7 @@ import org.slf4j.LoggerFactory;
  * @author Roman Vottner
  */
 public class DrumImpl<V extends Serializable, A extends Serializable> implements StatisticsEnabledDrum<V, A> {
+
     /**
      * The logger of this class
      **/
@@ -76,13 +81,12 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      * attributes.
      *
      * @param settings The parameter object containing the actual settings for the DRUM instance
-     * @throws DrumException If during the initialization of the backing data store an error occurred
      */
-    public DrumImpl(DrumSettings<V, A> settings) throws DrumException {
+    public DrumImpl(@Nonnull final DrumSettings<V, A> settings) {
         this.drumName = settings.getDrumName();
         this.numBuckets = settings.getNumBuckets();
         this.eventDispatcher = settings.getEventDispatcher();
-        DrumExceptionHandler exceptionHandler = new DrumExceptionHandler();
+        final DrumExceptionHandler exceptionHandler = new DrumExceptionHandler();
 
         // create the broker and the consumer listening to the broker
         this.inMemoryBuffer = new ArrayList<>(numBuckets);
@@ -92,16 +96,16 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
                 settings.getDataStoreMerger(), settings.getEventDispatcher());
 
         // Bucket-writer-threads
-        at.rovo.drum.util.NamedThreadFactory namedFactory = new at.rovo.drum.util.NamedThreadFactory();
+        final NamedThreadFactory namedFactory = new NamedThreadFactory();
         namedFactory.setName(this.drumName + "-Writer");
         namedFactory.setUncaughtExceptionHandler(exceptionHandler);
         this.executors = Executors.newFixedThreadPool(this.numBuckets + 2, namedFactory);
 
         for (int i = 0; i < numBuckets; i++) {
             int bufferSize = settings.getBufferSize();
-            Broker<InMemoryEntry<V, A>, V> broker =
+            final Broker<InMemoryEntry<V, A>, V> broker =
                     new InMemoryMessageBroker<>(drumName, i, bufferSize, eventDispatcher);
-            DiskWriter consumer =
+            final DiskWriter consumer =
                     new DiskBucketWriter<>(drumName, i, bufferSize, broker, merger, eventDispatcher,
                             new at.rovo.drum.util.DiskFileHandle(this.drumName, i));
 
@@ -123,51 +127,49 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
         namedFactory.setName(this.drumName + "-EventDispatcher");
         this.executors.execute(this.eventDispatcher);
 
-        if (settings.getListener() != null) {
-            this.addDrumListener(settings.getListener());
-        }
+        this.addDrumListener(settings.getListener());
 
         // do not allow any more threads to be added to the thread-pool
         this.executors.shutdown();
     }
 
     @Override
-    public void check(Long key) {
+    public void check(@Nonnull final Long key) {
         this.add(key, null, null, DrumOperation.CHECK);
     }
 
     @Override
-    public void check(Long key, A aux) {
+    public void check(@Nonnull final Long key, @Nullable final A aux) {
         this.add(key, null, aux, DrumOperation.CHECK);
     }
 
     @Override
-    public void update(Long key, V value) {
+    public void update(@Nonnull final Long key, @Nullable final V value) {
         this.add(key, value, null, DrumOperation.UPDATE);
     }
 
     @Override
-    public void update(Long key, V value, A aux) {
+    public void update(@Nonnull final Long key, @Nullable final V value, @Nullable final A aux) {
         this.add(key, value, aux, DrumOperation.UPDATE);
     }
 
     @Override
-    public void appendUpdate(Long key, V value) {
+    public void appendUpdate(@Nonnull final Long key, @Nullable final V value) {
         this.add(key, value, null, DrumOperation.APPEND_UPDATE);
     }
 
     @Override
-    public void appendUpdate(Long key, V value, A aux) {
+    public void appendUpdate(@Nonnull final Long key, @Nullable final V value, @Nullable final A aux) {
         this.add(key, value, aux, DrumOperation.APPEND_UPDATE);
     }
 
     @Override
-    public void checkUpdate(Long key, V value) {
+    public void checkUpdate(@Nonnull final Long key, @Nullable final V value) {
         this.add(key, value, null, DrumOperation.CHECK_UPDATE);
     }
 
     @Override
-    public void checkUpdate(Long key, V value, A aux) {
+    public void checkUpdate(@Nonnull final Long key, @Nullable final V value, @Nullable final A aux) {
         this.add(key, value, aux, DrumOperation.CHECK_UPDATE);
     }
 
@@ -188,7 +190,9 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
 
         // wait for the threads to finish
         try {
-            this.executors.awaitTermination(10, TimeUnit.SECONDS);
+            if (!this.executors.awaitTermination(10, TimeUnit.SECONDS)) {
+                LOG.debug("A timeout elapsed before all threads were able to terminate");
+            }
         } catch (InterruptedException e) {
             LOG.error("Error while terminating threads", e);
             caught = e;
@@ -207,12 +211,12 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
     }
 
     @Override
-    public void addDrumListener(DrumListener listener) {
+    public void addDrumListener(@Nonnull final DrumListener listener) {
         this.eventDispatcher.addDrumListener(listener);
     }
 
     @Override
-    public void removeDrumListener(DrumListener listener) {
+    public void removeDrumListener(@Nonnull final DrumListener listener) {
         this.eventDispatcher.removeDrumListener(listener);
     }
 
@@ -227,9 +231,9 @@ public class DrumImpl<V extends Serializable, A extends Serializable> implements
      * @throws IllegalArgumentException If the key is not a power of 2
      * @throws IllegalStateException    If an entry is added after {@link #dispose()} was invoked
      */
-    private void add(Long key, V value, A aux, DrumOperation operation) {
+    private void add(@Nonnull final Long key, @Nullable final  V value, @Nullable final  A aux, DrumOperation operation) {
         // get the bucket index based on the first n bits of the key, according to the number of defined buckets
-        int bucketId = at.rovo.drum.util.DrumUtils.getBucketForKey(key, this.numBuckets);
+        final int bucketId = at.rovo.drum.util.DrumUtils.getBucketForKey(key, this.numBuckets);
 
         // add a new InMemoryData object to the broker
         this.inMemoryBuffer.get(bucketId).put(new InMemoryEntry<>(key, value, aux, operation));

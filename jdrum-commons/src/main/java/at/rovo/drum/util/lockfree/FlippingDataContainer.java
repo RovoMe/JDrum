@@ -2,6 +2,9 @@ package at.rovo.drum.util.lockfree;
 
 import at.rovo.drum.DrumStoreEntry;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,7 +20,8 @@ import java.util.concurrent.atomic.AtomicReference;
  *            {@link DrumStoreEntry}
  * @author Roman Vottner
  */
-public class FlippingDataContainer<E extends DrumStoreEntry> {
+public class FlippingDataContainer<E extends DrumStoreEntry<? extends Serializable, ? extends Serializable>> {
+
     private final AtomicReference<FlippingDataContainerEntry<E>> dataObj = new AtomicReference<>();
 
     /**
@@ -33,7 +37,8 @@ public class FlippingDataContainer<E extends DrumStoreEntry> {
      * @param value The entry to add to the container
      * @return The current version of the {@link FlippingDataContainerEntry} object the entry was added to
      */
-    public FlippingDataContainerEntry<E> put(E value) {
+    @Nullable
+    public FlippingDataContainerEntry<E> put(@Nullable final E value) {
         if (null != value) {
             while (true) {
                 FlippingDataContainerEntry<E> data = dataObj.get();
@@ -52,9 +57,10 @@ public class FlippingDataContainer<E extends DrumStoreEntry> {
      *
      * @return The {@link Queue} stored within the removed {@link FlippingDataContainerEntry} object
      */
+    @Nonnull
     public Queue<E> flip() {
         FlippingDataContainerEntry<E> oldData;
-        FlippingDataContainerEntry<E> newData = new FlippingDataContainerEntry<>(new ConcurrentLinkedQueue<>(), 0, 0, 0);
+        final FlippingDataContainerEntry<E> newData = new FlippingDataContainerEntry<>(new ConcurrentLinkedQueue<>(), 0, 0, 0);
         while (true) {
             oldData = dataObj.get();
             if (dataObj.compareAndSet(oldData, newData)) {

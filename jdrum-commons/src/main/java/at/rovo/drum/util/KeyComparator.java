@@ -2,6 +2,7 @@ package at.rovo.drum.util;
 
 import at.rovo.drum.DrumStoreEntry;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.Comparator;
 
@@ -21,7 +22,7 @@ public class KeyComparator<T extends DrumStoreEntry<?, ?>> implements Comparator
     private static final long serialVersionUID = -687991492884005033L;
 
     @Override
-    public int compare(T o1, T o2) {
+    public int compare(@Nonnull final T o1, @Nonnull final T o2) {
         if (o1.getKey() < o2.getKey()) {
             return -1;
         } else if (o1.getKey() > o2.getKey()) {

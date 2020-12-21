@@ -23,6 +23,9 @@ import net.jcip.annotations.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * <em>DiskBucketWriter</em> is a consumer in the producer-consumer pattern and it takes data stored from the in-memory
  * buffer and writes it to the attached disk bucket file.
@@ -102,13 +105,23 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     /**
      * Creates a new instance and instantiates required fields.
      *
-     * @param drumName       The name of the Drum instance
-     * @param bucketId       The index of the bucket this writer will read data from or write to
-     * @param bucketByteSize The size in bytes before a merge with the backing data store is invoked
-     * @param broker         The broker who administers the in memory data
+     * @param drumName        The name of the Drum instance
+     * @param bucketId        The index of the bucket this writer will read data from or write to
+     * @param bucketByteSize  The size in bytes before a merge with the backing data store is invoked
+     * @param broker          The broker who administers the in memory data
+     * @param merger          The {@link Merger} object that is responsible for integrating the requests into the
+     *                        backing data store
+     * @param eventDispatcher The object to receive event notifications
+     * @param diskFiles       The {@link DiskFileHandle file handle} object providing access to the backing data store
+     *                        files
      */
-    public DiskBucketWriter(String drumName, int bucketId, int bucketByteSize, Broker<InMemoryEntry<V, A>, V> broker,
-                            Merger merger, DrumEventDispatcher eventDispatcher, at.rovo.drum.util.DiskFileHandle diskFiles) {
+    public DiskBucketWriter(@Nonnull final String drumName,
+                            final int bucketId,
+                            final int bucketByteSize,
+                            @Nonnull final Broker<InMemoryEntry<V, A>, V> broker,
+                            @Nonnull final Merger merger,
+                            @Nonnull final DrumEventDispatcher eventDispatcher,
+                            @Nonnull final DiskFileHandle diskFiles) {
         this.drumName = drumName;
         this.bucketId = bucketId;
         this.bucketByteSize = bucketByteSize;
@@ -136,7 +149,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 elementsToPersist = this.broker.takeAll();
 
                 // skip further processing if no data was available
-                if (elementsToPersist == null || elementsToPersist.size() == 0) {
+                if (elementsToPersist.isEmpty()) {
                     continue;
                 }
 
@@ -153,9 +166,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
 
                 this.mergeRequired = false;
             } catch (Exception e) {
-                LOG.error("[" + this.drumName + "] - [" + this.bucketId + "] - caught exception: " + e.getLocalizedMessage(), e);
-                updateState(DiskWriterState.FINISHED_WITH_ERROR);
-                this.merger.writerDone();
+                this.handleException(e);
                 Thread.currentThread().interrupt();
             }
         }
@@ -170,9 +181,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         try {
             this.feedBucket(elementsToPersist);
         } catch (DrumException ex) {
-            LOG.error("[" + this.drumName + "] - [" + this.bucketId + "] - caught exception: " + ex.getLocalizedMessage(), ex);
-            updateState(DiskWriterState.FINISHED_WITH_ERROR);
-            this.merger.writerDone();
+            this.handleException(ex);
             return;
         }
 
@@ -186,12 +195,18 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
         this.merger.writerDone();
     }
 
+    private void handleException(@Nonnull final Exception ex) {
+        LOG.error("[" + this.drumName + "] - [" + this.bucketId + "] - caught exception: " + ex.getLocalizedMessage(), ex);
+        updateState(DiskWriterState.FINISHED_WITH_ERROR);
+        this.merger.writerDone();
+    }
+
     /**
      * Feeds the key/value and auxiliary bucket diskFiles with the data stored in memory buffers.
      *
      * @param inMemoryData The buffer which contains the data to persist to disk
      */
-    private void feedBucket(Queue<InMemoryEntry<V, A>> inMemoryData) throws DrumException {
+    private void feedBucket(@Nonnull final Queue<InMemoryEntry<V, A>> inMemoryData) throws DrumException {
         boolean lockAcquired = false;
         try {
             if (inMemoryData.isEmpty()) {
@@ -209,15 +224,15 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
             final RandomAccessFile kvFile = this.diskFiles.getKVFile();
             final RandomAccessFile auxFile = this.diskFiles.getAuxFile();
 
-            long kvStart = kvFile.getFilePointer();
-            long auxStart = auxFile.getFilePointer();
+            final long kvStart = kvFile.getFilePointer();
+            final long auxStart = auxFile.getFilePointer();
 
             LOG.trace("[{}] - [{}] - {} elements to write", this.drumName, this.bucketId, inMemoryData.size());
             for (InMemoryEntry<V, A> data : inMemoryData) {
                 LOG.info("[{}] - [{}] - feeding bucket with: {}; value: {}",
                         this.drumName, this.bucketId, data.getKey(), data.getValue());
-                long kvStartPos = kvFile.getFilePointer();
-                long auxStartPos = auxFile.getFilePointer();
+                final long kvStartPos = kvFile.getFilePointer();
+                final long auxStartPos = auxFile.getFilePointer();
 
                 // Write the following sequentially for the key/value bucket file:
                 // - operation; (1 byte)
@@ -227,16 +242,16 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
 
                 // write the operation
 
-                DrumOperation op = data.getOperation();
-                char c = op.getTokenForOperation();
+                final DrumOperation op = data.getOperation();
+                final char c = op.getTokenForOperation();
                 kvFile.write(c);
 
                 // write the key
                 kvFile.writeLong(data.getKey());
 
                 // write the value
-                byte[] byteValue = data.getValueAsBytes();
-                long kvEndPos = writeBytesToFile(kvFile, byteValue);
+                final byte[] byteValue = data.getValueAsBytes();
+                final long kvEndPos = writeBytesToFile(kvFile, byteValue);
 
                 if (byteValue != null) {
                     LOG.info("[{}] - [{}] - wrote to kvBucket file - operation: '{}' key: '{}', value.length: '{}' " +
@@ -253,8 +268,8 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
                 // - aux length; (4 byte)
                 // - aux. (variable byte)
 
-                byte[] byteAux = data.getAuxiliaryAsBytes();
-                long auxEndPos = writeBytesToFile(auxFile, byteAux);
+                final byte[] byteAux = data.getAuxiliaryAsBytes();
+                final long auxEndPos = writeBytesToFile(auxFile, byteAux);
 
                 if (byteAux != null) {
                     LOG.info("[{}] - [{}] - wrote to auxBucket file - aux.length: '{}' byteAux: '{}' and aux: '{}' - "
@@ -297,7 +312,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      * @return The current position of the pointer after the write operation
      * @throws IOException Thrown if any exception occurred during the attempt to write the payload to the file
      */
-    private long writeBytesToFile(RandomAccessFile file, byte[] bytes) throws IOException {
+    private long writeBytesToFile(@Nonnull final RandomAccessFile file, @Nullable final byte[] bytes) throws IOException {
         if (bytes != null) {
             file.writeInt(bytes.length);
             file.write(bytes);
@@ -314,7 +329,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      * @param newState The new state this instance is in
      * @return The new state of this instance
      */
-    private DiskWriterState updateState(DiskWriterState newState) {
+    private DiskWriterState updateState(@Nonnull final DiskWriterState newState) {
         this.eventDispatcher.update(new DiskWriterStateUpdate(this.drumName, this.bucketId, newState));
         return newState;
     }
@@ -325,7 +340,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
      * @param byteLengthKV  The length of the key-value pair bytes
      * @param byteLengthAux The length of the auxiliary data bytes
      */
-    private void updateState(long byteLengthKV, long byteLengthAux) {
+    private void updateState(final long byteLengthKV, final long byteLengthAux) {
         this.eventDispatcher.update(new DiskWriterEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
     }
 
@@ -339,6 +354,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     }
 
     @Override
+    @Nonnull
     public DiskFileHandle getDiskFiles() {
         return this.diskFiles;
     }
@@ -349,7 +365,7 @@ public class DiskBucketWriter<V extends Serializable, A extends Serializable> im
     }
 
     @Override
-    public long getAuxFileBytesWritte() {
+    public long getAuxFileBytesWritten() {
         return this.auxBytesWritten;
     }
 

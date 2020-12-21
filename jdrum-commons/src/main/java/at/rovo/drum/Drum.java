@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 
 /**
@@ -43,7 +45,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      *
      * @param key The key which should be checked for.
      */
-    void check(final Long key);
+    void check(@Nonnull final Long key);
 
     /**
      * Informs the caching system to check for the availability of the provided key
@@ -51,7 +53,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param key The key which should be checked for.
      * @param aux The auxiliary data of a key.
      */
-    void check(final Long key, final A aux);
+    void check(@Nonnull final  Long key, @Nullable final A aux);
 
     /**
      * Instructs the caching system to update the value of a certain key on the next merge phase. If the key is not
@@ -60,7 +62,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param key   The key which value should be updated
      * @param value The new value of the key
      */
-    void update(final Long key, final V value);
+    void update(@Nonnull final  Long key, @Nullable final  V value);
 
     /**
      * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
@@ -71,7 +73,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param value The new value of the key
      * @param aux   The new auxiliary data of the key
      */
-    void update(final Long key, final V value, final A aux);
+    void update(@Nonnull final  Long key, @Nullable final  V value, @Nullable final A aux);
 
     /**
      * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
@@ -82,7 +84,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param key   The key which value should be updated
      * @param value The new value of the key
      */
-    void appendUpdate(final Long key, final V value);
+    void appendUpdate(@Nonnull final  Long key, @Nullable final  V value);
 
     /**
      * Instructs the caching system to update the value and/or auxiliary data of a certain key on the next merge phase.
@@ -94,7 +96,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param value The new value of the key
      * @param aux   The new auxiliary data of the key
      */
-    void appendUpdate(final Long key, final V value, final A aux);
+    void appendUpdate(@Nonnull final  Long key, @Nullable final  V value, @Nullable final A aux);
 
     /**
      * Executes the check and update operations in one single pass
@@ -102,7 +104,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param key   The key which existence should be checked and its associated data needs to be updated.
      * @param value The value of the key that needs to be updated.
      */
-    void checkUpdate(final Long key, final V value);
+    void checkUpdate(@Nonnull final  Long key, @Nullable final  V value);
 
     /**
      * Executes the check and update operations in one single pass
@@ -111,7 +113,7 @@ public interface Drum<V extends Serializable, A extends Serializable> {
      * @param value The value of the key that needs to be updated.
      * @param aux   The auxiliary data that needs to be updated.
      */
-    void checkUpdate(final Long key, final V value, final A aux);
+    void checkUpdate(@Nonnull final  Long key, @Nullable final  V value, @Nullable final A aux);
 
     /**
      * Releases the lock to the local backing DB and the locks held to other system imminent devices

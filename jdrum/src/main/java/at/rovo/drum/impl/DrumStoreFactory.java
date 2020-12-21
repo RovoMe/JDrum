@@ -5,6 +5,7 @@ import at.rovo.drum.DrumEventDispatcher;
 import at.rovo.drum.DrumException;
 import at.rovo.drum.Merger;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 
 /**
@@ -34,8 +35,12 @@ public abstract class DrumStoreFactory<V extends Serializable, A extends Seriali
      *                        changed or disk writer events
      * @throws DrumException If the backing data store could not be created
      */
-    public DrumStoreFactory(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
-                            Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException {
+    public DrumStoreFactory(@Nonnull final String drumName,
+                            final int numBuckets,
+                            @Nonnull final Dispatcher<V, A> dispatcher,
+                            @Nonnull final Class<V> valueClass,
+                            @Nonnull final Class<A> auxClass,
+                            @Nonnull final DrumEventDispatcher eventDispatcher) throws DrumException {
         this.create(drumName, numBuckets, dispatcher, valueClass, auxClass, eventDispatcher);
     }
 
@@ -51,8 +56,12 @@ public abstract class DrumStoreFactory<V extends Serializable, A extends Seriali
      *                        merge status changed or disk writer events
      * @throws DrumException If the backing data store could not be created
      */
-    protected abstract void create(String drumName, int numBuckets, Dispatcher<V, A> dispatcher, Class<V> valueClass,
-                                   Class<A> auxClass, DrumEventDispatcher eventDispatcher) throws DrumException;
+    protected abstract void create(@Nonnull final String drumName,
+                                   final int numBuckets,
+                                   @Nonnull final Dispatcher<V, A> dispatcher,
+                                   @Nonnull final Class<V> valueClass,
+                                   @Nonnull final Class<A> auxClass,
+                                   @Nonnull final DrumEventDispatcher eventDispatcher) throws DrumException;
 
     /**
      * Returns the generated data storage.

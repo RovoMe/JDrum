@@ -16,6 +16,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 /**
  * <em>DataStoreMerger</em> uses {@link SimpleDataStoreImpl} to check keys for their uniqueness and merges data that needs to
  * be updated with the cache file.
@@ -46,7 +48,8 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
      * @param valueClass The actual type of a value entry
      * @throws DrumException Thrown if the data store could not get initialized
      */
-    public SimpleDataStoreMerger(String drumName, Class<V> valueClass) throws DrumException {
+    public SimpleDataStoreMerger(@Nonnull final String drumName,
+                                 @Nonnull final Class<V> valueClass) throws DrumException {
         super(drumName, valueClass);
 
         String appDir = System.getProperty("user.dir");
@@ -79,7 +82,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
     }
 
     @Override
-    public long compareDataWithDataStore(List<? extends DrumStoreEntry<V, A>> data)
+    public long compareDataWithDataStore(@Nonnull List<? extends DrumStoreEntry<V, A>> data)
             throws DrumException, NotAppendableException {
         long numUniqueEntries = 0L;
         for (DrumStoreEntry<V, ?> element : data) {
@@ -101,7 +104,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                             element.setValue(entry.getValue());
                         }
                     }
-                } catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new DrumException("Error retrieving data object with key: " + key + "!", e);
                 }
             }
@@ -111,7 +114,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                 try {
                     this.dataStore.writeEntry(element, false);
                     numUniqueEntries = this.dataStore.getNumberOfEntries();
-                } catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new DrumException("Error writing data object with key: " + key + "!", e);
                 }
             }
@@ -121,7 +124,7 @@ public class SimpleDataStoreMerger<V extends Serializable, A extends Serializabl
                 try {
                     element.setValue(this.dataStore.writeEntry(element, true).getValue());
                     numUniqueEntries = this.dataStore.getNumberOfEntries();
-                } catch (IOException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     throw new DrumException("Error writing data object with key: " + key + "!", e);
                 }
             }

@@ -2,6 +2,8 @@ package at.rovo.drum;
 
 import at.rovo.drum.data.AppendableData;
 
+import javax.annotation.Nonnull;
+
 /**
  * A NotAppendableException marks a failure while trying to append data to existing data which does not implement the
  * {@link AppendableData} interface.
@@ -17,7 +19,7 @@ public class NotAppendableException extends Exception {
      *
      * @param msg The error message of this instance
      */
-    public NotAppendableException(String msg) {
+    public NotAppendableException(@Nonnull final String msg) {
         super(msg);
     }
 
@@ -28,7 +30,7 @@ public class NotAppendableException extends Exception {
      * @param msg The error message of this instance
      * @param t   The object which threw the exception
      */
-    public NotAppendableException(String msg, Throwable t) {
+    public NotAppendableException(@Nonnull final String msg, @Nonnull final Throwable t) {
         super(msg, t);
     }
 }

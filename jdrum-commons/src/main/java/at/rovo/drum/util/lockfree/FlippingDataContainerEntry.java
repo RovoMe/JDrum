@@ -2,6 +2,9 @@ package at.rovo.drum.util.lockfree;
 
 import at.rovo.drum.DrumStoreEntry;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -11,7 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * @param <T> The type of the entry the internal {@link Queue} can hold
  * @author Roman Vottner
  */
-public class FlippingDataContainerEntry<T extends DrumStoreEntry> {
+public class FlippingDataContainerEntry<T extends DrumStoreEntry<? extends Serializable, ? extends Serializable>> {
 
     private final Queue<T> queue;
     private final int keyLength;
@@ -26,7 +29,7 @@ public class FlippingDataContainerEntry<T extends DrumStoreEntry> {
      * @param valLength The current byte length of all value bytes stored within the backing queue
      * @param auxLength The current byte length of all auxiliary data bytes stored within the backing queue
      */
-    FlippingDataContainerEntry(Queue<T> queue, int keyLength, int valLength, int auxLength) {
+    FlippingDataContainerEntry(@Nonnull final Queue<T> queue, final int keyLength, final int valLength, final int auxLength) {
         this.queue = queue;
         this.keyLength = keyLength;
         this.valLength = valLength;
@@ -40,11 +43,12 @@ public class FlippingDataContainerEntry<T extends DrumStoreEntry> {
      * @param <T>       The type the flippable data object holds
      * @return A new instance containing a merge of the provided object with the passed arguments
      */
-    static <T extends DrumStoreEntry> FlippingDataContainerEntry<T> from(FlippingDataContainerEntry<T> data, T value) {
-        Queue<T> queue = new ConcurrentLinkedQueue<>(data.getQueue());
+    @Nonnull
+    static <T extends DrumStoreEntry<? extends Serializable, ? extends Serializable>> FlippingDataContainerEntry<T> from(@Nonnull final FlippingDataContainerEntry<T> data, T value) {
+        final Queue<T> queue = new ConcurrentLinkedQueue<>(data.getQueue());
         queue.add(value);
         return new FlippingDataContainerEntry<>(queue,
-                data.getKeyLength() + (value.getKeyAsBytes() != null ? value.getKeyAsBytes().length : 0),
+                data.getKeyLength() + value.getKeyAsBytes().length,
                 data.getValLength() + (value.getValueAsBytes() != null ? value.getValueAsBytes().length : 0),
                 + data.getAuxLength() + ( value.getAuxiliaryAsBytes() != null ? value.getAuxiliaryAsBytes().length : 0));
     }
@@ -54,6 +58,7 @@ public class FlippingDataContainerEntry<T extends DrumStoreEntry> {
      *
      * @return The backing queue holding the added {@link DrumStoreEntry} entries
      */
+    @Nonnull
     public Queue<T> getQueue() {
         return this.queue;
     }
@@ -89,7 +94,7 @@ public class FlippingDataContainerEntry<T extends DrumStoreEntry> {
     @Override
     public int hashCode() {
         int hash = 1;
-        hash = 37 * hash + (queue != null ? queue.hashCode() : 0);
+        hash = 37 * hash + queue.hashCode();
         hash = 37 * hash + keyLength;
         hash = 37 * hash + valLength;
         hash = 37 * hash + auxLength;
@@ -97,14 +102,17 @@ public class FlippingDataContainerEntry<T extends DrumStoreEntry> {
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(@Nullable final Object other) {
         if (other == this) {
             return true;
+        }
+        if (null == other) {
+            return false;
         }
         if (other instanceof FlippingDataContainerEntry) {
             @SuppressWarnings("unchecked")
             FlippingDataContainerEntry<T> o = (FlippingDataContainerEntry<T>) other;
-            return ((this.queue == null && o.queue == null) || this.queue != null && this.queue.equals(o.queue))
+            return this.queue.equals(o.queue)
                     && this.keyLength == o.keyLength
                     && this.valLength == o.valLength
                     && this.auxLength == o.auxLength;

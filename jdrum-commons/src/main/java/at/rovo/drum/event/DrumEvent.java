@@ -1,6 +1,7 @@
 package at.rovo.drum.event;
 
 import at.rovo.drum.DrumListener;
+import javax.annotation.Nonnull;
 
 /**
  * A <em>DrumEvent</em> is an event triggered during processing of the passed data. The event is intended for {@link
@@ -18,7 +19,7 @@ public abstract class DrumEvent<T extends DrumEvent<T>> {
     /**
      * The class of the respective event type
      */
-    private Class<T> clazz;
+    private final Class<T> clazz;
     /**
      * The thread the event was triggered from
      */
@@ -30,7 +31,7 @@ public abstract class DrumEvent<T extends DrumEvent<T>> {
      * @param drumName The name of the DRUM instance the event was triggered from
      * @param clazz    The class of the event type
      */
-    DrumEvent(String drumName, Class<T> clazz) {
+    DrumEvent(@Nonnull final String drumName, @Nonnull final Class<T> clazz) {
         this.drumName = drumName;
         this.clazz = clazz;
     }
@@ -40,6 +41,7 @@ public abstract class DrumEvent<T extends DrumEvent<T>> {
      *
      * @return The name of the DRUM instance
      */
+    @Nonnull
     public String getDrumName() {
         return this.drumName;
     }
@@ -49,6 +51,7 @@ public abstract class DrumEvent<T extends DrumEvent<T>> {
      *
      * @return The class of the evnet type
      */
+    @Nonnull
     public Class<T> getRealClass() {
         return this.clazz;
     }
@@ -58,11 +61,13 @@ public abstract class DrumEvent<T extends DrumEvent<T>> {
      *
      * @return The thread that triggered the event
      */
+    @Nonnull
     public Thread getThread() {
         return this.currentThread;
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return "DrumEvent[name=" + this.drumName + ", clazz=" + clazz + ", thread=" + currentThread.getName() + "]";
     }

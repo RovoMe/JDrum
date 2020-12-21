@@ -2,6 +2,8 @@ package at.rovo.drum;
 
 import at.rovo.drum.data.AppendableData;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 
 /**
@@ -18,6 +20,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @return The key of the data object
      */
+    @Nonnull
     Long getKey();
 
     /**
@@ -25,13 +28,14 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @param key The new key of the data object
      */
-    void setKey(Long key);
+    void setKey(@Nonnull final Long key);
 
     /**
      * Returns the value of the current data object.
      *
      * @return The value object related to the key of this data object
      */
+    @Nullable
     V getValue();
 
     /**
@@ -39,13 +43,14 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @param value The new value of the data object
      */
-    void setValue(V value);
+    void setValue(@Nullable final V value);
 
     /**
      * Returns the additional information attached to a key for the current data object.
      *
      * @return The additional information of the data object
      */
+    @Nullable
     A getAuxiliary();
 
     /**
@@ -53,13 +58,14 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @param aux The additional information of the data object
      */
-    void setAuxiliary(A aux);
+    void setAuxiliary(@Nullable final A aux);
 
     /**
      * Returns the DRUM operation to be used on this data object.
      *
      * @return The DRUM operation to be used
      */
+    @Nonnull
     DrumOperation getOperation();
 
     /**
@@ -69,13 +75,14 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      * @throws IllegalArgumentException thrown if the provided data to append is null
      * @throws NotAppendableException   Thrown if the data object to append is not an instance of {@link AppendableData}
      */
-    void appendValue(V data) throws NotAppendableException;
+    void appendValue(@Nonnull final V data) throws NotAppendableException;
 
     /**
      * Returns the key of this data object as an 8 byte long array in big-endian order.
      *
      * @return The key of this data object as byte-array
      */
+    @Nonnull
     byte[] getKeyAsBytes();
 
     /**
@@ -83,6 +90,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @return The value of this data object as byte-array
      */
+    @Nullable
     byte[] getValueAsBytes();
 
     /**
@@ -90,6 +98,7 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @return The attached data to a key as byte-array
      */
+    @Nullable
     byte[] getAuxiliaryAsBytes();
 
     /**
@@ -97,13 +106,14 @@ public interface DrumStoreEntry<V extends Serializable, A extends Serializable> 
      *
      * @param result The result for this data object
      */
-    void setResult(DrumResult result);
+    void setResult(@Nonnull final DrumResult result);
 
     /**
      * Returns the result gathered by DRUM based on the provided data object.
      *
      * @return The result for this data object
      */
+    @Nonnull
     DrumResult getResult();
 
     /**

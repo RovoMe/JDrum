@@ -2,6 +2,8 @@ package at.rovo.drum;
 
 import at.rovo.drum.event.DrumEvent;
 
+import javax.annotation.Nonnull;
+
 /**
  * An instance of this class takes care of shipping internal state events to registered listeners.
  *
@@ -15,7 +17,7 @@ public interface DrumEventDispatcher extends Runnable {
      *
      * @param listener The object that declared its interest to be notified on internal state changes
      **/
-    void addDrumListener(DrumListener listener);
+    void addDrumListener(@Nonnull final DrumListener listener);
 
     /**
      * Removes an object which is no longer interested in receiving notification on internal state changes from the set
@@ -23,7 +25,7 @@ public interface DrumEventDispatcher extends Runnable {
      *
      * @param listener The object to remove from the set of interested listeners
      */
-    void removeDrumListener(DrumListener listener);
+    void removeDrumListener(@Nonnull final DrumListener listener);
 
     /**
      * Internal objects invoke this method to inform the dispatcher about a state change. The dispatcher should now
@@ -31,7 +33,7 @@ public interface DrumEventDispatcher extends Runnable {
      *
      * @param event The internal event which should be distributed to the listener instances
      */
-    void update(DrumEvent<? extends DrumEvent<?>> event);
+    void update(@Nonnull final DrumEvent<? extends DrumEvent<?>> event);
 
     /**
      * Requests to stop the event dispatcher.

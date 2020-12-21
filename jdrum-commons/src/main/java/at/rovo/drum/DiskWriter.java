@@ -40,7 +40,7 @@ public interface DiskWriter extends Runnable, Stoppable {
      *
      * @return The number of bytes written to the auxiliary data disk file
      */
-    long getAuxFileBytesWritte();
+    long getAuxFileBytesWritten();
 
     /**
      * Resets the cursor of the key/value and auxiliary data disk files to the start of the file.

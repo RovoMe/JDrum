@@ -3,6 +3,9 @@ package at.rovo.drum.event;
 import at.rovo.drum.DrumListener;
 import at.rovo.drum.Merger;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * Informs {@link DrumListener listeners} that the {@link Merger} has changed its internal state. The new state of the
  * {@link Merger} can be retrieved via {@link #getBucketId()}.
@@ -18,7 +21,7 @@ public class MergerStateUpdate extends DrumEvent<MergerStateUpdate> {
     /**
      * The new state of the merger
      */
-    private MergerState state;
+    private final MergerState state;
 
     /**
      * Initializes a new {@link Merger} state change event.
@@ -26,7 +29,8 @@ public class MergerStateUpdate extends DrumEvent<MergerStateUpdate> {
      * @param drumName The name of the DRUM instance this event was issued from
      * @param state    The new state the merger is in
      */
-    public MergerStateUpdate(String drumName, MergerState state) {
+    public MergerStateUpdate(@Nonnull final String drumName,
+                             @Nonnull final MergerState state) {
         super(drumName, MergerStateUpdate.class);
         this.state = state;
     }
@@ -49,6 +53,7 @@ public class MergerStateUpdate extends DrumEvent<MergerStateUpdate> {
      *
      * @return The new state of the merger
      */
+    @Nonnull
     public MergerState getState() {
         return this.state;
     }
@@ -58,11 +63,13 @@ public class MergerStateUpdate extends DrumEvent<MergerStateUpdate> {
      *
      * @return The bucket identifier the event was sent from
      */
+    @Nullable
     public Integer getBucketId() {
         return this.bucketId;
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - Merger state changed to: " + this.state;
     }

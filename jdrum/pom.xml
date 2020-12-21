@@ -23,9 +23,15 @@
             <version>${project.parent.version}</version>
         </dependency>
 
+        <!-- @GuardedBy, ... annotations -->
         <dependency>
             <groupId>net.jcip</groupId>
             <artifactId>jcip-annotations</artifactId>
+        </dependency>
+        <!-- @Nonnull, @Nullable, ... annotations -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
         </dependency>
 
         <!-- Test data store to use for testing-->
@@ -62,7 +68,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>
-                        <!-- Allow access to the tests during test-time -->
+                        <!-- Allow the unnamed module access to the tests at test-time -->
                         --add-opens jdrum/at.rovo.drum.impl=ALL-UNNAMED
                         --illegal-access=deny
                     </argLine>
@@ -70,5 +76,6 @@
             </plugin>
         </plugins>
     </build>
+
 
 </project>

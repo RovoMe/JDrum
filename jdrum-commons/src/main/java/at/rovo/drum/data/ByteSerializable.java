@@ -1,5 +1,6 @@
 package at.rovo.drum.data;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 
 /**
@@ -22,6 +23,7 @@ public interface ByteSerializable<T extends Serializable> extends Serializable {
      *
      * @return A byte array containing the internal state representation of the implementing object
      */
+    @Nonnull
     byte[] toBytes();
 
     /**
@@ -30,5 +32,6 @@ public interface ByteSerializable<T extends Serializable> extends Serializable {
      * @param bytes The bytes to convert to an instance of this class
      * @return An initialized instance of the implementation class
      */
-    T readBytes(byte[] bytes);
+    @Nonnull
+    T readBytes(@Nonnull final byte[] bytes);
 }

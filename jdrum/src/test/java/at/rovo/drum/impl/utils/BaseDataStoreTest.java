@@ -29,18 +29,20 @@ public abstract class BaseDataStoreTest {
 
     @BeforeEach
     public final void init() throws Exception {
-        String appDirPath = System.getProperty("user.dir");
-        File appDir = new File(appDirPath);
+        final String appDirPath = System.getProperty("user.dir");
+        final File appDir = new File(appDirPath);
         if (appDir.isDirectory()) {
-            String[] items = appDir.list();
-            for (String item : items) {
-                if (item.endsWith("cache")) {
-                    this.cacheDir = new File(item);
-                    if (this.cacheDir.isDirectory() && "cache".equals(this.cacheDir.getName())) {
-                        try {
-                            Files.walkFileTree(this.cacheDir.toPath(), new CacheFileDeleter());
-                        } catch (IOException e) {
-                            e.printStackTrace();
+            final String[] items = appDir.list();
+            if (items != null) {
+                for (String item : items) {
+                    if (item.endsWith("cache")) {
+                        this.cacheDir = new File(item);
+                        if (this.cacheDir.isDirectory() && "cache".equals(this.cacheDir.getName())) {
+                            try {
+                                Files.walkFileTree(this.cacheDir.toPath(), new CacheFileDeleter());
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }

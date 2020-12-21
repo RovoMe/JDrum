@@ -1,5 +1,6 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 
 /**
@@ -13,7 +14,7 @@ public interface StatisticsEnabledDrum<V extends Serializable, A extends Seriali
      *
      * @param listener A {@link DrumListener} instance to notify on internal state changes
      */
-    void addDrumListener(DrumListener listener);
+    void addDrumListener(@Nonnull final DrumListener listener);
 
     /**
      * Removes a previously added object from the {@link java.util.Set Set} of objects which require notifications on
@@ -21,5 +22,5 @@ public interface StatisticsEnabledDrum<V extends Serializable, A extends Seriali
      *
      * @param listener A {@link DrumListener} instance to be removed from the set of registered listeners
      */
-    void removeDrumListener(DrumListener listener);
+    void removeDrumListener(@Nonnull final DrumListener listener);
 }

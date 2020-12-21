@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+
 /**
  * A builder creates and initializes an object of a certain type. It is used to reduce the number of object constructors
  * and to give the parameters of the replaced constructors more semantic.
@@ -17,5 +19,6 @@ public interface Builder<T> {
      * @return The created and initialized object
      * @throws Exception If during creation and initialization an error occurs
      */
+    @Nonnull
     T build() throws Exception;
 }

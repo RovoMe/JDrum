@@ -6,6 +6,7 @@ import at.rovo.drum.DrumEventDispatcher;
 import at.rovo.drum.DrumListener;
 import at.rovo.drum.datastore.DataStoreMerger;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 
 /**
@@ -65,11 +66,18 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      * @param auxClass        The class object of the auxiliary data object
      * @param dispatcher      The dispatcher to send results with
      * @param listener        The listener to inform on internal state changes
+     * @param eventDispatcher The object to send event notifications to
      * @param dataStoreMerger The factory to initialize the backing data store with
      */
-    public DrumSettings(String drumName, int numBuckets, int bufferSize, Class<V> valueClass, Class<A> auxClass,
-                        Dispatcher<V, A> dispatcher, DrumListener listener, DrumEventDispatcher eventDispatcher,
-                        DataStoreMerger<V, A> dataStoreMerger) {
+    public DrumSettings(@Nonnull final String drumName,
+                        final int numBuckets,
+                        final int bufferSize,
+                        @Nonnull final Class<V> valueClass,
+                        @Nonnull final Class<A> auxClass,
+                        @Nonnull final Dispatcher<V, A> dispatcher,
+                        @Nonnull final DrumListener listener,
+                        @Nonnull final DrumEventDispatcher eventDispatcher,
+                        @Nonnull final DataStoreMerger<V, A> dataStoreMerger) {
         this.drumName = drumName;
         this.numBuckets = numBuckets;
         this.bufferSize = bufferSize;
@@ -86,6 +94,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return The name of the DRUM instance
      */
+    @Nonnull
     String getDrumName() {
         return this.drumName;
     }
@@ -95,6 +104,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return The class type of the value elements
      */
+    @Nonnull
     Class<V> getValueClass() {
         return this.valueClass;
     }
@@ -104,6 +114,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return The class type of the auxiliary data elements
      */
+    @Nonnull
     Class<A> getAuxClass() {
         return this.auxClass;
     }
@@ -132,6 +143,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return The assigned dispatcher for the DRUM instance
      */
+    @Nonnull
     Dispatcher<V, A> getDispatcher() {
         return this.dispatcher;
     }
@@ -141,6 +153,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return The specified listener to use with the DRUM instance to create
      */
+    @Nonnull
     DrumListener getListener() {
         return this.listener;
     }
@@ -151,6 +164,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return The factory for the backing storage service assigned to DRUM
      */
+    @Nonnull
     DataStoreMerger<V, A> getDataStoreMerger() {
         return this.dataStoreMerger;
     }
@@ -161,6 +175,7 @@ public class DrumSettings<V extends Serializable, A extends Serializable> {
      *
      * @return A reference to the event dispatcher object
      */
+    @Nonnull
     DrumEventDispatcher getEventDispatcher() {
         return this.eventDispatcher;
     }

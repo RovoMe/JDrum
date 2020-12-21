@@ -3,6 +3,11 @@ package at.rovo.drum.datastore.simple.utils;
 import at.rovo.drum.data.AppendableData;
 import at.rovo.drum.util.DrumUtils;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
@@ -19,7 +24,7 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
         this.indegreeNeighbors = new LinkedHashSet<>();
     }
 
-    public PLDTestData(long hash, int budget, Set<Long> indegreeNeighbors) {
+    public PLDTestData(final long hash, final int budget, @Nonnull final Set<Long> indegreeNeighbors) {
         this.hash = hash;
         this.budget = budget;
         this.indegreeNeighbors = indegreeNeighbors;
@@ -37,36 +42,44 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
         return this.budget;
     }
 
+    @Nonnull
     public Set<Long> getIndegreeNeighbors() {
         return this.indegreeNeighbors;
     }
 
+    @Nonnull
     public String getPLD() {
         return this.pld;
     }
 
-    public void setHash(long hash) {
+    public void setHash(final long hash) {
         this.hash = hash;
     }
 
-    public void setBudget(int budget) {
+    public void setBudget(final int budget) {
         this.budget = budget;
     }
 
-    public void setIndegreeNeighbors(Set<Long> indegreeNeighbors) {
+    public void setIndegreeNeighbors(@Nonnull final Set<Long> indegreeNeighbors) {
         this.indegreeNeighbors = indegreeNeighbors;
     }
 
-    public void setPLD(String pld) {
+    public void setPLD(@Nonnull final String pld) {
         this.pld = pld;
     }
 
-    public void addIndegreeNeighbors(Set<Long> indegreeNeighbors) {
+    public void addIndegreeNeighbors(@Nonnull final Set<Long> indegreeNeighbors) {
         this.indegreeNeighbors.addAll(indegreeNeighbors);
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable final Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (null == obj) {
+            return false;
+        }
         if (obj instanceof PLDTestData) {
             PLDTestData data = (PLDTestData) obj;
             return data.getHash() == this.hash;
@@ -82,8 +95,9 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
     }
 
     @Override
+    @Nullable
     public String toString() {
-        StringBuilder buffer = new StringBuilder();
+        final StringBuilder buffer = new StringBuilder();
         buffer.append("Hash: ");
         buffer.append(this.hash);
         buffer.append("; neighbors: {");
@@ -102,16 +116,14 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
     }
 
     @Override
-    public void append(PLDTestData data) {
+    public void append(@Nonnull final PLDTestData data) {
         if (this.indegreeNeighbors == null) {
             this.indegreeNeighbors = new TreeSet<>();
         }
-        if (data != null) {
-            this.indegreeNeighbors.addAll(data.getIndegreeNeighbors());
-        }
+        this.indegreeNeighbors.addAll(data.getIndegreeNeighbors());
     }
 
-    private void writeObject(java.io.ObjectOutputStream stream) throws java.io.IOException {
+    private void writeObject(@Nonnull final ObjectOutputStream stream) throws IOException {
         // 8 bytes long - hash
         stream.writeLong(this.hash);
         // 4 bytes int - length of indegreeNeighobrs
@@ -124,7 +136,7 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
         stream.writeInt(this.budget);
     }
 
-    private void readObject(java.io.ObjectInputStream stream) throws java.io.IOException, ClassNotFoundException {
+    private void readObject(@Nonnull final ObjectInputStream stream) throws IOException, ClassNotFoundException {
         this.indegreeNeighbors = new LinkedHashSet<>();
 
         // read hash
@@ -138,13 +150,14 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
         this.budget = stream.readInt();
     }
 
+    @Nonnull
     @Override
     public byte[] toBytes() {
-        int size = 12 + 8 * this.indegreeNeighbors.size() + 4;
-        byte[] totalBytes = new byte[size];
-        byte[] keyBytes = DrumUtils.long2bytes(this.hash); // 8 bytes
+        final int size = 12 + 8 * this.indegreeNeighbors.size() + 4;
+        final byte[] totalBytes = new byte[size];
+        final byte[] keyBytes = DrumUtils.long2bytes(this.hash); // 8 bytes
         System.arraycopy(keyBytes, 0, totalBytes, 0, 8);
-        byte[] neighborSize = DrumUtils.int2bytes(this.indegreeNeighbors.size());
+        final byte[] neighborSize = DrumUtils.int2bytes(this.indegreeNeighbors.size());
         System.arraycopy(neighborSize, 0, totalBytes, 8, 4); // 4 bytes
         int pos = 12;
         for (Long neighbor : this.indegreeNeighbors) {
@@ -152,37 +165,38 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
             System.arraycopy(neighborBytes, 0, totalBytes, pos, 8);
             pos += 8;
         }
-        byte[] budget = DrumUtils.int2bytes(this.budget);
+        final byte[] budget = DrumUtils.int2bytes(this.budget);
         System.arraycopy(budget, 0, totalBytes, pos, 4); // 4 bytes
 
         return totalBytes;
     }
 
+    @Nonnull
     @Override
-    public PLDTestData readBytes(byte[] bytes) {
-        byte[] keyBytes = new byte[8];
+    public PLDTestData readBytes(@Nonnull final byte[] bytes) {
+        final byte[] keyBytes = new byte[8];
         System.arraycopy(bytes, 0, keyBytes, 0, 8);
-        long hash = DrumUtils.byte2long(keyBytes);
+        final long hash = DrumUtils.byte2long(keyBytes);
 
-        byte[] valueSizeBytes = new byte[4];
+        final byte[] valueSizeBytes = new byte[4];
         System.arraycopy(bytes, 8, valueSizeBytes, 0, 4);
-        int valueSize = DrumUtils.bytes2int(valueSizeBytes);
+        final int valueSize = DrumUtils.bytes2int(valueSizeBytes);
 
-        TreeSet<Long> indegreeNeighbors = new TreeSet<>();
+        final TreeSet<Long> indegreeNeighbors = new TreeSet<>();
 
         int pos = 12;
         for (int i = 0; i < valueSize; i++) {
-            byte[] valueBytes = new byte[8];
+            final byte[] valueBytes = new byte[8];
             System.arraycopy(bytes, pos, valueBytes, 0, 8);
             indegreeNeighbors.add(DrumUtils.byte2long(valueBytes));
             pos += 8;
         }
 
-        byte[] budgetBytes = new byte[4];
+        final byte[] budgetBytes = new byte[4];
         System.arraycopy(bytes, pos, budgetBytes, 0, 4);
-        int budget = DrumUtils.bytes2int(budgetBytes);
+        final int budget = DrumUtils.bytes2int(budgetBytes);
 
-        PLDTestData data = new PLDTestData();
+        final PLDTestData data = new PLDTestData();
         data.setHash(hash);
         data.setIndegreeNeighbors(indegreeNeighbors);
         data.setBudget(budget);
@@ -191,7 +205,7 @@ public class PLDTestData implements AppendableData<PLDTestData>, Comparable<PLDT
     }
 
     @Override
-    public int compareTo(PLDTestData o) {
+    public int compareTo(@Nonnull final PLDTestData o) {
         if (this.getHash() < o.getHash()) {
             return -1;
         } else if (this.getHash() > o.getHash()) {

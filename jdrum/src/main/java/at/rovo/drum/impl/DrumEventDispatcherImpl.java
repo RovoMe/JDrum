@@ -13,6 +13,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 /**
  * This {@link DrumEventDispatcher} takes care of broadcasting internal state changes received via {@link
  * #update(DrumEvent)} to all of its registered listeners. To
@@ -55,17 +57,17 @@ public class DrumEventDispatcherImpl implements DrumEventDispatcher {
     }
 
     @Override
-    public void addDrumListener(DrumListener listener) {
+    public void addDrumListener(@Nonnull final DrumListener listener) {
         this.listeners.add(listener);
     }
 
     @Override
-    public void removeDrumListener(DrumListener listener) {
+    public void removeDrumListener(@Nonnull final DrumListener listener) {
         this.listeners.remove(listener);
     }
 
     @Override
-    public void update(DrumEvent<? extends DrumEvent<?>> event) {
+    public void update(@Nonnull final DrumEvent<? extends DrumEvent<?>> event) {
         this.events.add(event);
     }
 
@@ -74,10 +76,8 @@ public class DrumEventDispatcherImpl implements DrumEventDispatcher {
         this.dispatchThread = Thread.currentThread();
         while (!this.stopRequested) {
             try {
-                DrumEvent<?> event = this.events.take();
-                if (event != null) {
-                    this.listeners.forEach(listener -> listener.update(event));
-                }
+                final DrumEvent<?> event = this.events.take();
+                this.listeners.forEach(listener -> listener.update(event));
             } catch (InterruptedException e) {
                 LOG.trace("Event dispatcher interrupted while waiting for further events to dispatch");
             }

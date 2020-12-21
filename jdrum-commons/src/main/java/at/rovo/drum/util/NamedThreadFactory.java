@@ -1,5 +1,7 @@
 package at.rovo.drum.util;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.ThreadFactory;
 
@@ -29,7 +31,7 @@ public class NamedThreadFactory implements ThreadFactory {
      *
      * @param name The new name of this thread.
      */
-    public void setName(String name) {
+    public void setName(@Nonnull final String name) {
         this.name = name;
     }
 
@@ -38,12 +40,12 @@ public class NamedThreadFactory implements ThreadFactory {
      *
      * @param exceptionHandler The handler taking care of any uncaught exceptions thrown by threads in the thread pool
      */
-    public void setUncaughtExceptionHandler(UncaughtExceptionHandler exceptionHandler) {
+    public void setUncaughtExceptionHandler(@Nullable final UncaughtExceptionHandler exceptionHandler) {
         this.exceptionHandler = exceptionHandler;
     }
 
     @Override
-    public Thread newThread(Runnable r) {
+    public Thread newThread(@Nonnull final Runnable r) {
         Thread thread = new Thread(r, this.name + (this.name.contains("Writer") ? "-" + this.number++ : ""));
         if (this.exceptionHandler != null) {
             thread.setUncaughtExceptionHandler(this.exceptionHandler);

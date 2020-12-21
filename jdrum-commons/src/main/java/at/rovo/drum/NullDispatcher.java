@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 
 /**
@@ -16,35 +18,35 @@ public class NullDispatcher<V extends Serializable, A extends Serializable> impl
     /**
      * Handles unique key check events
      */
-    public void uniqueKeyCheck(Long key, A aux) {
+    public void uniqueKeyCheck(@Nonnull final Long key, @Nullable final A aux) {
 
     }
 
     /**
      * Handles duplicate key check events
      */
-    public void duplicateKeyCheck(Long key, V value, A aux) {
+    public void duplicateKeyCheck(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux) {
 
     }
 
     /**
      * Handles unique key update events
      */
-    public void uniqueKeyUpdate(Long key, V value, A aux) {
+    public void uniqueKeyUpdate(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux) {
 
     }
 
     /**
      * Handles duplicate key update events
      */
-    public void duplicateKeyUpdate(Long key, V value, A aux) {
+    public void duplicateKeyUpdate(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux) {
 
     }
 
     /**
      * Handles update events
      */
-    public void update(Long key, V value, A aux) {
+    public void update(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux) {
 
     }
 }

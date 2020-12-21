@@ -1,5 +1,6 @@
 module jdrum.commons {
     requires java.base;
+    requires jsr305;
 
     exports at.rovo.drum;
     exports at.rovo.drum.data;

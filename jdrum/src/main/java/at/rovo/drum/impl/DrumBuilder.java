@@ -9,6 +9,7 @@ import at.rovo.drum.DrumListener;
 import at.rovo.drum.NullDispatcher;
 import at.rovo.drum.datastore.DataStoreMerger;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -64,7 +65,7 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
     /**
      * The DRUM store factory class to initialize
      */
-    private Class<? extends DataStoreMerger> storeMergerClass = null;
+    private Class<? extends DataStoreMerger<? extends Serializable, ? extends Serializable>> storeMergerClass = null;
 
     /**
      * Creates a new builder object with the minimum number of required data to instantiate a new {@link
@@ -74,7 +75,9 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param valueClass The type of the value this instance will manage
      * @param auxClass   The type of the auxiliary data this instance will manage
      */
-    public DrumBuilder(String drumName, Class<V> valueClass, Class<A> auxClass) {
+    public DrumBuilder(@Nonnull final String drumName,
+                       @Nonnull final Class<V> valueClass,
+                       @Nonnull final Class<A> auxClass) {
         this.drumName = drumName;
         this.valueClass = valueClass;
         this.auxClass = auxClass;
@@ -87,11 +90,8 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param dispatcher The dispatcher to use for instantiating DRUM
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> dispatcher(Dispatcher<V, A> dispatcher) {
-        if (dispatcher == null) {
-            throw new IllegalArgumentException("Invalid dispatcher received");
-        }
-
+    @Nonnull
+    public DrumBuilder<V, A> dispatcher(@Nonnull final Dispatcher<V, A> dispatcher) {
         this.dispatcher = dispatcher;
         return this;
     }
@@ -103,7 +103,8 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param numBuckets The number of buckets DRUM should manage
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> numBucket(int numBuckets) {
+    @Nonnull
+    public DrumBuilder<V, A> numBucket(final int numBuckets) {
         if (numBuckets <= 0 || ((numBuckets & -numBuckets) != numBuckets)) {
             throw new IllegalArgumentException(
                     "The number of buckets must be greater than 0 and must be a superset of 2");
@@ -119,7 +120,8 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param bufferSize The buffer size DRUM should use before flushing the content
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> bufferSize(int bufferSize) {
+    @Nonnull
+    public DrumBuilder<V, A> bufferSize(final int bufferSize) {
         if (bufferSize <= 0 || ((bufferSize & -bufferSize) != bufferSize)) {
             throw new IllegalArgumentException(
                     "BufferSize must be greater than 0 and have a base of 2 (ex: 2^1, 2^2, 2^3, ...)");
@@ -135,7 +137,8 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param listener The listener to notify on state changes
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> listener(DrumListener listener) {
+    @Nonnull
+    public DrumBuilder<V, A> listener(@Nonnull final DrumListener listener) {
         this.listener = listener;
         return this;
     }
@@ -147,8 +150,11 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      *                    store
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> datastore(Class<? extends DataStoreMerger> mergerClass) {
-        this.storeMergerClass = mergerClass;
+    @Nonnull
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public DrumBuilder<V, A> datastore(@Nonnull final Class<? extends DataStoreMerger> mergerClass) {
+        this.storeMergerClass =
+                (Class<? extends DataStoreMerger<? extends Serializable, ? extends Serializable>>) mergerClass;
         return this;
     }
 
@@ -158,7 +164,8 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @param eventDispatcher A reference to the object which should take care of shipping internal state events to registered listeners
      * @return The builder responsible for creating a new instance of DRUM
      */
-    public DrumBuilder<V, A> eventDispatcher(DrumEventDispatcher eventDispatcher) {
+    @Nonnull
+    public DrumBuilder<V, A> eventDispatcher(@Nonnull final DrumEventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
         return this;
     }
@@ -169,11 +176,12 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
      * @return A new initialized instance of DRUM
      * @throws DrumException If during the initialization of DRUM an error occurred
      */
+    @Nonnull
     public Drum<V, A> build() throws Exception {
-        DataStoreMerger<V, A> merger;
+        final DataStoreMerger<V, A> merger;
         if (this.storeMergerClass != null) {
             try {
-                Constructor constructor =
+                final Constructor<? extends DataStoreMerger<? extends Serializable, ? extends Serializable>> constructor =
                         this.storeMergerClass.getConstructor(String.class, Class.class);
                 //noinspection unchecked
                 merger = (DataStoreMerger<V, A>) constructor.newInstance(this.drumName, this.valueClass);
@@ -188,7 +196,7 @@ public class DrumBuilder<V extends Serializable, A extends Serializable> impleme
 
         // in order to keep the interface for the builder clean, the builder is creating a settings object which is
         // only visible within the same package and initializes a new DRUM instance with the settings parameter object
-        DrumSettings<V, A> settings = new DrumSettings<>(this.drumName, this.numBuckets, this.bufferSize,
+        final DrumSettings<V, A> settings = new DrumSettings<>(this.drumName, this.numBuckets, this.bufferSize,
                 this.valueClass, this.auxClass, this.dispatcher, this.listener,
                 this.eventDispatcher, merger);
         return new DrumImpl<>(settings);

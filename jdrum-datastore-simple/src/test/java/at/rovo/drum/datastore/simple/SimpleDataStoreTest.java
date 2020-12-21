@@ -30,6 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -49,26 +52,26 @@ public class SimpleDataStoreTest {
     /**
      * The logger for this class
      */
-    private static Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private File testDir = null;
 
     @BeforeEach
     void init() {
         // get application directory
-        String appDir = System.getProperty("user.dir");
+        final String appDir = System.getProperty("user.dir");
 
         // check if the directories, the cache is located, exists
-        File cacheDir = new File(appDir + "/cache");
+        final File cacheDir = new File(appDir + "/cache");
         if (!cacheDir.exists()) {
-            boolean success = cacheDir.mkdir();
+            final boolean success = cacheDir.mkdir();
             if (!success) {
                 LOG.warn("Could not create cache directory");
             }
         }
         this.testDir = new File(cacheDir + "/test");
         if (!this.testDir.exists()) {
-            boolean success = this.testDir.mkdir();
+            final boolean success = this.testDir.mkdir();
             if (!success) {
                 LOG.warn("Could not create DRUM test directory");
             }
@@ -77,10 +80,10 @@ public class SimpleDataStoreTest {
 
     @Test
     void testWriteAndUpdateEntries() throws Exception {
-        try (SimpleDataStore<String> dataStore = new SimpleDataStoreImpl<>(this.testDir + "/cache.db", "test", String.class)) {
+        try (final SimpleDataStore<String> dataStore = new SimpleDataStoreImpl<>(this.testDir + "/cache.db", "test", String.class)) {
             // create a couple of test data and write them to the disk file
             // besides is the calculated hash key for the given URL and the position in the list after sorting
-            List<DrumStoreEntry<String, String>> dataList = new ArrayList<>();
+            final List<DrumStoreEntry<String, String>> dataList = new ArrayList<>();
             dataList.add(createNewData("http://www.tuwien.ac.at"));          // key:  -427820934381562479  pos: 1
             dataList.add(createNewData("http://www.univie.ac.at"));          // key:  -408508820557862601  pos: 3
             dataList.add(createNewData("http://www.winf.at"));               // key:   356380646382129811  pos: 4
@@ -90,7 +93,7 @@ public class SimpleDataStoreTest {
             // sort the list
             dataList.sort(new KeyComparator<>());
             // and write the entries
-            for (DrumStoreEntry<String, String> data : dataList) {
+            for (final DrumStoreEntry<String, String> data : dataList) {
                 dataStore.writeEntry(data, false);
             }
 
@@ -124,7 +127,7 @@ public class SimpleDataStoreTest {
             // sort the list
             dataList.sort(new KeyComparator<>());
             // and write the entries
-            for (DrumStoreEntry<String, ?> data : dataList) {
+            for (final DrumStoreEntry<String, ?> data : dataList) {
                 dataStore.writeEntry(data, false);
             }
 
@@ -286,7 +289,7 @@ public class SimpleDataStoreTest {
 
     @Test
     void testAppendUpdate() throws Exception {
-        try (SimpleDataStore<PLDTestData> dataStore = new SimpleDataStoreImpl<>(this.testDir + "/cache.db", "test", PLDTestData.class)) {
+        try (final SimpleDataStore<PLDTestData> dataStore = new SimpleDataStoreImpl<>(this.testDir + "/cache.db", "test", PLDTestData.class)) {
             // (1; 2; <3, 7>) has to be read as:
             // key = 1;
             // length of in-degree neighbors = 2;
@@ -297,9 +300,9 @@ public class SimpleDataStoreTest {
             LOG.debug("Creating original data - (1; 2; <3, 7>), (5; 2; <2, 19>), (76; 4; <5, 13, 22, 88)");
 
             // key: 8 + op: 4 + value: (hash: 8 + neighbor-length: 4 + 2 * neighborHash: 8) + budges: 4) bytes = 44 ... 164 = 120 bytes diff :/
-            DrumStoreEntry<PLDTestData, ?> mem1 = createNewData(1L, DrumOperation.UPDATE, 7L, 3L);
-            DrumStoreEntry<PLDTestData, ?> mem2 = createNewData(5L, DrumOperation.UPDATE, 2L, 19L);
-            DrumStoreEntry<PLDTestData, ?> mem3 = createNewData(76L, DrumOperation.UPDATE, 5L, 13L, 22L, 88L);
+            final DrumStoreEntry<PLDTestData, ?> mem1 = createNewData(1L, DrumOperation.UPDATE, 7L, 3L);
+            final DrumStoreEntry<PLDTestData, ?> mem2 = createNewData(5L, DrumOperation.UPDATE, 2L, 19L);
+            final DrumStoreEntry<PLDTestData, ?> mem3 = createNewData(76L, DrumOperation.UPDATE, 5L, 13L, 22L, 88L);
 
             // write the entries
             dataStore.writeEntry(mem1, false);
@@ -323,8 +326,8 @@ public class SimpleDataStoreTest {
             LOG.debug("Adding new data to integrate into an existing entry - new batch: (5; 4; <2, 3, 7, 88>), (76; 2; <4, 13>)");
 
             // new batch, sorted as described above: (5; 4; <2, 3, 7, 88>), (76; 2; <4, 13>)
-            DrumStoreEntry<PLDTestData, ?> mem2v2 = createNewData(5L, DrumOperation.APPEND_UPDATE, 2L, 3L, 7L, 88L);
-            DrumStoreEntry<PLDTestData, ?> mem3v2 = createNewData(76L, DrumOperation.APPEND_UPDATE, 4L, 13L);
+            final DrumStoreEntry<PLDTestData, ?> mem2v2 = createNewData(5L, DrumOperation.APPEND_UPDATE, 2L, 3L, 7L, 88L);
+            final DrumStoreEntry<PLDTestData, ?> mem3v2 = createNewData(76L, DrumOperation.APPEND_UPDATE, 4L, 13L);
 
             // write the appended entries
             dataStore.writeEntry(mem2v2, true);
@@ -344,31 +347,33 @@ public class SimpleDataStoreTest {
         }
     }
 
-    private static DrumStoreEntry<String, String> createNewData(String auxiliaryData, String... val) {
-        InMemoryEntry<String, String> data = new InMemoryEntry<>();
+    private static DrumStoreEntry<String, String> createNewData(@Nonnull final String auxiliaryData, @Nullable String... val) {
+        final InMemoryEntry<String, String> data = new InMemoryEntry<>();
         if (val != null && val.length > 0) {
             data.setValue(val[0]);
         }
         data.setAuxiliary(auxiliaryData);
-        data.setKey(DrumUtils.hash(data.getAuxiliary()));
+        if (data.getAuxiliary() != null) {
+            data.setKey(DrumUtils.hash(data.getAuxiliary()));
+        }
         LOG.debug("Writing data: {}; auxiliary data: {}", data.getKey(), data.getAuxiliary());
         return data;
     }
 
-    private static DrumStoreEntry<PLDTestData, String> createNewData(Long key, DrumOperation operation, Long... inDegreeNeighbors) {
-        PLDTestData entry = new PLDTestData();
+    private static DrumStoreEntry<PLDTestData, String> createNewData(@Nonnull final Long key, @Nonnull final DrumOperation operation, @Nonnull final Long... inDegreeNeighbors) {
+        final PLDTestData entry = new PLDTestData();
         entry.setHash(key);
-        Set<Long> neighbor1 = new TreeSet<>(Arrays.asList(inDegreeNeighbors));
+        final Set<Long> neighbor1 = new TreeSet<>(Arrays.asList(inDegreeNeighbors));
         entry.setIndegreeNeighbors(neighbor1);
 
-        DrumStoreEntry<PLDTestData, String> data = new InMemoryEntry<>(key, entry, null, operation);
+        final DrumStoreEntry<PLDTestData, String> data = new InMemoryEntry<>(key, entry, null, operation);
         LOG.debug("Writing data: {}; value: {}", data.getKey(), data.getValue());
         return data;
     }
 
     @AfterEach
     void clean() {
-        File cache = this.testDir.getParentFile();
+        final File cache = this.testDir.getParentFile();
         if (cache.isDirectory() && "cache".equals(cache.getName())) {
             try {
                 Files.walkFileTree(cache.toPath(), new CacheFileDeleter());

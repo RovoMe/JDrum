@@ -15,6 +15,9 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * Implementation of {@link SimpleDataStore} which is a key/value storage which supports updates of existing key/value pairs.
  * <p>
@@ -34,7 +37,7 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
     /**
      * The backing caching file to store data to and read it from
      */
-    private RandomAccessFile file;
+    private final RandomAccessFile file;
     /**
      * The last key written to the data storage
      */
@@ -50,11 +53,11 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
     /**
      * The name of the drum instance
      */
-    private String drum;
+    private final String drum;
     /**
      * The class-element of the value object
      */
-    private Class<V> valueClass;
+    private final Class<V> valueClass;
     /**
      * The number of entries in the cache file
      */
@@ -67,7 +70,8 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
      * @param drum       The name of the drum instance the cache file is used for
      * @param valueClass The class of the value object stored with the key
      */
-    SimpleDataStoreImpl(String name, String drum, Class<V> valueClass) throws DrumException {
+    SimpleDataStoreImpl(@Nonnull final String name, String drum,
+                        @Nonnull final Class<V> valueClass) throws DrumException {
         try {
             this.drum = drum;
             this.file = new RandomAccessFile(name, "rw");
@@ -78,12 +82,12 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
     }
 
     @Override
-    public long length() throws DrumException {
+    public long length() throws IOException {
         if (this.file != null) {
             try {
                 return this.file.length();
             } catch (Exception e) {
-                throw new DrumException(
+                throw new IOException(
                         "Error extracting file length of cache file! Caught reason: " + e.getLocalizedMessage(), e);
             }
         }
@@ -122,6 +126,7 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
     }
 
     @Override
+    @Nullable
     public DrumStoreEntry<V, ?> getNextEntry() throws IOException, ClassNotFoundException {
         if (this.file.getFilePointer() == this.file.length()) {
             return null;
@@ -143,14 +148,16 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
         return new InMemoryEntry<>(key, null, null, null);
     }
 
+    @Nonnull
     @Override
-    public DrumStoreEntry<V, ?> writeEntry(DrumStoreEntry<V, ?> data)
+    public DrumStoreEntry<V, ?> writeEntry(@Nonnull final DrumStoreEntry<V, ?> data)
             throws IOException, ClassNotFoundException, NotAppendableException {
         return this.writeEntry(data, false);
     }
 
+    @Nonnull
     @Override
-    public DrumStoreEntry<V, ?> writeEntry(DrumStoreEntry<V, ?> data, boolean append)
+    public DrumStoreEntry<V, ?> writeEntry(@Nonnull final DrumStoreEntry<V, ?> data, final boolean append)
             throws IOException, ClassNotFoundException, NotAppendableException {
         LOG.debug("[{}] - writing entry: {}; value: {}", this.drum, data.getKey(), data.getValue());
 
@@ -219,7 +226,10 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
             // instead of an replacement of the data entry
             if (append && data.getKey().equals(entry.getKey())) {
                 LOG.trace("[{}] - appending {} to {}!", this.drum, entry.getValue(), data);
-                data.appendValue(entry.getValue());
+                final V value = entry.getValue();
+                if (null != value) {
+                    data.appendValue(value);
+                }
             }
 
             // calculate the bytes to extend the file
@@ -228,14 +238,14 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
                 byte2write -= entry.getByteLengthKV();
             }
 
-            long restLength = this.file.length() - this.file.getFilePointer();
+            final long restLength = this.file.length() - this.file.getFilePointer();
             // read the data to shift and store it into a temporary memory list
             final int segmentSize = 65536; // 64k buffer size
             // shift the content by the number of bytes to write
             this.shiftContent(byte2write, segmentSize, restLength);
 
-            // set the cursor to the position where the new or updateable data should be written
-            long pos = Math.max(entryStartPosition + shiftBits - entry.getByteLengthKV(), 0L);
+            // set the cursor to the position where the new or updatable data should be written
+            final long pos = Math.max(entryStartPosition + shiftBits - entry.getByteLengthKV(), 0L);
             this.file.seek(pos);
             // write the new data
             LOG.trace("[{}] - writing data '{}'", this.drum, data);
@@ -257,11 +267,12 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
         }
     }
 
+    @Nullable
     @Override
-    public DrumStoreEntry<V, ?> getEntry(Long key) throws IOException, ClassNotFoundException {
+    public DrumStoreEntry<V, ?> getEntry(@Nonnull final Long key) throws IOException, ClassNotFoundException {
         LOG.debug("[{}] - Retrieving entry: {}", this.drum, key);
 
-        long pos = this.file.getFilePointer();
+        final long pos = this.file.getFilePointer();
 
         if (pos < this.file.length()) {
             DrumStoreEntry<V, ?> data;
@@ -302,11 +313,11 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
      *                   next entry
      * @return The bytes actually written
      */
-    private long writeDataEntry(DrumStoreEntry<V, ?> data, boolean cacheEntry) throws IOException {
-        long byte2write = data.getByteLengthKV();
+    private long writeDataEntry(@Nonnull final DrumStoreEntry<V, ?> data, final boolean cacheEntry) throws IOException {
+        final long byte2write = data.getByteLengthKV();
         this.file.write(data.getKeyAsBytes());
 
-        byte[] byteValue = data.getValueAsBytes();
+        final byte[] byteValue = data.getValueAsBytes();
         if (byteValue != null) {
             this.file.writeInt(byteValue.length);
             this.file.write(byteValue);
@@ -332,11 +343,11 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
      * @param segmentSize The size of a segment to read in case the total file length exceeds the segment size
      * @param restLength  The total number of bytes remaining to shift
      */
-    private void shiftContent(long byte2write, int segmentSize, long restLength) throws IOException {
+    private void shiftContent(final long byte2write, final int segmentSize, final long restLength) throws IOException {
         // the rest of the file fits into one segment
         if (restLength < segmentSize) {
-            long tmp = this.file.getFilePointer();
-            byte[] rest = new byte[(int) restLength];
+            final long tmp = this.file.getFilePointer();
+            final byte[] rest = new byte[(int) restLength];
             // read the remaining content
             this.file.readFully(rest);
             // extend the file size by the bytes to write
@@ -358,7 +369,7 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
             // split the read up in to 64k parts
             long remainingBytes = restLength;
             // save the current position of the cursor
-            long tmp = this.file.getFilePointer();
+            final long tmp = this.file.getFilePointer();
             // set the pointer to the end of the file
             long pos = this.file.length();
             // enlarge the file size by the bytes to write
@@ -448,13 +459,16 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
      * @param data The object containing the data to write
      * @return The number of bytes written
      */
-    private long updateLastEntry(DrumStoreEntry<V, ?> data, boolean append) throws IOException, NotAppendableException {
+    private long updateLastEntry(@Nonnull final DrumStoreEntry<V, ?> data, final boolean append) throws IOException, NotAppendableException {
         // the key to update was written before so set the cursor back to the start of the last entry
         this.file.seek(this.file.getFilePointer() - this.entrySize);
 
         long byte2write;
         if (append) {
-            this.lastElement.appendValue(data.getValue());
+            final V value = data.getValue();
+            if (null != value) {
+                this.lastElement.appendValue(data.getValue());
+            }
             byte2write = this.lastElement.getByteLengthKV();
             if (byte2write != this.entrySize) {
                 this.file.setLength(this.file.length() + (byte2write - this.entrySize));
@@ -480,7 +494,7 @@ public class SimpleDataStoreImpl<V extends Serializable> implements SimpleDataSt
      * @param data The object containing the data to write
      * @return The number of bytes written
      */
-    private long addNewEntryAtTheEnd(DrumStoreEntry<V, ?> data) throws IOException {
+    private long addNewEntryAtTheEnd(@Nonnull final DrumStoreEntry<V, ?> data) throws IOException {
         this.file.setLength(this.file.length() + data.getByteLengthKV());
         return this.writeDataEntry(data, true);
     }

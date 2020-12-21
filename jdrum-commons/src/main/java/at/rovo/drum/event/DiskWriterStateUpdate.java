@@ -3,6 +3,8 @@ package at.rovo.drum.event;
 import at.rovo.drum.DiskWriter;
 import at.rovo.drum.DrumListener;
 
+import javax.annotation.Nonnull;
+
 /**
  * Informs {@link DrumListener listeners} on a state change of a {@link DiskWriter}.
  *
@@ -13,11 +15,11 @@ public class DiskWriterStateUpdate extends DrumEvent<DiskWriterStateUpdate> {
     /**
      * The bucket ID the event was triggered from
      */
-    private int bucketId;
+    private final int bucketId;
     /**
      * The new state of the disk writer
      */
-    private DiskWriterState state;
+    private final DiskWriterState state;
 
     /**
      * Initializes a event for a status change of the disk writer.
@@ -26,7 +28,9 @@ public class DiskWriterStateUpdate extends DrumEvent<DiskWriterStateUpdate> {
      * @param bucketId The identifier of the bucket the event was triggered from
      * @param state    The new state of the disk writer
      */
-    public DiskWriterStateUpdate(String drumName, int bucketId, DiskWriterState state) {
+    public DiskWriterStateUpdate(@Nonnull final String drumName,
+                                 final int bucketId,
+                                 @Nonnull final DiskWriterState state) {
         super(drumName, DiskWriterStateUpdate.class);
         this.bucketId = bucketId;
         this.state = state;
@@ -46,11 +50,13 @@ public class DiskWriterStateUpdate extends DrumEvent<DiskWriterStateUpdate> {
      *
      * @return The new state of the disk writer
      */
+    @Nonnull
     public DiskWriterState getState() {
         return this.state;
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - DiskWriter " + this.bucketId +
                 " state changed to: " + this.state;

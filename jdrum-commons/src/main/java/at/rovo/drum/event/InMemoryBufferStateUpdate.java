@@ -2,6 +2,8 @@ package at.rovo.drum.event;
 
 import at.rovo.drum.Broker;
 
+import javax.annotation.Nonnull;
+
 /**
  * An event triggered by the {@link Broker} implementation when the internal data buffer either exceeds its limit or got
  * emptied.
@@ -13,11 +15,11 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
     /**
      * The bucket ID the event was triggered from
      */
-    private int bucketId;
+    private final int bucketId;
     /**
      * The new state the broker is in
      */
-    private InMemoryBufferState state;
+    private final InMemoryBufferState state;
 
     /**
      * Initializes a new event triggered by the {@link Broker} when the state of the internal
@@ -27,7 +29,9 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
      * @param bucketId The identifier of the bucket the event was triggered from
      * @param state    The new state the {@link Broker} is in
      */
-    public InMemoryBufferStateUpdate(String drumName, int bucketId, InMemoryBufferState state) {
+    public InMemoryBufferStateUpdate(@Nonnull final String drumName,
+                                     final int bucketId,
+                                     @Nonnull final InMemoryBufferState state) {
         super(drumName, InMemoryBufferStateUpdate.class);
         this.bucketId = bucketId;
         this.state = state;
@@ -47,11 +51,13 @@ public class InMemoryBufferStateUpdate extends DrumEvent<InMemoryBufferStateUpda
      *
      * @return The new state of the {@link Broker brokers} buffer
      */
+    @Nonnull
     public InMemoryBufferState getState() {
         return this.state;
     }
 
     @Override
+    @Nonnull
     public String toString() {
         return this.drumName + " - " + this.currentThread.getName() + " - InMemoryBuffer " + this.bucketId
                 + " state changed to: " + this.state;

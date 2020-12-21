@@ -21,6 +21,9 @@ import net.jcip.annotations.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * <em>InMemoryMessageBroker</em> is a {@link Broker} implementation which manages {@link InMemoryEntry} objects. It
  * will store new data objects in a lock free {@link FlippingDataContainer} on invoking {@link #put(InMemoryEntry)} and
@@ -100,7 +103,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
      * The flippable lock-free buffer to add in memory data to
      */
     @GuardedBy("lock")
-    private FlippingDataContainer<T> buffer = new FlippingDataContainer<>();
+    private final FlippingDataContainer<T> buffer = new FlippingDataContainer<>();
 
     /**
      * Creates a new instance and initializes necessary fields.
@@ -111,7 +114,10 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
      * @param byteSizePerBuffer The length of the buffer in size upon which the consumer will get the buffered data
      * @param eventDispatcher   A reference to the event dispatcher in order to inform listeners about state changes on the broker
      */
-    InMemoryMessageBroker(String drumName, int id, int byteSizePerBuffer, DrumEventDispatcher eventDispatcher) {
+    InMemoryMessageBroker(@Nonnull final String drumName,
+                          final int id,
+                          final int byteSizePerBuffer,
+                          @Nonnull final DrumEventDispatcher eventDispatcher) {
         this.drumName = drumName;
         this.eventDispatcher = eventDispatcher;
         this.bucketId = id;
@@ -139,7 +145,8 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
      * @param newState The new {@link InMemoryBufferState} to set
      * @return Returns a reference of the new state
      */
-    private InMemoryBufferState updateState(InMemoryBufferState newState) {
+    @Nonnull
+    private InMemoryBufferState updateState(@Nonnull final InMemoryBufferState newState) {
         this.eventDispatcher.update(new InMemoryBufferStateUpdate(this.drumName, this.bucketId, newState));
         return newState;
     }
@@ -151,7 +158,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
      * @param byteLengthKV  The length of the key-value pair bytes
      * @param byteLengthAux The length of the auxiliary data bytes
      */
-    private void updateState(int byteLengthKV, int byteLengthAux) {
+    private void updateState(final int byteLengthKV, final int byteLengthAux) {
         this.eventDispatcher.update(new InMemoryBufferEvent(this.drumName, this.bucketId, byteLengthKV, byteLengthAux));
     }
 
@@ -160,7 +167,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void put(T data) {
+    public void put(@Nullable final T data) {
         if (this.isStopRequested) {
             throw new IllegalStateException("Could not accept further data entries as a stop was already requested");
         }
@@ -168,7 +175,11 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
             return;
         }
 
-        FlippingDataContainerEntry<T> _data = this.buffer.put(data);
+        final FlippingDataContainerEntry<T> _data = this.buffer.put(data);
+        if (null == _data) {
+            LOG.debug("[{}] - [{}] - Ignoring empty entry taken from the backing buffer", this.drumName, this.bucketId);
+            return;
+        }
 
         LOG.info("[{}] - [{}] - Received data-object: {}; value: {}; aux: {} for operation: {}", this.drumName,
                 this.bucketId, data.getKey(), data.getValue(), data.getAuxiliary(), data.getOperation());
@@ -198,7 +209,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
      * @param byteLengthKV  The length of the key and value bytes
      * @param byteLengthAux The length of the auxiliary data bytes
      */
-    private void checkStateChange(int byteLengthKV, int byteLengthAux) {
+    private void checkStateChange(final int byteLengthKV, final int byteLengthAux) {
         if ((byteLengthKV > this.byteSizePerBuffer ||
                 byteLengthAux > this.byteSizePerBuffer)) {
             if (!InMemoryBufferState.EXCEEDED_LIMIT.equals(this.oldState)) {
@@ -234,6 +245,7 @@ public class InMemoryMessageBroker<T extends InMemoryEntry<V, A>, V extends Seri
      * data as long as available. Once no data is available any further, an empty {@link Queue} is returned.
      */
     @Override
+    @Nonnull
     public Queue<T> takeAll() {
 
         if (this.buffer.isEmpty() && this.isStopRequested) {

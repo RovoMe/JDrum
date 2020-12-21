@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+
 /**
  * <code>Merger</code> iterates through all registered {@link DiskWriter} instances and uses their bucket disk files to
  * extract data to merge. It therefore only merges data that was created since the last merge. New disk writer objects
@@ -22,7 +24,7 @@ public interface Merger extends Runnable, Stoppable {
      *
      * @param writer The responsible class for writing the actual data to disk
      */
-    void addDiskFileWriter(DiskWriter writer);
+    void addDiskFileWriter(@Nonnull final DiskWriter writer);
 
     /**
      * Signals the merging implementation to start the merging process.

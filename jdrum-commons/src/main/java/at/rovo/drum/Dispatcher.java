@@ -1,5 +1,7 @@
 package at.rovo.drum;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 
 /**
@@ -17,7 +19,7 @@ public interface Dispatcher<V extends Serializable, A extends Serializable> {
      * @param key The key of the element
      * @param aux The auxiliary data of the element
      */
-    void uniqueKeyCheck(Long key, A aux);
+    void uniqueKeyCheck(@Nonnull final Long key, @Nullable final A aux);
 
     /**
      * Handles duplicate key check events
@@ -26,7 +28,7 @@ public interface Dispatcher<V extends Serializable, A extends Serializable> {
      * @param value The value of the element
      * @param aux   The auxiliary data of the element
      */
-    void duplicateKeyCheck(Long key, V value, A aux);
+    void duplicateKeyCheck(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux);
 
     /**
      * Handles unique key update events
@@ -35,7 +37,7 @@ public interface Dispatcher<V extends Serializable, A extends Serializable> {
      * @param value The value of the element
      * @param aux   The auxiliary data of the element
      */
-    void uniqueKeyUpdate(Long key, V value, A aux);
+    void uniqueKeyUpdate(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux);
 
     /**
      * Handles duplicate key update events
@@ -44,7 +46,7 @@ public interface Dispatcher<V extends Serializable, A extends Serializable> {
      * @param value The value of the element
      * @param aux   The auxiliary data of the element
      */
-    void duplicateKeyUpdate(Long key, V value, A aux);
+    void duplicateKeyUpdate(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux);
 
     /**
      * Handles update events
@@ -53,5 +55,5 @@ public interface Dispatcher<V extends Serializable, A extends Serializable> {
      * @param value The value of the element
      * @param aux   The auxiliary data of the element
      */
-    void update(Long key, V value, A aux);
+    void update(@Nonnull final Long key,  @Nullable final V value,  @Nullable final A aux);
 }

@@ -2,6 +2,8 @@ package at.rovo.drum;
 
 import at.rovo.drum.event.DrumEvent;
 
+import javax.annotation.Nonnull;
+
 /**
  * The null event dispatcher implements the null object design pattern that offers suitable default do nothing behavior
  * on internal event updates. Its main purpose is to provide a base class to extend from to limit the number of methods
@@ -10,18 +12,19 @@ import at.rovo.drum.event.DrumEvent;
  * @author Roman Vottner
  */
 public class NullEventDispatcher implements DrumEventDispatcher {
+
     @Override
-    public void addDrumListener(DrumListener listener) {
+    public void addDrumListener(@Nonnull final DrumListener listener) {
         // do nothing
     }
 
     @Override
-    public void removeDrumListener(DrumListener listener) {
+    public void removeDrumListener(@Nonnull final DrumListener listener) {
         // do nothing
     }
 
     @Override
-    public void update(DrumEvent<? extends DrumEvent<?>> event) {
+    public void update(@Nonnull final DrumEvent<? extends DrumEvent<?>> event) {
         // do nothing
     }
 
